@@ -1,25 +1,24 @@
-import datetime
 import os
 
 # 画图配置
 from pyecharts import options as opts
-from pyecharts.charts import Kline, Line, Bar, Grid, Scatter
+from pyecharts.charts import Kline as cKline, Line, Bar, Grid, Scatter
 from pyecharts.commons.utils import JsCode
 
-from chanlun import cl
+from chanlun.cl_interface import *
 
 if "JPY_PARENT_PID" in os.environ:
     from pyecharts.globals import CurrentConfig, NotebookType
 
     CurrentConfig.NOTEBOOK_TYPE = NotebookType.JUPYTER_LAB
-    Kline().load_javascript()
+    cKline().load_javascript()
     Line().load_javascript()
     Bar().load_javascript()
     Grid().load_javascript()
     Scatter().load_javascript()
 
 
-def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
+def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
     """
     缠论数据图表化展示
     :param title:
@@ -66,16 +65,16 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
 
     color_qs = '#A1C0FC'
 
-    klines = cl_data.klines
-    cl_klines = cl_data.cl_klines
-    fxs = cl_data.fxs
-    bis = cl_data.bis
-    xds = cl_data.xds
-    qss = cl_data.qss
-    bi_zss = cl_data.bi_zss
-    xd_zss = cl_data.xd_zss
+    klines = cl_data.get_klines()
+    cl_klines = cl_data.get_cl_klines()
+    fxs = cl_data.get_fxs()
+    bis = cl_data.get_bis()
+    xds = cl_data.get_xds()
+    zslxs = cl_data.get_zslxs()
+    bi_zss = cl_data.get_bi_zss()
+    zs_zss = cl_data.get_xd_zss()
 
-    idx = cl_data.idx
+    idx = cl_data.get_idx()
 
     range_start = 0
     if len(klines) > show_num:
@@ -117,8 +116,8 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
     # 画 笔
     line_bis = {'index': [], 'val': []}
     line_xu_bis = {'index': [], 'val': []}
-    bis_done = [_bi for _bi in bis if _bi.done]
-    bis_no_done = [_bi for _bi in bis if _bi.done is False]
+    bis_done = [_bi for _bi in bis if _bi.is_done()]
+    bis_no_done = [_bi for _bi in bis if _bi.is_done() is False]
     if len(bis_done) > 0:
         line_bis['index'].append(bis_done[0].start.k.date)
         line_bis['val'].append(bis_done[0].start.val)
@@ -135,8 +134,8 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
     # 画 线段
     line_xds = {'index': [], 'val': []}
     line_xu_xds = {'index': [], 'val': []}
-    xds_done = [_xd for _xd in xds if _xd.done]
-    xds_no_done = [_xd for _xd in xds if _xd.done is False]
+    xds_done = [_xd for _xd in xds if _xd.is_done()]
+    xds_no_done = [_xd for _xd in xds if _xd.is_done() is False]
     if len(xds_done) > 0:
         line_xds['index'].append(xds_done[0].start.k.date)
         line_xds['val'].append(xds_done[0].start.val)
@@ -150,23 +149,23 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
         line_xu_xds['index'].append(x.end.k.date)
         line_xu_xds['val'].append(x.end.val)
 
-    # 画 大趋势
-    line_qss = {'index': [], 'val': []}
-    line_xu_qss = {'index': [], 'val': []}
-    qss_done = [_qs for _qs in qss if _qs.done]
-    qss_no_done = [_qs for _qs in qss if _qs.done is False]
-    if len(qss_done) > 0:
-        line_qss['index'].append(qss_done[0].start.k.date)
-        line_qss['val'].append(qss_done[0].start.val)
-    for x in qss_done:
-        line_qss['index'].append(x.end.k.date)
-        line_qss['val'].append(x.end.val)
-    if len(qss_no_done) > 0:
-        line_xu_qss['index'].append(qss_no_done[0].start.k.date)
-        line_xu_qss['val'].append(qss_no_done[0].start.val)
-    for x in qss_no_done:
-        line_xu_qss['index'].append(x.end.k.date)
-        line_xu_qss['val'].append(x.end.val)
+    # 画 走势类型
+    line_zslxs = {'index': [], 'val': []}
+    line_xu_zslxs = {'index': [], 'val': []}
+    zslxs_done = [_qs for _qs in zslxs if _qs.is_done()]
+    zslxs_no_done = [_qs for _qs in zslxs if _qs.is_done() is False]
+    if len(zslxs_done) > 0:
+        line_zslxs['index'].append(zslxs_done[0].start.k.date)
+        line_zslxs['val'].append(zslxs_done[0].start.val)
+    for x in zslxs_done:
+        line_zslxs['index'].append(x.end.k.date)
+        line_zslxs['val'].append(x.end.val)
+    if len(zslxs_no_done) > 0:
+        line_xu_zslxs['index'].append(zslxs_no_done[0].start.k.date)
+        line_xu_zslxs['val'].append(zslxs_no_done[0].start.val)
+    for x in zslxs_no_done:
+        line_xu_zslxs['index'].append(x.end.k.date)
+        line_xu_zslxs['val'].append(x.end.val)
 
     # 画 笔 中枢
     line_bi_zss = []
@@ -174,8 +173,6 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
         if config['show_bi_zs'] is False:
             break
         if zs.real is False:
-            continue
-        if cl_data.config['zs_type'] == 'bl' and zs.level > 0:
             continue
         start_index = zs.start.k.date
         end_index = zs.end.k.date
@@ -192,17 +189,16 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
             l_zs.append(color_bi_zs)
 
         l_zs.append(zs.level + 1)
+        l_zs.append(zs.done)
 
         line_bi_zss.append(l_zs)
 
-    # 画 线段 中枢
-    line_xd_zss = []
-    for zs in xd_zss:
+    # 画 走势
+    line_zs_zss = []
+    for zs in zs_zss:
         if config['show_xd_zs'] is False:
             break
         if zs.real is False:
-            continue
-        if cl_data.config['zs_type'] == 'bl' and zs.level > 0:
             continue
         start_index = zs.start.k.date
         end_index = zs.end.k.date
@@ -218,9 +214,10 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
         else:
             l_zs.append(color_xd_zs)
 
-        l_zs.append(zs.level + 2)
+        l_zs.append(zs.level + 1)
+        l_zs.append(zs.done)
 
-        line_xd_zss.append(l_zs)
+        line_zs_zss.append(l_zs)
 
     # 分型中的 背驰 和 买卖点信息，归类，一起显示
     fx_bcs_mmds = {}
@@ -317,7 +314,7 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
                 scatter_sell_orders['val'].append(
                     [o['price'], str(o['price']) + ' - 卖出:' + ('' if 'info' not in o else o['info'])])
 
-    klines = (Kline().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+    klines = (cKline().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
         series_name="",
         y_axis=klines_yaxis,
         itemstyle_opts=opts.ItemStyleOpts(
@@ -424,9 +421,9 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
 
     # 画 完成大趋势
     line_qs = (
-        Line().add_xaxis(line_qss['index']).add_yaxis(
-            "趋势",
-            line_qss['val'],
+        Line().add_xaxis(line_zslxs['index']).add_yaxis(
+            "走势类型",
+            line_zslxs['val'],
             label_opts=opts.LabelOpts(is_show=False),
             linestyle_opts=opts.LineStyleOpts(width=2, color=color_qs)
         )
@@ -434,9 +431,9 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
     overlap_kline = overlap_kline.overlap(line_qs)
     # 画 未完成大趋势
     line_xu_qs = (
-        Line().add_xaxis(line_xu_qss['index']).add_yaxis(
-            "趋势",
-            line_xu_qss['val'],
+        Line().add_xaxis(line_xu_zslxs['index']).add_yaxis(
+            "走势类型",
+            line_xu_zslxs['val'],
             label_opts=opts.LabelOpts(is_show=False),
             linestyle_opts=opts.LineStyleOpts(width=2, type_='dashed', color=color_qs)
         )
@@ -487,21 +484,21 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
                 zs[1],
                 symbol=None,
                 label_opts=opts.LabelOpts(is_show=False),
-                linestyle_opts=opts.LineStyleOpts(width=zs[3], color=zs[2]),
+                linestyle_opts=opts.LineStyleOpts(width=zs[3], color=zs[2], type_='solid' if zs[4] else 'dashed'),
                 areastyle_opts=opts.AreaStyleOpts(opacity=0.1, color=zs[2]),
                 tooltip_opts=opts.TooltipOpts(is_show=False),
             )
         )
         overlap_kline = overlap_kline.overlap(bi_zs)
     # 画 线段 中枢
-    for zs in line_xd_zss:
+    for zs in line_zs_zss:
         xd_zs = (
             Line().add_xaxis(zs[0]).add_yaxis(
-                "线段中枢",
+                "走势中枢",
                 zs[1],
                 symbol=None,
                 label_opts=opts.LabelOpts(is_show=False),
-                linestyle_opts=opts.LineStyleOpts(width=zs[3], color=zs[2]),
+                linestyle_opts=opts.LineStyleOpts(width=zs[3], color=zs[2], type_='solid' if zs[4] else 'dashed'),
                 tooltip_opts=opts.TooltipOpts(is_show=False),
             )
         )
@@ -570,7 +567,7 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
                 symbol_size=15,
                 symbol='diamond',
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,20,147,0.5)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,20,147)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(
@@ -587,7 +584,7 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
                 symbol_size=15,
                 symbol='diamond',
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(0,191,255,0.5)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(0,191,255)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(
@@ -692,4 +689,3 @@ def render_charts(title, cl_data: cl.CL, show_num=500, orders=[], config=None):
         return grid_chart.render_notebook()
     else:
         return grid_chart.dump_options()
-

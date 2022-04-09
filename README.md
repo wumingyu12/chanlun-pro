@@ -6,6 +6,10 @@
 
 可用于量化交易、Jupyter 分析、以及 Html 页面展示。
 
+[在线 Demo 展示](http://www.chanlun-trader.com/)
+
+在线Demo只做上证指数的缠论示例
+
 > 项目 GitHub 地址 : https://github.com/yijixiuxin/chanlun
 
 **主要功能**
@@ -15,11 +19,12 @@
 * 分型
 * 笔
 * 线段
-* 中枢
-* 买卖点
-* 背驰
-* 趋势
-* 多级别分析
+* 笔中枢
+* 走势类型
+* 走势中枢 (只限PRO)
+* 买卖点 (只限PRO)
+* 背驰 (只限PRO)
+* 多级别分析 (只限PRO)
 
 ## 付费项目介绍
 
