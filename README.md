@@ -28,6 +28,8 @@
 
 ## 付费项目介绍
 
+**chanlun-pro 项目限时优惠，原价1000元，永久使用权，截止 2022-04-17 24点**
+
 [chanlun-pro](https://github.com/yijixiuxin/chanlun/blob/main/README_PRO.md)
 
 ## 安装
