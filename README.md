@@ -4,9 +4,12 @@
 
 基于缠论的市场行情分析工具
 
-[在线 Demo 展示](http://www.chanlun-trader.com/)
+[GitHUB 地址](https://github.com/yijixiuxin/chanlun-pro)
 
-在线Demo只做上证指数的缠论示例
+[Gitee 地址](https://gitee.com/wang-student/chanlun-pro)
+
+[在线 Demo 展示](http://www.chanlun-trader.com/)  
+_在线Demo只做上证指数的缠论示例_
 
 **项目的核心 cl.py 缠论计算，需要授权许可文件才可运行，加微信好友可免费获取30天使用授权。**
 
