@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
+import math
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import List, Dict
@@ -72,8 +73,7 @@ class Kline:
         self.a: float = a
 
     def __str__(self):
-        return "index: %s date: %s h: %s l: %s o: %s c:%s a:%s" % \
-               (self.index, self.date, self.h, self.l, self.o, self.c, self.a)
+        return f"index: {self.index} date: {self.date} h: {self.h} l: {self.l} o: {self.o} c:{self.c} a:{self.a}"
 
 
 class CLKline:
@@ -82,7 +82,9 @@ class CLKline:
     """
 
     def __init__(self, k_index: int, date: datetime, h: float, l: float, o: float, c: float, a: float,
-                 klines: List[Kline] = [], index: int = 0, _n: int = 0, _q: bool = False):
+                 klines: List[Kline] = None, index: int = 0, _n: int = 0, _q: bool = False):
+        if klines is None:
+            klines = []
         self.k_index: int = k_index
         self.date: datetime = date
         self.h: float = h
@@ -97,8 +99,7 @@ class CLKline:
         self.up_qs = None  # 合并时之前的趋势
 
     def __str__(self):
-        return "index: %s k_index:%s date: %s h: %s l: %s _n:%s _q:%s" % \
-               (self.index, self.k_index, self.date, self.h, self.l, self.n, self.q)
+        return f"index: {self.index} k_index:{self.k_index} date: {self.date} h: {self.h} l: {self.l} _n:{self.n} _q:{self.q}"
 
 
 class FX:
@@ -127,6 +128,9 @@ class FX:
         if three_k is None:
             return ld
         if self.type == 'ding':
+            # 第三个缠论K线要一根单阳线
+            if len(three_k.klines) > 1 or three_k.klines[0].o > three_k.klines[0].c:
+                return ld
             if three_k.h < (two_k.h - (two_k.h - two_k.l) / 2):
                 # 第三个K线的高点，低于第二根的50%以下
                 ld += 1
@@ -134,6 +138,9 @@ class FX:
                 # 第三个最低点是三根中最低的
                 ld += 1
         elif self.type == 'di':
+            # 第三个缠论K线要一根单阴线
+            if len(three_k.klines) > 1 or three_k.klines[0].o < three_k.klines[0].c:
+                return ld
             if three_k.l > (two_k.l + (two_k.h - two_k.l) / 2):
                 # 第三个K线的低点，低于第二根的50%之上
                 ld += 1
@@ -160,7 +167,7 @@ class FX:
                     for k in ck.klines:
                         high = max(high, k.h)
         else:
-            raise Exception('获取分型高点的区间类型错误 %s' % qj_type)
+            raise Exception(f'获取分型高点的区间类型错误 {qj_type}')
 
         return high
 
@@ -180,12 +187,11 @@ class FX:
                     for k in ck.klines:
                         low = min(low, k.l)
         else:
-            raise Exception('获取分型低点的区间类型错误 %s' % qj_type)
+            raise Exception(f'获取分型低点的区间类型错误 {qj_type}')
         return low
 
     def __str__(self):
-        return 'index: %s type: %s date : %s val: %s done: %s' % (
-            self.index, self.type, self.k.date, self.val, self.done)
+        return f'index: {self.index} type: {self.type} date : {self.k.date} val: {self.val} done: {self.done}'
 
 
 class LINE:
@@ -208,6 +214,18 @@ class LINE:
     def di_low(self) -> float:
         return self.end.val if self.type == 'down' else self.start.val
 
+    def jiaodu(self) -> float:
+        """
+        计算线段与坐标轴呈现的角度（正为上，负为下）
+        """
+        # 计算斜率
+        k = (self.start.val - self.end.val) / (self.start.k.k_index - self.end.k.k_index)
+        # 斜率转弧度
+        k = math.atan(k)
+        # 弧度转角度
+        j = math.degrees(k)
+        return j
+
 
 class ZS:
     """
@@ -216,7 +234,7 @@ class ZS:
 
     def __init__(self, zs_type: str, start: FX, end: FX = None, zg: float = None, zd: float = None,
                  gg: float = None, dd: float = None, _type: str = None, index: int = 0, line_num: int = 0,
-                 level: int = 0, is_high_kz: bool = False, max_ld: dict = None):
+                 level: int = 0, max_ld: dict = None):
         self.zs_type: str = zs_type  # 标记中枢类型 bi 笔中枢 xd 线段中枢
         self.start: FX = start
         self.lines: List[LINE, BI, XD] = []  # 中枢，记录中枢的线（笔 or 线段）对象
@@ -230,6 +248,15 @@ class ZS:
         self.line_num: int = line_num  # 中枢包含的 笔或线段 个数
         self.level: int = level  # 中枢级别 0 本级别 1 上一级别 ...
         self.max_ld: dict = max_ld  # 记录中枢中最大笔力度
+
+        # 记录中枢内，macd 的变化情况
+        self.dif_up_cross_num = 0  # dif 线上穿零轴的次数
+        self.dea_up_cross_num = 0  # dea 线上穿令咒的次数
+        self.dif_down_cross_num = 0  # dif 线下穿零轴的次数
+        self.dea_down_cross_num = 0  # dea 线下穿零轴的次数
+        self.gold_cross_num = 0  # 金叉次数
+        self.die_cross_num = 0  # 死叉次数
+
         self.done = False  # 记录中枢是否完成
         self.real = True  # 记录是否是有效中枢
 
@@ -243,14 +270,15 @@ class ZS:
     def zf(self) -> float:
         """
         中枢振幅
+        中枢重叠区间占整个中枢区间的百分比，越大说明中枢重叠区域外的波动越小
         """
-        return ((self.gg - self.dd) / (self.zg - self.zd) - 1) * 100
+        zgzd = self.zg - self.zd
+        if zgzd == 0:
+            zgzd = 1
+        return (zgzd / (self.gg - self.dd)) * 100
 
     def __str__(self):
-        return 'index: %s zs_type: %s level: %s FX: (%s-%s) type: %s zg: %s zd: %s gg: %s dd: %s done: %s' % \
-               (self.index, self.zs_type, self.level, self.start.k.date, self.end.k.date, self.type, self.zg, self.zd,
-                self.gg, self.dd,
-                self.done)
+        return f'index: {self.index} zs_type: {self.zs_type} level: {self.level} FX: ({self.start.k.date}-{self.end.k.date}) type: {self.type} zg: {self.zg} zd: {self.zd} gg: {self.gg} dd: {self.dd} done: {self.done} real: {self.real}'
 
 
 class MMD:
@@ -263,7 +291,7 @@ class MMD:
         self.zs: ZS = zs  # 买卖点对应的中枢对象
 
     def __str__(self):
-        return 'MMD: %s ZS: %s' % (self.name, self.zs)
+        return f'MMD: {self.name} ZS: {self.zs}'
 
 
 class BC:
@@ -279,7 +307,7 @@ class BC:
         self.bc = bc  # 是否背驰
 
     def __str__(self):
-        return 'BC type: %s bc: %s zs: %s' % (self.type, self.bc, self.zs)
+        return f'BC type: {self.type} bc: {self.bc} zs: {self.zs}'
 
 
 class BI(LINE):
@@ -294,8 +322,7 @@ class BI(LINE):
         self.td: bool = False  # 笔是否停顿
 
     def __str__(self):
-        return 'index: %s type: %s FX: (%s - %s) high: %s low: %s done: %s' % \
-               (self.index, self.type, self.start.k.date, self.end.k.date, self.high, self.low, self.is_done())
+        return f'index: {self.index} type: {self.type} FX: ({self.start.k.date} - {self.end.k.date}) high: {self.high} low: {self.low} done: {self.is_done()}'
 
     def is_done(self) -> bool:
         """
@@ -320,7 +347,7 @@ class BI(LINE):
         """
         返回当前线所有买卖点名称
         """
-        return list(set([m.name for m in self.mmds]))
+        return list({m.name for m in self.mmds})
 
     def line_bcs(self) -> list:
         """
@@ -339,12 +366,7 @@ class BI(LINE):
         """
         检查是否有背驰的情况
         """
-        bc = False
-        for _bc in self.bcs:
-            if _bc.type in bc_type and _bc.bc:
-                bc = True
-                break
-        return bc
+        return any(_bc.type in bc_type and _bc.bc for _bc in self.bcs)
 
     def add_bc(self, _type: str, zs: [ZS, None], compare_line: [LINE, None], compare_lines: List[LINE],
                bc: bool) -> bool:
@@ -370,9 +392,7 @@ class TZXL:
         self.done: bool = done
 
     def __str__(self):
-        return ('done %s max %s min %s line_bad %s line %s pre_line %s num %s' % (
-            self.done, self.max, self.min, self.line_bad, self.line, self.pre_line, len(self.lines)
-        ))
+        return f'done {self.done} max {self.max} min {self.min} line_bad {self.line_bad} line {self.line} pre_line {self.pre_line} num {len(self.lines)}'
 
 
 class XLFX:
@@ -394,14 +414,13 @@ class XLFX:
         else:
             self.qk = False
         self.line_bad = xl.line_bad  # 标记是否线破坏
-        self.fx_high = max([_xl.max for _xl in self.xls])  # 三个分型特征序列的最高点
-        self.fx_low = min([_xl.min for _xl in self.xls])  # 三个分型特征序列的最低点
+        self.fx_high = max(_xl.max for _xl in self.xls)
+        self.fx_low = min(_xl.min for _xl in self.xls)
 
         self.done = done  # 序列分型是否完成
 
     def __str__(self):
-        return "XLFX type : %s done : %s qk : %s line_bad : %s high : %s low : %s xl : %s" % (
-            self.type, self.done, self.qk, self.line_bad, self.high, self.low, self.xl)
+        return f"XLFX type : {self.type} done : {self.done} qk : {self.qk} line_bad : {self.line_bad} high : {self.high} low : {self.low} xl : {self.xl}"
 
 
 class XD(LINE):
@@ -425,19 +444,13 @@ class XD(LINE):
         """
         成线段的分型是否有缺口
         """
-        if self.type == 'up':
-            return self.ding_fx.qk
-        else:
-            return self.di_fx.qk
+        return self.ding_fx.qk if self.type == 'up' else self.di_fx.qk
 
     def is_line_bad(self) -> bool:
         """
         成线段的分数，是否背笔破坏（被笔破坏不等于线段结束，但是有大概率是结束了）
         """
-        if self.type == 'up':
-            return self.ding_fx.line_bad
-        else:
-            return self.di_fx.line_bad
+        return self.ding_fx.line_bad if self.type == 'up' else self.di_fx.line_bad
 
     def add_mmd(self, name: str, zs: ZS) -> bool:
         """
@@ -450,7 +463,7 @@ class XD(LINE):
         """
         返回当前线段所有买卖点名称
         """
-        return list(set([m.name for m in self.mmds]))
+        return list({m.name for m in self.mmds})
 
     def line_bcs(self) -> list:
         return [_bc.type for _bc in self.bcs if _bc.bc]
@@ -466,12 +479,7 @@ class XD(LINE):
         """
         检查是否有背驰的情况
         """
-        bc = False
-        for _bc in self.bcs:
-            if _bc.type in bc_type and _bc.bc:
-                bc = True
-                break
-        return bc
+        return any(_bc.type in bc_type and _bc.bc for _bc in self.bcs)
 
     def add_bc(self, _type: str, zs: [ZS, None], compare_line: LINE, compare_lines: List[LINE], bc: bool) -> bool:
         """
@@ -487,10 +495,22 @@ class XD(LINE):
         return self.ding_fx.done if self.type == 'up' else self.di_fx.done
 
     def __str__(self):
-        return 'XD index: %s type: %s start: %s end: %s high: %s low: %s done: %s' % (
-            self.index, self.type, self.start_line.start.k.date, self.end_line.end.k.date, self.high, self.low,
-            self.is_done()
-        )
+        return f'XD index: {self.index} type: {self.type} start: {self.start_line.start.k.date} end: {self.end_line.end.k.date} high: {self.high} low: {self.low} done: {self.is_done()}'
+
+
+class LOW_LEVEL_QS:
+
+    def __init__(self):
+        self.zss: List[ZS] = []  # 低级别线构成的中枢列表
+        self.zs_num: int = 0
+        self.lines: List[LINE] = []  # 包含的低级别线
+        self.line_num: int = 0
+        self.bc_line: [LINE, None] = None  # 背驰的线
+        self.last_line: [LINE, None] = None  # 最后一个线
+        self.qs: bool = False  # 是否形成趋势
+        self.pz: bool = False  # 是否形成盘整
+        self.qs_bc: bool = False  # 是否趋势背驰
+        self.pz_bc: bool = False  # 是否盘整背驰
 
 
 class ICL(metaclass=ABCMeta):
@@ -618,3 +638,27 @@ def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> Lis
     :return: 返回计算好的缠论数据对象，List 列表格式，按照传入的 klines.keys 顺序返回 如上调用：[0] 返回 30m 周期数据 [1] 返回 5m 数据
     """
     pass
+
+
+class IMultiLevelAnalyse(metaclass=ABCMeta):
+    """
+    多级别分析工具类
+    """
+
+    @abstractmethod
+    def low_level_qs(self, up_line: LINE, low_line_type='bi') -> LOW_LEVEL_QS:
+        """
+        根据高级别线，查询低级别的趋势
+        """
+
+    @abstractmethod
+    def up_bi_low_level_qs(self) -> LOW_LEVEL_QS:
+        """
+        高级别笔，最后一笔的低级别趋势信息(低级别查找的是笔)
+        """
+
+    @abstractmethod
+    def up_xd_low_level_qs(self) -> LOW_LEVEL_QS:
+        """
+        高级别线段，最后一线段的低级别趋势信息(低级别查找的是笔)
+        """

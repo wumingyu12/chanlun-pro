@@ -33,5 +33,5 @@ setuptools.setup(
     ],
     package_dir={'chanlun': 'src/chanlun'},
     packages=['chanlun'],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )

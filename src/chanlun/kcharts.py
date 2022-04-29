@@ -18,7 +18,7 @@ if "JPY_PARENT_PID" in os.environ:
     Scatter().load_javascript()
 
 
-def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
+def render_charts(title, cl_data: ICL, show_num=1000, orders=None, config=None):
     """
     缠论数据图表化展示
     :param title:
@@ -29,6 +29,8 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
     :return:
     """
 
+    if orders is None:
+        orders = []
     if config is None:
         config = {}
 
@@ -65,6 +67,10 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
 
     color_qs = '#A1C0FC'
 
+    brush_opts = opts.BrushOpts(tool_box=["rect", "polygon", "lineX", "lineY", "keep", "clear"],
+                                x_axis_index="all", brush_link="all",
+                                out_of_brush={"colorAlpha": 0.1}, brush_type="lineX")
+
     klines = cl_data.get_klines()
     cl_klines = cl_data.get_cl_klines()
     fxs = cl_data.get_fxs()
@@ -97,6 +103,15 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
         # 开/收/低/高
         klines_yaxis.append([k.o, k.c, k.l, k.h])
         klines_vols.append(k.a)
+
+    label_not_show_opts = opts.LabelOpts(is_show=False)
+    red_item_style = opts.ItemStyleOpts(color=color_k_up)
+    green_item_style = opts.ItemStyleOpts(color=color_k_down)
+    vol = []
+    for row in klines:
+        item_style = red_item_style if row.c > row.o else green_item_style
+        bar = opts.BarItem(name='', value=row.a, itemstyle_opts=item_style, label_opts=label_not_show_opts)
+        vol.append(bar)
 
     for clk in cl_klines:
         cl_klines_xaxis.append(clk.date)
@@ -344,7 +359,7 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
             axistick_opts=opts.AxisTickOpts(is_show=False),
         ),
         tooltip_opts=opts.TooltipOpts(
-            trigger="axis", axis_pointer_type="line"),
+            trigger="axis", axis_pointer_type="cross"),
         datazoom_opts=[
             opts.DataZoomOpts(is_show=False, type_="inside", xaxis_index=[0, 0], range_start=range_start,
                               range_end=100),
@@ -352,6 +367,7 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
                               range_end=100),
             opts.DataZoomOpts(is_show=False, xaxis_index=[0, 2], range_start=range_start, range_end=100),
         ],
+        brush_opts=brush_opts
     )
     )
 
@@ -564,10 +580,10 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
             Scatter().add_xaxis(xaxis_data=scatter_buy_orders['i']).add_yaxis(
                 series_name="订单",
                 y_axis=scatter_buy_orders['val'],
-                symbol_size=15,
+                symbol_size=25,
                 symbol='diamond',
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,20,147)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,215,0,0.8)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(
@@ -581,10 +597,10 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
             Scatter().add_xaxis(xaxis_data=scatter_sell_orders['i']).add_yaxis(
                 series_name="订单",
                 y_axis=scatter_sell_orders['val'],
-                symbol_size=15,
+                symbol_size=20,
                 symbol='diamond',
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(0,191,255)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(127,255,212,0.8)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(
@@ -596,23 +612,23 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
         overlap_kline = overlap_kline.overlap(scatter_sell_orders_tu)
 
     # 成交量
+
     bar_vols = (
         Bar().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
-            series_name="",
-            y_axis=klines_vols,
-            label_opts=opts.LabelOpts(is_show=False),
-            itemstyle_opts=opts.ItemStyleOpts(color='rgba(236,55,59,0.5)'),
+            series_name="volume",
+            y_axis=vol,
+            bar_width='60%',
+        ).set_global_opts(
+            legend_opts=opts.LegendOpts(is_show=False),
+            xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=True, color="#9b9da9"),
+                                     type_='category', grid_index=1),
+            yaxis_opts=opts.AxisOpts(
+                position="right",
+                axislabel_opts=opts.LabelOpts(is_show=False),
+                axisline_opts=opts.AxisLineOpts(is_show=False),
+                axistick_opts=opts.AxisTickOpts(is_show=False),
+            )
         )
-        #     .set_global_opts(
-        #     legend_opts=opts.LegendOpts(is_show=True),
-        #     xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
-        #     yaxis_opts=opts.AxisOpts(
-        #         position="right",
-        #         axislabel_opts=opts.LabelOpts(is_show=False),
-        #         axisline_opts=opts.AxisLineOpts(is_show=False),
-        #         axistick_opts=opts.AxisTickOpts(is_show=False),
-        #     ),
-        # )
     )
 
     # MACD
@@ -642,13 +658,13 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
             y_axis=idx['macd']['dif'],
             is_symbol_show=False,
             label_opts=opts.LabelOpts(is_show=False),
-            itemstyle_opts=opts.ItemStyleOpts(color='#fe832d'),
+            itemstyle_opts=opts.ItemStyleOpts(color='white'),
         ).add_yaxis(
             series_name="DEA",
             y_axis=idx['macd']['dea'],
             is_symbol_show=False,
             label_opts=opts.LabelOpts(is_show=False),
-            itemstyle_opts=opts.ItemStyleOpts(color='#f5a4df'),
+            itemstyle_opts=opts.ItemStyleOpts(color='yellow'),
         ).set_global_opts(
             legend_opts=opts.LegendOpts(is_show=True),
             xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
@@ -685,7 +701,9 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=[], config=None):
             pos_bottom="0", height="15%", width="96%", pos_left='1%', pos_right='3%'
         ),
     )
+
     if "JPY_PARENT_PID" in os.environ:
         return grid_chart.render_notebook()
     else:
         return grid_chart.dump_options()
+

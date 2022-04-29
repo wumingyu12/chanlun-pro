@@ -1,0 +1,638 @@
+{% extends 'charts/base.html' %}
+
+{% block options %}
+    <ul class="nav ace-nav">
+        <li>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-pink dropdown-toggle" type="button" id="add_zixuan_menu"
+                        data-toggle="dropdown"
+                        aria-haspopup="true" aria-expanded="true">
+                    <i class="ace-icon fa fa-heart"></i>
+                    自选
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" id="zixuan_zx_names" aria-labelledby="add_zixuan_menu">
+                    <li>
+                        <div class="checkbox">
+                            <label>
+                                <input name="form-field-checkbox" type="checkbox" class="ace">
+                                <span class="lbl">我的持仓</span>
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </li>
+        <li>
+            <button class="btn btn-sm btn-purple" id="shuaxin" type="button" value="0">开启自动刷新</button>
+        </li>
+        <li>
+            <div class="input-group" style="width: 200px;">
+                <input type="text" class="form-control search-query" id="search_code" data-name=""
+                       placeholder="StockCode" style="height: 34px; margin-top: 5px;">
+                <span class="input-group-btn">
+                    <button type="button" class="btn btn-purple btn-sm" id="stock_ok">展示</button>
+                </span>
+            </div>
+        </li>
+    </ul>
+{% endblock %}
+
+{% block sidebar %}
+
+    <div class="tabbable">
+        <ul class="nav nav-tabs" id="myTab">
+            <li class="active">
+                <a data-toggle="tab" href="#tab-stocks" aria-expanded="true">
+                    代码列表
+                </a>
+            </li>
+
+            <li class="">
+                <a data-toggle="tab" href="#tab-jhs" aria-expanded="false">
+                    机会列表
+                </a>
+            </li>
+
+        </ul>
+
+        <div class="tab-content">
+            <div id="tab-stocks" class="tab-pane fade active in">
+                <div class="btn-group btn-corner">
+                    {% for zx in zx_list %}
+                        <button class="btn btn-sm btn-info btn_zixuan"
+                                data-zxname="{{ zx.name }}">{{ zx.short_name }}</button>
+                    {% endfor %}
+                </div>
+
+                <div class="from-group">
+                    <input class="form-control" id="stock_search" placeholder="Search" type="text"/>
+                </div>
+
+                <div class="stocks_list">
+                    <div>
+                        <ul class="nav nav-list" id="my_stocks">
+
+                        </ul><!-- /.nav-list -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-jhs" class="tab-pane fade">
+                <div class="stocks_list">
+                    <ul class="list-group" id="jhs_ul">
+                        <li class="list-group-item">Loading</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+
+{% endblock %}
+
+{% block content %}
+    {% include 'charts/options.html' %}
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="btn-toolbar" role="toolbar" aria-label="周期选择">
+                <div class="btn-group btn-group-xs btn-corner" role="group" id="zq_high">
+                    <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="d">Day</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="4h">4H</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="60m">60M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="30m">30M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="15m">15M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="5m">5M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="1m">1M</button>
+                </div>
+
+                <div class="input-group pull-right form-group-sm" style="width: 200px;margin-right: 50px;">
+                    <input type="text" class="form-control datetime" value="" id="kline_dt_high"/>
+                    <span class="input-group-addon"><i class="fa fa-clock-o bigger-110"></i></span>
+                </div>
+            </div>
+            <div id="kline_high" class="kline_chart" style="width:100%; min-height: 320px;"></div>
+        </div>
+
+        <div class="col-lg-12">
+            <div class="btn-toolbar" role="toolbar" aria-label="周期选择">
+                <div class="btn-group btn-group-xs btn-corner" role="group" id="zq_low">
+                    <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="d">Day</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="4h">4H</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="60m">60M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="30m">30M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="15m">15M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="5m">5M</button>
+                    <button type="button" class="btn btn-xs btn-default" data-zq="1m">1M</button>
+                </div>
+
+                <div class="input-group pull-right form-group-sm" style="width: 200px;margin-right: 50px;">
+                    <input type="text" class="form-control datetime" value="" id="kline_dt_low"/>
+                    <span class="input-group-addon"><i class="fa fa-clock-o bigger-110"></i></span>
+                </div>
+            </div>
+            <div id="kline_low" class="kline_chart" style="width:100%; min-height: 320px;"></div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="tabbable">
+            <ul class="nav nav-tabs padding-12 tab-color-blue background-blue" id="my_account">
+                <li class="active">
+                    <a data-toggle="tab" href="#balance_positions" aria-expanded="false">资金&持仓</a>
+                </li>
+
+                <li class="">
+                    <a data-toggle="tab" href="#opt_records" aria-expanded="false">操作记录</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div id="balance_positions" class="tab-pane fade in active">
+                    <div class="well">
+                        <div style="width: 70%; float:left;">
+                            总资产：<span id="balance_total">0.00</span> USDT
+                            可用: <span id="balance_free">0.00</span> USDT
+                            已用: <span id="balance_used">0.00</span> USDT
+                            未实现盈亏：<span id="balance_profit">0.00</span> USDT
+                        </div>
+                        <div style="width: 15%; float:right;">
+                            <button class="btn btn-minier btn-success" style="float: right;" id="balance_shuaxin">刷新
+                            </button>
+                        </div>
+                        <div style="clear: both;"></div>
+                    </div>
+
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                        <tr>
+                            <td>币种</td>
+                            <td>方向</td>
+                            <td>杠杆</td>
+                            <td>价格</td>
+                            <td>数量</td>
+                            <td>盈亏</td>
+                        </tr>
+                        </thead>
+                        <tbody id="currency_positions">
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="opt_records" class="tab-pane">
+                    <table class="table table-striped table-bordered table-hover table_data" style="width: 100%;">
+                        <thead>
+                        <tr>
+                            <td>时间</td>
+                            <td>标的</td>
+                            <td>信息</td>
+                        </tr>
+                        </thead>
+                        <tbody id="currency_opt_records">
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+
+{% block js %}
+    <script type="text/javascript">
+        $(
+            function () {
+                var chart_high = getClientHeight() - (45 + 8 + 34);
+
+                $('.stocks_list').ace_scroll({
+                    size: 600
+                });
+
+                var code = 'BTC/USDT';
+                var name = 'BTC/USDT';
+                var config = {
+                    'high': {
+                        'frequency': 'd',
+                        'kline_dt': ''
+                    },
+                    'low': {
+                        'frequency': '30m',
+                        'kline_dt': ''
+                    },
+                }
+
+                var url = window.location.href;
+                if (url.split('#').length === 2) {
+                    code = url.split('#')[1]
+                }
+
+                var intervalId;
+
+                config['high']['chart'] = echarts.init(document.getElementById('kline_high'), 'dark', {renderer: 'canvas'});
+                config['low']['chart'] = echarts.init(document.getElementById('kline_low'), 'dark', {renderer: 'canvas'});
+
+                $('.datetime').datetimepicker({
+                    format: 'YYYY-MM-DD HH:mm:ss',//use this option to display seconds
+                    icons: {
+                        time: 'fa fa-clock-o',
+                        date: 'fa fa-calendar',
+                        up: 'fa fa-chevron-up',
+                        down: 'fa fa-chevron-down',
+                        previous: 'fa fa-chevron-left',
+                        next: 'fa fa-chevron-right',
+                        today: 'fa fa-arrows ',
+                        clear: 'fa fa-trash',
+                        close: 'fa fa-times'
+                    }
+                });
+
+                // 周期与配置的选择
+                var cookie_pre = '_currency';
+                var cl_setting = {
+                    'fx_qj': 'fx_qj_k',
+                    'fx_bh': 'fx_bh_dingdi',
+                    'bi_type': 'bi_type_new',
+                    'bi_bzh': 'bi_bzh_yes',
+                    'bi_fx_cgd': 'bi_fx_cgd_no',
+                    'bi_qj': 'bi_qj_ck',
+                    'xd_bzh': 'xd_bzh_yes',
+                    'xd_qj': 'xd_qj_dd',
+                    'zslx_bzh': 'zslx_bzh_no',
+                    'zslx_qj': 'zslx_qj_dd',
+                    'zs_bi_type': 'zs_type_dn',
+                    'zs_xd_type': 'zs_type_dn',
+                    'zs_qj': 'zs_qj_dd',
+                    'zs_wzgx': 'zs_wzgx_zgd',
+                    'show_bi_zs': '1',
+                    'show_xd_zs': '1',
+                    'show_bi_mmd': '1',
+                    'show_xd_mmd': '1',
+                    'show_bi_bc': '1',
+                    'show_xd_bc': '1',
+                    'show_ma': '1',
+                    'show_boll': '1',
+                    'show_max_chart': '1',
+                    'idx_macd_fast': 12,
+                    'idx_macd_slow': 26,
+                    'idx_macd_signal': 9,
+                    'idx_boll_period': 20,
+                    'idx_ma_period': 5,
+                }
+                for (let _k in cl_setting) {
+                    if ($.cookie(cookie_pre + '_' + _k) !== undefined) {
+                        cl_setting[_k] = $.cookie(cookie_pre + '_' + _k);
+                    }
+                    let _v = cl_setting[_k];
+                    let obj = $('#' + _k);
+                    if (obj.attr('type') === 'text') {
+                        obj.val(_v);
+                    }
+                    if (obj.attr('type') === 'checkbox') {
+                        obj.attr('checked', _v === '1');
+                    }
+                    if (obj.attr('type') === 'select') {
+                        obj.find("option[value='" + _v + "']").attr("selected", true);
+                    }
+                }
+                $('.chart_setting input,select').change(function () {
+                    let _key = $(this).attr('id');
+                    let _type = $(this).attr('type');
+                    let _val = $(this).val();
+                    if (_type === 'checkbox') {
+                        _val = $(this).is(':checked') ? '1' : '0';
+                    }
+                    cl_setting[_key] = _val;
+                    $.cookie(cookie_pre + '_' + _key, cl_setting[_key]);
+                    console.log('setting change key ' + _key + ' val ' + _val);
+                    if (_key === 'show_max_chart') {
+                        chart_show_height(_val);
+                    } else {
+                        $.message({
+                            message: '缠论配置变更，需重新点击当前周期更新图表数据',
+                            type: 'success'
+                        });
+                    }
+                });
+
+                function chart_show_height(_type) {
+                    if (_type === '0') {
+                        $('#kline_high').css('height', chart_high / 2);
+                        $('#kline_low').css('height', chart_high / 2);
+                    } else {
+                        $('#kline_high').css('height', chart_high);
+                        $('#kline_low').css('height', chart_high);
+                    }
+                    config['high']['chart'].resize();
+                    config['low']['chart'].resize();
+                }
+
+                chart_show_height(cl_setting['show_max_chart']);
+
+                {% for level in show_level %}
+                    if ($.cookie(cookie_pre + '_frequency_{{ level }}') !== undefined) {
+                        config['{{ level }}']['frequency'] = $.cookie(cookie_pre + '_frequency_{{ level }}');
+                    }
+                    $('#zq_{{ level }}').find('[data-zq="' + config['{{ level }}']['frequency'] + '"]').addClass('btn-primary');
+
+                    $('#zq_{{ level }} button').click(function () {
+                        $('#zq_{{ level }} button').removeClass('btn-primary');
+                        $(this).addClass('btn-primary');
+                        config['{{ level }}']['frequency'] = $(this).attr('data-zq');
+                        $.cookie(cookie_pre + '_frequency_{{ level }}', config['{{ level }}']['frequency']);
+                        fetchData(code, config['{{ level }}'], false);
+                    });
+                    $('#kline_dt_{{ level }}').blur(function () {
+                        if ($(this).val() === config['{{ level }}']['kline_dt']) {
+                            return false
+                        }
+                        config['{{ level }}']['kline_dt'] = $(this).val();
+                        fetchData(code, config['{{ level }}'], false);
+                    });
+
+                {% endfor %}
+
+                $('#stock_search').quicksearch('#my_stocks li');
+
+                // 定时刷新
+                $('#shuaxin').click(function () {
+                    var val = $(this).attr('value');
+                    if (val === '0') {
+                        // 开启自动更新
+                        $(this).attr('value', '1');
+                        $(this).text('关闭自动更新');
+                        intervalId = setInterval(function () {
+                            fetchData(code, config['high'], true);
+                            fetchData(code, config['low'], true);
+                        }, 30000);
+                    }
+                    if (val === '1') {
+                        // 关闭自动更新
+                        $(this).attr('value', '0');
+                        $(this).text('开启自动更新');
+                        clearInterval(intervalId);
+                    }
+                });
+
+                // 手动输入code显示
+                $('#stock_ok').click(function () {
+                    var stock_code = $('#search_code').val();
+                    var stock_name = $('#search_code').attr('data-name');
+                    if (stock_code !== '') {
+                        code = stock_code;
+                        name = stock_name;
+                        fetchData(code, config['high'], false);
+                        fetchData(code, config['low'], false);
+                        zixuan_code_query_zx_names(code);
+                    }
+                });
+
+                // 股票搜索
+                $('#search_code').autocomplete({
+                    minChars: 2,
+                    serviceUrl: "/search_code?market=currency",
+                    dataType: 'json',
+                    deferRequestBy: 500,
+                    onSelect: function (suggestion) {
+                        $('#search_code').val(suggestion.data);
+                        $('#search_code').attr('data-name', suggestion.name);
+                    }
+                });
+
+
+                // 点击切换股票行情
+                $("body").delegate('.code', 'click', function () {
+                    $('#my_stocks li').removeClass('active');
+                    $(this).addClass('active');
+                    code = $(this).attr('data-code');
+                    name = $(this).attr('data-name');
+                    fetchData(code, config['high'], false);
+                    fetchData(code, config['low'], false);
+                    zixuan_code_query_zx_names(code);
+                });
+
+                // 请求 Kline 方法
+                function fetchData(code, show_config, update = false) {
+                    $('#loading').loading({theme: 'dark'});
+
+                    let post_data = {
+                        'code': code,
+                        'frequency': show_config['frequency'],
+                        'kline_dt': show_config['kline_dt']
+                    }
+                    for (let _k in cl_setting) {
+                        post_data[_k] = cl_setting[_k];
+                    }
+                    $.ajax({
+                        type: "POST",
+                        url: "/currency/kline",
+                        data: post_data,
+                        success: function (result) {
+                            var re_obj = (new Function("return " + result))();
+                            if (update === false) {
+                                show_config['chart'].clear();
+                            }
+                            show_config['chart'].setOption(re_obj);
+                            {#chart.setOption(result.data);#}
+                            $('#loading').loading('stop');
+                        }
+
+                    });
+                }
+
+                // 操作账户资金
+                function show_currency_balances() {
+                    $.ajax({
+                        type: "GET",
+                        url: "/currency/balances",
+                        dataType: 'json',
+                        success: function (result) {
+                            if (result['code'] === 200) {
+                                $('#balance_total').html(parseFloat(result['data']['total']).toFixed(4));
+                                $('#balance_free').html(parseFloat(result['data']['free']).toFixed(4));
+                                $('#balance_used').html(parseFloat(result['data']['used']).toFixed(4));
+                                $('#balance_profit').html(parseFloat(result['data']['profit']).toFixed(4));
+                            } else {
+                                alert('获取账户资金失败');
+                            }
+                        }
+                    });
+                }
+
+                show_currency_balances();
+
+                // 查询账户持仓
+                function show_currency_positions() {
+                    $.ajax({
+                        type: "GET",
+                        url: "/currency/positions",
+                        dataType: 'json',
+                        success: function (result) {
+                            if (result['code'] === 200) {
+                                $('#currency_positions').html('');
+                                for (var i = 0; i < result['data'].length; i++) {
+                                    var p = result['data'][i];
+                                    $('#currency_positions').append(
+                                        '<tr>' +
+                                        '<td><a href="#' + p.symbol + '" class="code" data-code="' + p.symbol + '" data-name="' + p.symbol + '">' + p.symbol + '</a></td>' +
+                                        '<td>' + p.side + '</td>' +
+                                        '<td>' + p.leverage + '</td>' +
+                                        '<td>' + p.entryPrice + '</td>' +
+                                        '<td>' + parseFloat(p.contracts).toFixed(4) + ' (' + parseFloat(p.initialMargin).toFixed(4) + ')</td>' +
+                                        '<td>' + parseFloat(p.unrealizedPnl).toFixed(4) + ' USDT ' + parseFloat(p.percentage).toFixed(2) + '%</td>' +
+                                        '</tr>'
+                                    );
+                                }
+                            } else {
+                                alert('获取账户持仓失败');
+                            }
+                        }
+                    });
+                }
+
+                show_currency_positions();
+
+                // 操作记录查询
+                function show_currency_opt_records() {
+                    $.ajax({
+                        type: "GET",
+                        url: "/currency/opt_records",
+                        dataType: 'json',
+                        success: function (result) {
+                            if (result['code'] === 200) {
+                                $('#currency_opt_records').html('');
+                                for (var i = 0; i < result['data'].length; i++) {
+                                    res = result['data'][i];
+                                    $('#currency_opt_records').append('<tr><td>' + res['datetime'] + '</td><td><a href="#' + res['symbol'] + '" class="code" data-code="' + res['symbol'] + '" data-name="' + res['symbol'] + '">' + res['symbol'] + '</a></td><td>' + res['info'] + '</td></tr>');
+                                }
+                                $('.table_data').DataTable({});
+                            } else {
+                                alert('获取操作记录失败');
+                            }
+                        }
+                    });
+                }
+
+                show_currency_opt_records();
+
+                // 账户资产与持仓刷新
+                $('#balance_shuaxin').click(function () {
+                    show_currency_balances();
+                    show_currency_positions();
+                });
+
+                // 机会列表的展示
+                function jhs_list_show() {
+                    $.ajax({
+                        type: "GET",
+                        url: "/currency/jhs",
+                        dataType: 'json',
+                        success: function (result) {
+                            if (result['code'] === 200) {
+                                $('#jhs_ul').html('');
+                                for (let i = 0; i < result['data'].length; i++) {
+                                    jh = result['data'][i];
+                                    $('#jhs_ul').append('<li class="list-group-item"><p class="list-group-item-heading"><a href="javascript:void(0);" class="code" data-code="' + jh['code'] + '" data-name="' + jh['code'] + '">' + jh['name'] + '</a> <span>' + jh['frequency'] + '</span></p> <p class="list-group-item-text">' + jh['jh_type'] + ' <br/>' + jh['is_done'] + ' ' + jh['is_td'] + '<br/> ' + jh['datetime_str'] + '</p></li>');
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 自选切换
+                $('.btn_zixuan').click(function () {
+                    $('.btn_zixuan').removeClass('btn-success');
+                    $(this).addClass('btn-success');
+                    var zx_name = $(this).attr('data-zxname');
+                    $.ajax({
+                        type: "GET",
+                        url: "/zixuan/stocks?market_type=currency&zx_name=" + zx_name,
+                        dataType: 'json',
+                        success: function (result) {
+                            if (result['code'] === 200) {
+                                $('#my_stocks').html('');
+                                for (var i = 0; i < result['data'].length; i++) {
+                                    var stock = result['data'][i];
+                                    $('#my_stocks').append('<li class="code" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="#' + stock['code'] + '"><span class="menu-text">' + stock['code'] + '</span></a></li>');
+                                }
+                                $('#stock_search').quicksearch('#my_stocks li');
+                            }
+                        }
+                    });
+                });
+
+
+                // 根据代码，查询自选分组
+                function zixuan_code_query_zx_names(code) {
+                    $.ajax({
+                        type: "GET",
+                        url: "/zixuan/code_zx_names?market_type=currency&code=" + code,
+                        dataType: 'json',
+                        success: function (result) {
+                            if (result['code'] === 200) {
+                                $('#zixuan_zx_names').html('');
+                                for (let i = 0; i < result['data'].length; i++) {
+                                    var zx_name = result['data'][i];
+                                    var checked = zx_name['exists'] === 1 ? 'checked' : '';
+                                    $('#zixuan_zx_names').append('<li><div class="checkbox"><label>' +
+                                        '<input name="zx_name" type="checkbox" data-zx-name="' + zx_name['zx_name'] + '" ' + checked + ' class="ace opt_zx">' +
+                                        '<span class="lbl">' + zx_name['zx_name'] + '</span>' +
+                                        '</label></div></li>');
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 自选操作
+                $("body").delegate('.opt_zx', 'change', function () {
+                    var checked = $(this).prop('checked');
+                    var zx_name = $(this).attr('data-zx-name');
+                    var opt = checked === true ? 'add' : 'del';
+                    $.ajax({
+                        type: "GET",
+                        url: '/zixuan/opt?market_type=currency&zx_name=' + zx_name + '&opt=' + opt + '&code=' + code + '&name=' + code,
+                        dataType: 'json',
+                        success: function (result) {
+                            let msg = '';
+                            if (opt === 'add') {
+                                msg = '添加自选组 ' + zx_name + ' 成功';
+                            } else {
+                                msg = '删除自选组 ' + zx_name + ' 成功';
+                            }
+
+                            if (result['code'] === 200) {
+                                $.message({
+                                    message: msg,
+                                    type: 'success'
+                                });
+                            } else {
+                                $.message({
+                                    message: '操作自选失败',
+                                    type: 'error'
+                                });
+                            }
+                        }
+                    });
+                });
+
+                // 自动触发一次
+                $('.btn_zixuan')[0].click();
+
+                fetchData(code, config['high'], true);
+                fetchData(code, config['low'], true);
+                zixuan_code_query_zx_names(code);
+
+                jhs_list_show();
+                setInterval(jhs_list_show, 60000);
+
+            }
+        );
+    </script>
+{% endblock %}
