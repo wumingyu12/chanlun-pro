@@ -6,7 +6,7 @@ from django.shortcuts import render
 # Create your views here.
 from chanlun import cl
 from chanlun import kcharts
-from chanlun import exchange_tdx
+from chanlun.exchange import exchange_tdx
 
 g_code = 'SH.000001'
 g_frequencys = ['y', 'm', 'w', 'd', '60m', '30m', '5m', '1m']
