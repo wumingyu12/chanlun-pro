@@ -1,5 +1,6 @@
 import os
-
+import talib
+import numpy as np
 # 画图配置
 from pyecharts import options as opts
 from pyecharts.charts import Kline as cKline, Line, Bar, Grid, Scatter
@@ -18,11 +19,12 @@ if "JPY_PARENT_PID" in os.environ:
     Scatter().load_javascript()
 
 
-def render_charts(title, cl_data: ICL, show_num=1000, orders=None, config=None):
+def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=None, config=None):
     """
     缠论数据图表化展示
     :param title:
     :param cl_data:
+    :param show_futu: 显示的副图指标类型
     :param show_num:
     :param orders:
     :param config: 画图配置
@@ -329,7 +331,7 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=None, config=None):
                 scatter_sell_orders['val'].append(
                     [o['price'], str(o['price']) + ' - 卖出:' + ('' if 'info' not in o else o['info'])])
 
-    klines = (cKline().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+    klines_chart = (cKline().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
         series_name="",
         y_axis=klines_yaxis,
         itemstyle_opts=opts.ItemStyleOpts(
@@ -390,7 +392,7 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=None, config=None):
             label_opts=opts.LabelOpts(is_show=False)
         )
     )
-    overlap_kline = klines.overlap(fenxing_ding)
+    overlap_kline = klines_chart.overlap(fenxing_ding)
     overlap_kline = overlap_kline.overlap(fenxing_di)
 
     # 画 完成笔
@@ -694,9 +696,80 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=None, config=None):
         ),
     )
 
-    # MACD 柱状图
+    futu_chart = macd_bar_line
+
+    if show_futu == 'rsi':
+        rsi_3 = talib.RSI(np.array([_k.c for _k in klines]), timeperiod=14)
+        rsi_line = (
+            Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+                series_name="RSI3",
+                y_axis=rsi_3,
+                is_symbol_show=False,
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgb(233,112,220'),
+            ).set_global_opts(
+                legend_opts=opts.LegendOpts(is_show=False),
+                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
+                yaxis_opts=opts.AxisOpts(position="right",
+                                         axislabel_opts=opts.LabelOpts(is_show=False),
+                                         axisline_opts=opts.AxisLineOpts(is_show=False),
+                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+            )
+        )
+        futu_chart = rsi_line
+    elif show_futu == 'atr':
+        atr = talib.ATR(
+            np.array([_k.h for _k in klines]),
+            np.array([_k.l for _k in klines]),
+            np.array([_k.c for _k in klines]),
+            timeperiod=14
+        )
+        atr_line = (
+            Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+                series_name="ATR",
+                y_axis=atr,
+                is_symbol_show=False,
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgb(12,174,210'),
+            ).set_global_opts(
+                legend_opts=opts.LegendOpts(is_show=False),
+                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
+                yaxis_opts=opts.AxisOpts(position="right",
+                                         axislabel_opts=opts.LabelOpts(is_show=False),
+                                         axisline_opts=opts.AxisLineOpts(is_show=False),
+                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+            )
+        )
+        futu_chart = atr_line
+
+    elif show_futu == 'cci':
+        cci = talib.CCI(
+            np.array([_k.h for _k in klines]),
+            np.array([_k.l for _k in klines]),
+            np.array([_k.c for _k in klines]),
+            timeperiod=14
+        )
+        cci_line = (
+            Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+                series_name="CCI",
+                y_axis=cci,
+                is_symbol_show=False,
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgb(12,174,210'),
+            ).set_global_opts(
+                legend_opts=opts.LegendOpts(is_show=False),
+                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
+                yaxis_opts=opts.AxisOpts(position="right",
+                                         axislabel_opts=opts.LabelOpts(is_show=False),
+                                         axisline_opts=opts.AxisLineOpts(is_show=False),
+                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+            )
+        )
+        futu_chart = cci_line
+
+    # 副图技术指标
     grid_chart.add(
-        macd_bar_line,
+        futu_chart,
         grid_opts=opts.GridOpts(
             pos_bottom="0", height="15%", width="96%", pos_left='1%', pos_right='3%'
         ),
@@ -706,4 +779,3 @@ def render_charts(title, cl_data: ICL, show_num=1000, orders=None, config=None):
         return grid_chart.render_notebook()
     else:
         return grid_chart.dump_options()
-

@@ -88,6 +88,8 @@ class ExchangeDB(Exchange):
         for code in codes:
             table = self.__table(code)
             with contextlib.suppress(Exception):
+                # 删除并重新创建
+                # cursor.execute(f'drop table {table}')
                 create_sql = code_sql % table if self.market in ['a', 'us'] else no_code_sql % table
 
                 cursor.execute(create_sql)
@@ -166,7 +168,7 @@ class ExchangeDB(Exchange):
             args['limit'] = 2000
 
         table = self.__table(code)
-        if self.market == 'a':
+        if self.market in ['a', 'us']:
             sql = "select dt, f, h, l, o, c, v from %s where code='%s' and f='%s'" % (table, code, frequency)
         else:
             sql = "select dt, f, h, l, o, c, v from %s where f='%s'" % (table, frequency)
