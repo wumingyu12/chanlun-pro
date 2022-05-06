@@ -1,12 +1,14 @@
 import os
-import talib
+
 import numpy as np
+import talib
 # 画图配置
 from pyecharts import options as opts
 from pyecharts.charts import Kline as cKline, Line, Bar, Grid, Scatter
 from pyecharts.commons.utils import JsCode
 
 from chanlun.cl_interface import *
+from chanlun.fun import str_to_datetime
 
 if "JPY_PARENT_PID" in os.environ:
     from pyecharts.globals import CurrentConfig, NotebookType
@@ -40,14 +42,20 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         config['show_bi_zs'] = True
     if 'show_xd_zs' not in config.keys():
         config['show_xd_zs'] = True
+    if 'show_zslx_zs' not in config.keys():
+        config['show_zslx_zs'] = True
     if 'show_bi_mmd' not in config.keys():
         config['show_bi_mmd'] = True
     if 'show_xd_mmd' not in config.keys():
         config['show_xd_mmd'] = True
+    if 'show_zslx_mmd' not in config.keys():
+        config['show_zslx_mmd'] = True
     if 'show_bi_bc' not in config.keys():
         config['show_bi_bc'] = True
     if 'show_xd_bc' not in config.keys():
         config['show_xd_bc'] = True
+    if 'show_zslx_bc' not in config.keys():
+        config['show_zslx_bc'] = True
 
     if 'show_ma' not in config.keys():
         config['show_ma'] = True
@@ -59,15 +67,16 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     color_k_down = '#0CF49B'
     color_bi = '#FDDD60'
     color_bi_zs = '#FFFFFF'
-    color_bi_zs_up = '#993333'
-    color_bi_zs_down = '#99CC99'
+    color_bi_zs_up = '#FFFFFF'  # '#993333'
+    color_bi_zs_down = '#FFFFFF'  # '#99CC99'
 
     color_xd = '#FFA710'
     color_xd_zs = '#e9967a'
-    color_xd_zs_up = '#CC0033'
-    color_xd_zs_down = '#66CC99'
+    color_xd_zs_up = '#e9967a'  # '#CC0033'
+    color_xd_zs_down = '#e9967a'  # '#66CC99'
 
-    color_qs = '#A1C0FC'
+    color_zslx = '#A1C0FC'
+    color_zslx_zs = '#00BFFF'
 
     brush_opts = opts.BrushOpts(tool_box=["rect", "polygon", "lineX", "lineY", "keep", "clear"],
                                 x_axis_index="all", brush_link="all",
@@ -81,6 +90,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     zslxs = cl_data.get_zslxs()
     bi_zss = cl_data.get_bi_zss()
     zs_zss = cl_data.get_xd_zss()
+    zslx_zss = cl_data.get_zslx_zss()
 
     idx = cl_data.get_idx()
 
@@ -95,10 +105,6 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
 
     cl_klines_yaxis = []
     cl_klines_xaxis = []
-
-    # 找到顶和底的坐标
-    point_ding = {'index': [], 'val': [], 'text': []}
-    point_di = {'index': [], 'val': [], 'text': []}
 
     for k in klines:
         klines_xaxis.append(k.date)
@@ -120,15 +126,16 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         # 开/收/低/高
         cl_klines_yaxis.append([clk.l, clk.h, clk.l, clk.h])
 
+    # 找到顶和底的坐标
+    point_ding = {'index': [], 'val': []}
+    point_di = {'index': [], 'val': []}
     for fx in fxs:
         if fx.type == 'ding':
             point_ding['index'].append(fx.k.date)
-            point_ding['val'].append(fx.val)
-            point_ding['text'].append('力度：%s' % fx.ld())
+            point_ding['val'].append([fx.val, '强分型' if fx.ld() >= 5 else ''])
         else:
             point_di['index'].append(fx.k.date)
-            point_di['val'].append(fx.val)
-            point_di['text'].append('力度：%s' % fx.ld())
+            point_di['val'].append([fx.val, '强分型' if fx.ld() >= 5 else ''])
 
     # 画 笔
     line_bis = {'index': [], 'val': []}
@@ -210,7 +217,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
 
         line_bi_zss.append(l_zs)
 
-    # 画 走势
+    # 画 走势 中枢
     line_zs_zss = []
     for zs in zs_zss:
         if config['show_xd_zs'] is False:
@@ -235,6 +242,32 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         l_zs.append(zs.done)
 
         line_zs_zss.append(l_zs)
+
+    # 画 走势类型 中枢
+    line_zslx_zss = []
+    for zs in zslx_zss:
+        if config['show_zslx_zs'] is False:
+            break
+        if zs.real is False:
+            continue
+        start_index = zs.start.k.date
+        end_index = zs.end.k.date
+        l_zs = [
+            # 两竖，两横，5个点，转一圈
+            [start_index, start_index, end_index, end_index, start_index],
+            [zs.zg, zs.zd, zs.zd, zs.zg, zs.zg],
+        ]
+        if zs.type == 'up':
+            l_zs.append(color_zslx_zs)
+        elif zs.type == 'down':
+            l_zs.append(color_zslx_zs)
+        else:
+            l_zs.append(color_zslx_zs)
+
+        l_zs.append(zs.level + 1)
+        l_zs.append(zs.done)
+
+        line_zslx_zss.append(l_zs)
 
     # 分型中的 背驰 和 买卖点信息，归类，一起显示
     fx_bcs_mmds = {}
@@ -264,25 +297,39 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             if config['show_xd_mmd'] is False:
                 break
             fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
+    for _zslx in zslxs:
+        _fx = _zslx.end
+        if _fx.index not in fx_bcs_mmds.keys():
+            fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
+        for _bc in _zslx.bcs:
+            if config['show_zslx_bc'] is False:
+                break
+            if _bc.bc:
+                fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
+        for _mmd in _zslx.mmds:
+            if config['show_zslx_mmd'] is False:
+                break
+            fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
 
     # 画 背驰
     scatter_bc = {'i': [], 'val': []}  # 背驰
-    bc_maps = {'bi': '笔背驰', 'xd': '线段背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
+    bc_maps = {'bi': '笔背驰', 'xd': '线段背驰', 'zslx': '走势类型背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
+    zs_type_maps = {'bi': '笔', 'xd': '线段', 'zslx': '走势'}
     for fx_index in fx_bcs_mmds.keys():
         fx_bc_info = fx_bcs_mmds[fx_index]
         bc_label = ''
         fx = fx_bc_info['fx']
         for bc in fx_bc_info['bcs']:
             if bc.zs is not None:
-                bc_label += '笔：' if bc.zs.zs_type == 'bi' else '线段：'
+                bc_label += zs_type_maps[bc.zs.zs_type] + ':'
             bc_label += bc_maps[bc.type] + ' '
-            if bc.zs is not None:
-                bc_label += ' ZS[%s (%.2f - %.2f)]' % (bc.zs.type, bc.zs.zg, bc.zs.zd)
-            bc_label += ' / '
+            # if bc.zs is not None:
+            #     bc_label += ' ZS[%s (%.2f - %.2f)]' % (bc.zs.type, bc.zs.zg, bc.zs.zd)
+            bc_label += ' /'
 
         if bc_label != '':
             scatter_bc['i'].append(fx.k.date)
-            scatter_bc['val'].append([fx.val, bc_label])
+            scatter_bc['val'].append([fx.val, bc_label.strip('/')])
 
     # 画买卖点
     mmd_maps = {'1buy': '一买', '2buy': '二买', 'l2buy': '类二买', '3buy': '三买', 'l3buy': '类三买',
@@ -298,36 +345,37 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         sell_label = ''
         for mmd in mmds:
             if mmd.name in ['1buy', '2buy', '3buy', 'l2buy', 'l3buy']:
-                buy_label += '%s %s ZS[%s (%.2f - %.2f)] /' % (
-                    '笔' if mmd.zs.zs_type == 'bi' else '线段', mmd_maps[mmd.name], mmd.zs.type, mmd.zs.zg, mmd.zs.zd)
+                buy_label += '%s %s /' % (zs_type_maps[mmd.zs.zs_type], mmd_maps[mmd.name])
             if mmd.name in ['1sell', '2sell', '3sell', 'l2sell', 'l3sell']:
-                sell_label += '%s %s ZS[%s (%.2f - %.2f)] /' % (
-                    '笔' if mmd.zs.zs_type == 'bi' else '线段', mmd_maps[mmd.name], mmd.zs.type, mmd.zs.zg, mmd.zs.zd)
+                sell_label += '%s %s /' % (zs_type_maps[mmd.zs.zs_type], mmd_maps[mmd.name])
 
         if buy_label != '':
             scatter_buy['i'].append(fx.k.date)
-            scatter_buy['val'].append([fx.val, buy_label])
+            scatter_buy['val'].append([fx.val, buy_label.strip('/')])
         if sell_label != '':
             scatter_sell['i'].append(fx.k.date)
-            scatter_sell['val'].append([fx.val, sell_label])
+            scatter_sell['val'].append([fx.val, sell_label.strip('/')])
 
     # 画订单记录
     scatter_buy_orders = {'i': [], 'val': []}
     scatter_sell_orders = {'i': [], 'val': []}
     if orders:
+        # 处理订单时间坐标
+        dts = pd.Series(klines_xaxis)
         for o in orders:
             if type(o['datetime']) == 'str':
-                odt = o['datetime']
+                odt = str_to_datetime(o['datetime'])
             else:
-                odt = datetime.datetime.strptime(o['datetime'], '%Y-%m-%d %H:%M:%S')
-            if odt < klines[0].date:
+                odt = o['datetime']
+            k_dt = dts[dts <= odt]
+            if len(k_dt) == 0:
                 continue
             if o['type'] == 'buy':
-                scatter_buy_orders['i'].append(odt)
+                scatter_buy_orders['i'].append(k_dt.iloc[-1])
                 scatter_buy_orders['val'].append(
                     [o['price'], str(o['price']) + ' - 买入:' + ('' if 'info' not in o else o['info'])])
             elif o['type'] == 'sell':
-                scatter_sell_orders['i'].append(odt)
+                scatter_sell_orders['i'].append(k_dt.iloc[-1])
                 scatter_sell_orders['val'].append(
                     [o['price'], str(o['price']) + ' - 卖出:' + ('' if 'info' not in o else o['info'])])
 
@@ -381,6 +429,11 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             itemstyle_opts=opts.ItemStyleOpts(color='red'),
             symbol_size=2,
             label_opts=opts.LabelOpts(is_show=False)
+        ).set_series_opts(
+            label_opts=opts.LabelOpts(
+                color='rgb(255,200,44,0.3)', position='top', font_weight='bold',
+                formatter=JsCode('function (params) {return params.value[2];}'),
+            )
         )
     )
     fenxing_di = (
@@ -390,6 +443,11 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             itemstyle_opts=opts.ItemStyleOpts(color='green'),
             symbol_size=2,
             label_opts=opts.LabelOpts(is_show=False)
+        ).set_series_opts(
+            label_opts=opts.LabelOpts(
+                color='rgb(255,200,44,0.3)', position='bottom', font_weight='bold',
+                formatter=JsCode('function (params) {return params.value[2];}'),
+            )
         )
     )
     overlap_kline = klines_chart.overlap(fenxing_ding)
@@ -443,7 +501,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             "走势类型",
             line_zslxs['val'],
             label_opts=opts.LabelOpts(is_show=False),
-            linestyle_opts=opts.LineStyleOpts(width=2, color=color_qs)
+            linestyle_opts=opts.LineStyleOpts(width=2, color=color_zslx)
         )
     )
     overlap_kline = overlap_kline.overlap(line_qs)
@@ -453,7 +511,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             "走势类型",
             line_xu_zslxs['val'],
             label_opts=opts.LabelOpts(is_show=False),
-            linestyle_opts=opts.LineStyleOpts(width=2, type_='dashed', color=color_qs)
+            linestyle_opts=opts.LineStyleOpts(width=2, type_='dashed', color=color_zslx)
         )
     )
     overlap_kline = overlap_kline.overlap(line_xu_qs)
@@ -503,7 +561,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                 symbol=None,
                 label_opts=opts.LabelOpts(is_show=False),
                 linestyle_opts=opts.LineStyleOpts(width=zs[3], color=zs[2], type_='solid' if zs[4] else 'dashed'),
-                areastyle_opts=opts.AreaStyleOpts(opacity=0.1, color=zs[2]),
+                areastyle_opts=opts.AreaStyleOpts(opacity=0.2, color=zs[2]),
                 tooltip_opts=opts.TooltipOpts(is_show=False),
             )
         )
@@ -512,11 +570,26 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     for zs in line_zs_zss:
         xd_zs = (
             Line().add_xaxis(zs[0]).add_yaxis(
-                "走势中枢",
+                "线段中枢",
                 zs[1],
                 symbol=None,
                 label_opts=opts.LabelOpts(is_show=False),
                 linestyle_opts=opts.LineStyleOpts(width=zs[3], color=zs[2], type_='solid' if zs[4] else 'dashed'),
+                areastyle_opts=opts.AreaStyleOpts(opacity=0.2, color=zs[2]),
+                tooltip_opts=opts.TooltipOpts(is_show=False),
+            )
+        )
+        overlap_kline = overlap_kline.overlap(xd_zs)
+    # 画 走势类型 中枢
+    for zs in line_zslx_zss:
+        xd_zs = (
+            Line().add_xaxis(zs[0]).add_yaxis(
+                "走势类型中枢",
+                zs[1],
+                symbol=None,
+                label_opts=opts.LabelOpts(is_show=False),
+                linestyle_opts=opts.LineStyleOpts(width=zs[3], color=zs[2], type_='solid' if zs[4] else 'dashed'),
+                areastyle_opts=opts.AreaStyleOpts(opacity=0.2, color=zs[2]),
                 tooltip_opts=opts.TooltipOpts(is_show=False),
             )
         )
@@ -538,6 +611,9 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                 )
             ),
         )
+        # ).set_series_opts(
+        #     label_opts=opts.LabelOpts(color='red', formatter=JsCode("function (params) {return params.value[2];}"))
+        # )
     )
     overlap_kline = overlap_kline.overlap(scatter_bc_tu)
 
@@ -546,31 +622,41 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         Scatter().add_xaxis(xaxis_data=scatter_buy['i']).add_yaxis(
             series_name="买卖点",
             y_axis=scatter_buy['val'],
-            symbol_size=15,
+            symbol_size=10,
             symbol='arrow',
             itemstyle_opts=opts.ItemStyleOpts(color='rgba(250,128,114,0.8)'),
-            tooltip_opts=opts.TooltipOpts(
-                textstyle_opts=opts.TextStyleOpts(font_size=12),
-                formatter=JsCode(
-                    "function (params) {return params.value[2];}"
-                )
-            ),
+            # tooltip_opts=opts.TooltipOpts(
+            #     textstyle_opts=opts.TextStyleOpts(font_size=12),
+            #     formatter=JsCode(
+            #         "function (params) {return params.value[2];}"
+            #     )
+            # ),
+        ).set_series_opts(
+            label_opts=opts.LabelOpts(
+                color='rgb(255,200,44)', position='bottom', font_weight='bold',
+                formatter=JsCode('function (params) {return params.value[2];}'),
+            )
         )
     )
     scatter_sell_tu = (
         Scatter().add_xaxis(xaxis_data=scatter_sell['i']).add_yaxis(
             series_name="买卖点",
             y_axis=scatter_sell['val'],
-            symbol_size=15,
+            symbol_size=10,
             symbol='arrow',
             symbol_rotate=180,
             itemstyle_opts=opts.ItemStyleOpts(color='rgba(30,144,255,0.8)'),
-            tooltip_opts=opts.TooltipOpts(
-                textstyle_opts=opts.TextStyleOpts(font_size=12),
-                formatter=JsCode(
-                    "function (params) {return params.value[2];}"
-                )
-            ),
+            # tooltip_opts=opts.TooltipOpts(
+            #     textstyle_opts=opts.TextStyleOpts(font_size=12),
+            #     formatter=JsCode(
+            #         "function (params) {return params.value[2];}"
+            #     )
+            # ),
+        ).set_series_opts(
+            label_opts=opts.LabelOpts(
+                color='rgb(255,200,44)', position='top', font_weight='bold',
+                formatter=JsCode('function (params) {return params.value[2];}'),
+            )
         )
     )
     overlap_kline = overlap_kline.overlap(scatter_buy_tu)
@@ -741,7 +827,6 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             )
         )
         futu_chart = atr_line
-
     elif show_futu == 'cci':
         cci = talib.CCI(
             np.array([_k.h for _k in klines]),
@@ -766,6 +851,40 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             )
         )
         futu_chart = cci_line
+    elif show_futu == 'kdj':
+        kdj_slowk, kdj_slowd = talib.STOCH(
+            np.array([_k.h for _k in klines]),
+            np.array([_k.l for _k in klines]),
+            np.array([_k.c for _k in klines]),
+            fastk_period=9,
+            slowk_period=3,
+            slowk_matype=0,
+            slowd_period=3,
+            slowd_matype=0
+        )
+        kdj_line = (
+            Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+                series_name="CCI slowk",
+                y_axis=kdj_slowk,
+                is_symbol_show=False,
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgb(12,174,210'),
+            ).add_yaxis(
+                series_name="CCI slowd",
+                y_axis=kdj_slowd,
+                is_symbol_show=False,
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgb(25,201,14'),
+            ).set_global_opts(
+                legend_opts=opts.LegendOpts(is_show=False),
+                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
+                yaxis_opts=opts.AxisOpts(position="right",
+                                         axislabel_opts=opts.LabelOpts(is_show=False),
+                                         axisline_opts=opts.AxisLineOpts(is_show=False),
+                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+            )
+        )
+        futu_chart = kdj_line
 
     # 副图技术指标
     grid_chart.add(

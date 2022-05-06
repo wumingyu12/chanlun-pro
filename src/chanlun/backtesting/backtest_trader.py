@@ -1,6 +1,8 @@
-from chanlun import fun
+import pickle
+
+from chanlun import rd
+from chanlun.backtesting.base import Strategy, Operation, POSITION, MarketDatas
 from chanlun.cl_interface import *
-from chanlun.backtesting.base import Strategy, CLDatas, Operation, POSITION
 
 
 class BackTestTrader(object):
@@ -8,37 +10,50 @@ class BackTestTrader(object):
     回测交易（可继承支持实盘）
     """
 
-    def __init__(self, name, is_stock=True, is_futures=False, mmds=None, log=None):
+    def __init__(self, name, mode='signal',
+                 is_stock=True, is_futures=False,
+                 init_balance=100000, fee_rate=0.0005, max_pos=10,
+                 log=None):
         """
         交易者初始化
         :param name: 交易者名称
+        :param mode: 执行模式 signal 测试信号模式，固定金额开仓；trade 实际买卖模式；real 线上实盘交易
         :param is_stock: 是否是股票交易（决定当日是否可以卖出）
         :param is_futures: 是否是期货交易（决定是否可以做空）
-        :param mmds: 可交易的买卖点
-        :param log: 日志展示方法
+        :param init_balance: 初始资金
+        :param fee_rate: 手续费比例
         """
 
-        # 当前名称
+        # 策略基本信息
         self.name = name
+        self.mode = mode
         self.is_stock = is_stock
         self.is_futures = is_futures
-        self.allow_mmds = mmds
+        self.allow_mmds = None
+
+        # 资金情况
+        self.balance = init_balance
+        self.fee_rate = fee_rate
+        self.fee_total = 0
+        self.max_pos = max_pos
 
         # 是否打印日志
         self.log = log
         self.log_history = []
 
-        # 盯盘对象
-        self.strategy: [Strategy, None] = None
+        # 策略对象
+        self.strategy: Strategy = None
 
-        # 存储当前运行的缠论数据
-        self.cl_datas: Dict[str, CLDatas] = {}
+        # 回测数据对象
+        self.datas: MarketDatas = None
 
         # 当前持仓信息
-        self.positions = {}
+        self.positions: Dict[str, Dict[str, POSITION]] = {}
         self.positions_history = {}
         # 持仓盈亏记录
         self.hold_profit_history = {}
+        # 资产历史
+        self.balance_history: Dict[str, float] = {}
 
         # 代码订单信息
         self.orders = {}
@@ -69,53 +84,68 @@ class BackTestTrader(object):
         """
         self.strategy = _strategy
 
-    def __get_price(self, code):
+    def set_data(self, _data: MarketDatas):
+        """
+        设置数据对象
+        """
+        self.datas = _data
+
+    def save_to_redis(self, key: str):
+        """
+        将对象数据保存到 Redis 中
+        """
+        save_infos = {
+            'positions': self.positions,
+            'positions_history': self.positions_history,
+            'hold_profit_history': self.hold_profit_history,
+            'balance_history': self.balance_history
+        }
+        p_obj = pickle.dumps(save_infos)
+        rd.save_byte(key, p_obj)
+        return True
+
+    def load_from_redis(self, key: str):
+        """
+        从 Redis 中恢复之前的数据
+        """
+        p_bytes = rd.get_byte(key)
+        if p_bytes is None:
+            return False
+        save_infos = pickle.loads(p_bytes)
+        self.positions = save_infos['positions']
+        self.positions_history = save_infos['positions_history']
+        self.hold_profit_history = save_infos['hold_profit_history']
+        self.balance_history = save_infos['balance_history']
+        return True
+
+    def get_price(self, code):
         """
         回测中方法，获取股票代码当前的价格，根据最小周期 k 线收盘价
         """
-        if code not in self.cl_datas.keys():
-            return None
-        frequencys = list(self.cl_datas[code].klines.keys())
-        return float(self.cl_datas[code].klines[frequencys[-1]].iloc[-1]['close'])
+        price_info = self.datas.last_k_info(code)
+        return price_info
 
-    def __get_high_low_price(self, code):
+    def get_now_datetime(self):
         """
-        回测中方法，获取当前代码最高最低值，根据最小周期 k 线获取
+        获取当前时间
         """
-        if code not in self.cl_datas.keys():
-            return None
-        frequencys = list(self.cl_datas[code].klines.keys())
-        high = self.cl_datas[code].klines[frequencys[-1]].iloc[-1]['high']
-        low = self.cl_datas[code].klines[frequencys[-1]].iloc[-1]['low']
-        dt = self.cl_datas[code].klines[frequencys[-1]].iloc[-1]['date']
-        return dt, float(high), float(low)
-
-    def __get_now_dt(self, code):
-        """
-        回测中方法，获取代码当前运行到的时间，根据最小周期 k 线的最后一根时间
-        """
-        if code not in self.cl_datas.keys():
-            return None
-        frequencys = list(self.cl_datas[code].klines.keys())
-        return self.cl_datas[code].klines[frequencys[-1]].iloc[-1]['date']
+        if self.mode == 'real':
+            return datetime.datetime.now()
+        # 回测时用回测的当前时间
+        return self.datas.now_date
 
     # 运行的唯一入口
-    def run(self, code, cl_datas: CLDatas):
-        self.cl_datas[code] = cl_datas
-
-        # 更新仓位盈亏情况
-        self.__position_record(code)
-
+    def run(self, code):
         # 优先检查持仓情况
         if code in self.positions:
             for mmd in self.positions[code]:
                 pos = self.positions[code][mmd]
-                opt = self.strategy.close(code=code, mmd=mmd, pos=pos, cl_datas=cl_datas)
+                opt = self.strategy.close(code=code, mmd=mmd, pos=pos, market_data=self.datas)
                 if opt:
                     self.execute(code, opt)
 
         # 再执行检查机会方法
-        opts = self.strategy.open(code=code, cl_datas=cl_datas)
+        opts = self.strategy.open(code=code, market_data=self.datas)
         for opt in opts:
             self.execute(code, opt)
 
@@ -128,8 +158,54 @@ class BackTestTrader(object):
                 pos = self.positions[code][mmd]
                 if pos.balance > 0:
                     self.execute(code, Operation(opt='sell', mmd=mmd, msg='退出'))
-        self.cl_datas = []  # 清除记录，避免序列化的问题出现
         return True
+
+    def update_position_record(self):
+        """
+        更新所有持仓的盈亏情况
+        """
+        total_hold_profit = 0
+        for code in self.positions.keys():
+            total_hold_profit += self.position_record(code)
+        now_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
+        self.balance_history[now_datetime] = total_hold_profit + self.balance
+
+    def position_record(self, code: str):
+        """
+        持仓记录更新
+        :param code:
+        :return: 返回持仓的总金额（包括持仓盈亏）
+        """
+        hold_balance = 0
+        now_profit = 0
+        price_info = self.get_price(code)
+
+        if code not in self.hold_profit_history.keys():
+            self.hold_profit_history[code] = {}
+
+        if code in self.positions.keys():
+            for pos in self.positions[code].values():
+                if pos.balance == 0:
+                    continue
+                if pos.type == '做多':
+                    high_profit_rate = round((price_info['high'] - pos.price) / pos.price * 100, 4)
+                    low_profit_rate = round((price_info['low'] - pos.price) / pos.price * 100, 4)
+                    pos.max_profit_rate = max(pos.max_profit_rate, high_profit_rate)
+                    pos.max_loss_rate = min(pos.max_loss_rate, low_profit_rate)
+
+                    pos.profit_rate = round((price_info['close'] - pos.price) / pos.price * 100, 4)
+                    now_profit += pos.profit_rate / 100 * pos.balance
+                if pos.type == '做空':
+                    high_profit_rate = round((pos.price - price_info['low']) / pos.price * 100, 4)
+                    low_profit_rate = round((pos.price - price_info['high']) / pos.price * 100, 4)
+                    pos.max_profit_rate = max(pos.max_profit_rate, high_profit_rate)
+                    pos.max_loss_rate = min(pos.max_loss_rate, low_profit_rate)
+
+                    pos.profit_rate = round((pos.price - price_info['close']) / pos.price * 100, 4)
+                    now_profit += pos.profit_rate / 100 * pos.balance
+                hold_balance += pos.balance
+        self.hold_profit_history[code][price_info['date'].strftime('%Y-%m-%d %H:%M:%S')] = now_profit
+        return now_profit + hold_balance
 
     def position_codes(self):
         """
@@ -150,6 +226,17 @@ class BackTestTrader(object):
         codes = list(poss['code'].to_numpy())
         return codes
 
+    def hold_positions(self):
+        """
+        返回所有持仓记录
+        """
+        poss: List[POSITION] = []
+        for code in self.positions.keys():
+            for mmd, pos in self.positions[code].items():
+                if pos.balance != 0:
+                    poss.append(pos)
+        return poss
+
     # 查询代码买卖点的持仓信息
     def query_code_mmd_pos(self, code: str, mmd: str) -> POSITION:
         if code in self.positions:
@@ -163,7 +250,7 @@ class BackTestTrader(object):
 
     def reset_pos(self, code: str, mmd: str):
         # 增加进入历史
-        self.positions[code][mmd].close_datetime = self.__get_now_dt(code).strftime('%Y-%m-%d %H:%M:%S')
+        self.positions[code][mmd].close_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
         if code not in self.positions_history:
             self.positions_history[code] = []
         self.positions_history[code].append(self.positions[code][mmd])
@@ -171,61 +258,92 @@ class BackTestTrader(object):
         self.positions[code][mmd] = POSITION(code=code, mmd=mmd)
         return
 
-    def __position_record(self, code: str):
-        """
-        持仓记录更新
-        :param code:
-        :return:
-        """
-        now_profit = 0
-        k_date, high_price, low_price = self.__get_high_low_price(code)
-        now_price = self.__get_price(code)
-
-        if code not in self.hold_profit_history.keys():
-            self.hold_profit_history[code] = {}
-
-        if code in self.positions.keys():
-            for pos in self.positions[code].values():
-                if pos.balance == 0:
-                    continue
-                if pos.type == '做多':
-                    high_profit_rate = round((high_price - pos.price) / pos.price * 100, 4)
-                    low_profit_rate = round((low_price - pos.price) / pos.price * 100, 4)
-                    pos.max_profit_rate = max(pos.max_profit_rate, high_profit_rate)
-                    pos.max_loss_rate = min(pos.max_loss_rate, low_profit_rate)
-
-                    pos.profit_rate = round((now_price - pos.price) / pos.price * 100, 4)
-                    now_profit += pos.profit_rate / 100 * pos.balance
-                if pos.type == '做空':
-                    high_profit_rate = round((pos.price - low_price) / pos.price * 100, 4)
-                    low_profit_rate = round((pos.price - high_price) / pos.price * 100, 4)
-                    pos.max_profit_rate = max(pos.max_profit_rate, high_profit_rate)
-                    pos.max_loss_rate = min(pos.max_loss_rate, low_profit_rate)
-
-                    pos.profit_rate = round((pos.price - now_price) / pos.price * 100, 4)
-                    now_profit += pos.profit_rate / 100 * pos.balance
-        self.hold_profit_history[code][k_date.strftime('%Y-%m-%d %H:%M:%S')] = now_profit
-        return
-
     # 做多买入
     def open_buy(self, code, opt: Operation):
-        use_balance = 100000
-        amount = round((use_balance / self.__get_price(code)) * 0.99, 4)
-        return {'price': self.__get_price(code), 'amount': amount}
+        if self.mode == 'signal':
+            use_balance = 100000
+            price = self.get_price(code)['close']
+            amount = round((use_balance / price) * 0.99, 4)
+            return {'price': price, 'amount': amount}
+        else:
+            if len(self.hold_positions()) >= self.max_pos:
+                return False
+            price = self.get_price(code)['close']
+
+            use_balance = (self.balance / (self.max_pos - len(self.hold_positions()))) * 0.99
+            amount = use_balance / price
+            if amount < 0:
+                return False
+            if use_balance > self.balance:
+                self._print_log('%s - %s 做多开仓 资金余额不足' % (code, opt.mmd))
+                return False
+
+            fee = use_balance * self.fee_rate
+            self.balance -= (use_balance + fee)
+            self.fee_total += fee
+
+            return {'price': price, 'amount': amount}
 
     # 做空卖出
     def open_sell(self, code, opt: Operation):
-        use_balance = 100000
-        amount = round((use_balance / self.__get_price(code)) * 0.99, 4)
-        return {'price': self.__get_price(code), 'amount': amount}
+        if self.mode == 'signal':
+            use_balance = 100000
+            price = self.get_price(code)['close']
+            amount = round((use_balance / price) * 0.99, 4)
+            return {'price': price, 'amount': amount}
+        else:
+            if len(self.hold_positions()) >= self.max_pos:
+                return False
+            price = self.get_price(code)['close']
+
+            use_balance = (self.balance / (self.max_pos - len(self.hold_positions()))) * 0.99
+            amount = use_balance / price
+            if amount < 0:
+                return False
+
+            if use_balance > self.balance:
+                self._print_log('%s - %s 做空开仓 资金余额不足' % (code, opt.mmd))
+                return False
+
+            fee = use_balance * self.fee_rate
+            self.balance -= (use_balance + fee)
+            self.fee_total += fee
+
+            return {'price': price, 'amount': amount}
 
     # 做多平仓
     def close_buy(self, code, pos: POSITION, opt: Operation):
-        return {'price': self.__get_price(code), 'amount': pos.amount}
+        if self.mode == 'signal':
+            price = self.get_price(code)['close']
+            return {'price': price, 'amount': pos.amount}
+        else:
+            price = self.get_price(code)['close']
+
+            hold_balance = price * pos.amount
+
+            fee = hold_balance * self.fee_rate
+            self.balance += (hold_balance - fee)
+            self.fee_total += fee
+            return {'price': price, 'amount': pos.amount}
 
     # 做空平仓
     def close_sell(self, code, pos: POSITION, opt: Operation):
-        return {'price': self.__get_price(code), 'amount': pos.amount}
+        if self.mode == 'signal':
+            price = self.get_price(code)['close']
+            return {'price': price, 'amount': pos.amount}
+        else:
+            price = self.get_price(code)['close']
+
+            hold_balance = price * pos.amount
+            pos_balance = pos.price * pos.amount
+
+            profit = pos_balance - hold_balance
+
+            fee = hold_balance * self.fee_rate
+            self.balance += (pos_balance + profit - fee)
+            self.fee_total += fee
+
+            return {'price': price, 'amount': pos.amount}
 
     # 打印日志信息
     def _print_log(self, msg):
@@ -255,13 +373,14 @@ class BackTestTrader(object):
             pos.amount = res['amount']
             pos.balance = res['price'] * res['amount']
             pos.loss_price = opt.loss_price
-            pos.open_date = self.__get_now_dt(code).strftime('%Y-%m-%d')
-            pos.open_datetime = self.__get_now_dt(code).strftime('%Y-%m-%d %H:%M:%S')
+            pos.open_date = self.get_now_datetime().strftime('%Y-%m-%d')
+            pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
             pos.open_msg = opt.msg
             pos.info = opt.info
 
             self._print_log(
-                f"[{code} - {self.__get_now_dt(code)}] // {opt_mmd} 做多买入（{res['price']} - {res['amount']}），原因： {opt.msg}")
+                f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做多买入（{res['price']} - {res['amount']}），原因： {opt.msg}"
+            )
 
         # 卖点，买入，开仓做空（期货）
         if self.is_futures and 'sell' in opt_mmd and opt.opt == 'buy':
@@ -275,19 +394,20 @@ class BackTestTrader(object):
             pos.amount = res['amount']
             pos.balance = res['price'] * res['amount']
             pos.loss_price = opt.loss_price
-            pos.open_date = self.__get_now_dt(code).strftime('%Y-%m-%d')
-            pos.open_datetime = self.__get_now_dt(code).strftime('%Y-%m-%d %H:%M:%S')
+            pos.open_date = self.get_now_datetime().strftime('%Y-%m-%d')
+            pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
             pos.open_msg = opt.msg
             pos.info = opt.info
 
             self._print_log(
-                f"[{code} - {self.__get_now_dt(code)}] // {opt_mmd} 做空卖出（{res['price']} - {res['amount']}），原因： {opt.msg}")
+                f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做空卖出（{res['price']} - {res['amount']}），原因： {opt.msg}"
+            )
 
         # 卖点，卖出，平仓做空（期货）
         if self.is_futures and 'sell' in opt_mmd and opt.opt == 'sell':
             if pos.balance == 0:
                 return False
-            if self.is_stock and pos.open_date == self.__get_now_dt(code).strftime('%Y-%m-%d'):
+            if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
                 # 股票交易，当日不能卖出
                 return False
             res = self.close_sell(code, pos, opt)
@@ -311,7 +431,7 @@ class BackTestTrader(object):
             pos.close_msg = opt.msg
 
             self._print_log('[%s - %s] // %s 平仓做空（%s - %s） 盈亏：%s (%.2f%%)，原因： %s' % (
-                code, self.__get_now_dt(code), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
+                code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
 
             # 清空持仓
             self.reset_pos(code, opt_mmd)
@@ -320,7 +440,7 @@ class BackTestTrader(object):
         if 'buy' in opt_mmd and opt.opt == 'sell':
             if pos.balance == 0:
                 return False
-            if self.is_stock and pos.open_date == self.__get_now_dt(code).strftime('%Y-%m-%d'):
+            if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
                 # 股票交易，当日不能卖出
                 return False
             res = self.close_buy(code, pos, opt)
@@ -343,7 +463,7 @@ class BackTestTrader(object):
             pos.close_msg = opt.msg
 
             self._print_log('[%s - %s] // %s 平仓做多（%s - %s） 盈亏：%s  (%.2f%%)，原因： %s' % (
-                code, self.__get_now_dt(code), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
+                code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
 
             # 清空持仓
             self.reset_pos(code, opt_mmd)
@@ -353,7 +473,7 @@ class BackTestTrader(object):
             if code not in self.orders:
                 self.orders[code] = []
             self.orders[code].append({
-                'datetime': self.__get_now_dt(code),
+                'datetime': self.get_now_datetime(),
                 'type': opt.opt,
                 'price': res['price'],
                 'amount': res['amount'],

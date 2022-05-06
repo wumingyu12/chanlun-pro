@@ -1,75 +1,28 @@
 # 回放行情所需
-import time
 
-import pandas as pd
-
-from chanlun import cl
-from chanlun.exchange.exchange_db import ExchangeDB
+from chanlun import cl, fun
+from chanlun.backtesting.base import MarketDatas
 from chanlun.cl_interface import *
-from chanlun.backtesting.base import CLDatas
+from chanlun.exchange.exchange_db import ExchangeDB
 
 
-def datetime_minutes(start_dt: datetime, end_dt: datetime):
-    """
-    获取两个时间的间隔分钟数
-    """
-    return int((end_dt - start_dt).total_seconds() / 60)
-
-
-class BackCLDatas(CLDatas):
-    """
-    回测的缠论数据获取
-    """
-
-    def __init__(self, code, frequencys, cl_config):
-        super().__init__(code, frequencys, None, cl_config)
-
-        self.total_time = 0
-
-    def __getitem__(self, item) -> ICL:
-        __s = time.time()
-
-        frequency = self.frequencys[item]
-        if frequency not in self.cl_datas.keys():
-            # tqdm.write('cl item %s - %s not exists' % (item, frequency))
-            self.cl_datas[frequency] = cl.CL(self.code, frequency=frequency, config=self.cl_config).process_klines(
-                self.klines[frequency])
-
-        # 判断是追加更新还是从新计算
-        cl_end_time = self.cl_datas[frequency].get_klines()[-1].date
-        kline_start_time = self.klines[frequency].iloc[0]['date']
-        if cl_end_time > kline_start_time:
-            # tqdm.write('cl item %s - %s increment' % (item, frequency))
-            self.cl_datas[frequency].process_klines(self.klines[frequency])
-        else:
-            # tqdm.write('cl item %s - %s cal' % (item, frequency))
-            self.cl_datas[frequency] = cl.CL(self.code, frequency=frequency, config=self.cl_config).process_klines(
-                self.klines[frequency])
-
-        __r = time.time() - __s
-        self.total_time += __r
-
-        return self.cl_datas[frequency]
-
-
-class BackTestKlines:
+class BackTestKlines(MarketDatas):
     """
     数据库行情回放
     """
 
-    def __init__(self, market, code, start_date, end_date, frequencys=None, cl_config=None):
+    def __init__(self, market: str, start_date: str, end_date: str, frequencys: List[str], cl_config=None):
         """
         配置初始化
         :param market: 市场 支持 a hk currency
-        :param code:
         :param frequencys:
         :param start_date:
         :param end_date:
         """
-        if frequencys is None:
-            frequencys = ['30m', '5m']
+        super().__init__(market, frequencys, cl_config)
+
         self.market = market
-        self.code = code
+        self.base_code = None
         self.frequencys = frequencys
         self.cl_config = cl_config
         if isinstance(start_date, str):
@@ -81,60 +34,118 @@ class BackTestKlines:
 
         self.now_date = start_date
 
-        self.klines: Dict[str, pd.DataFrame] = {}
-        self.show_klines: Dict[str, pd.DataFrame] = {}
+        # 保存k线数据
+        self.all_klines: Dict[str, Dict[str, pd.DataFrame]] = {}
 
-        # 保存缠论数据对象
-        self.cl_datas: BackCLDatas = BackCLDatas(self.code, self.frequencys, self.cl_config)
+        # 每个周期缓存的k线数据，避免多次请求重复计算
+        self.cache_klines: Dict[str, Dict[str, pd.DataFrame]] = {}
 
-        self.exchange = ExchangeDB(self.market)
+        self.ex = ExchangeDB(self.market)
+
+        # 用于循环的日期列表
+        self.loop_datetime_list: list = []
 
         self.time_fmt = '%Y-%m-%d %H:%M:%S'
 
-        # self.bar = tqdm(desc=self.code, total=datetime_minutes(self.start_date, self.end_date))
+    def init(self, base_code: str, frequency: str):
+        # 初始化，获取循环的日期列表
+        self.base_code = base_code
+        if frequency is None:
+            frequency = self.frequencys[-1]
+        klines = self.ex.klines(
+            base_code, frequency,
+            start_date=fun.datetime_to_str(self.start_date), end_date=fun.datetime_to_str(self.end_date),
+            args={'limit': None}
+        )
+        self.loop_datetime_list = list(klines['date'].to_list())
 
-    def start(self):
-        # 获取行情数据
-        for f in self.frequencys:
-            real_start_date = self._cal_start_date_by_frequency(self.start_date, f)
-            self.klines[f] = self.exchange.klines(self.code,
-                                                  f,
-                                                  start_date=real_start_date,
-                                                  end_date=self.end_date,
-                                                  args={'limit': None})
-            # print('Code %s F %s len %s' % (self.code, f, len(self.klines[f])))
-        self.next(self.frequencys[-1])
+    def next(self):
+        if len(self.loop_datetime_list) == 0:
+            return False
+        self.now_date = self.loop_datetime_list.pop(0)
+        # 清除之前的 cl_datas 、klines 缓存，重新计算
+        self.cache_cl_datas = {}
+        self.cache_klines = {}
+        return True
 
-    def next(self, f):
-        # 设置下一个时间
-        while True:
-            _up_now_date = self.now_date
-            self.now_date = self._next_datetime(self.now_date, f)
-            # print('Next date : ', self.now_date)
-            if self.now_date is None or self.now_date > self.end_date:
-                # self.bar.close()
-                return False
-            # self.bar.update(datetime_minutes(_up_now_date, self.now_date))
-            # self.bar.set_description(self.code + ' ' + self.now_date.strftime('%Y-%m-%d %H:%M:%S'), False)
+    def last_k_info(self, code) -> dict:
+        kline = self.klines(code, self.frequencys[-1])
+        return {
+            'date': kline.iloc[-1]['date'],
+            'open': float(kline.iloc[-1]['open']),
+            'close': float(kline.iloc[-1]['close']),
+            'high': float(kline.iloc[-1]['high']),
+            'low': float(kline.iloc[-1]['low']),
+        }
 
-            try:
-                for f in self.frequencys:
-                    if self.market in ['currency', 'futures']:
-                        self.show_klines[f] = self.klines[f][self.klines[f]['date'] < self.now_date][-2000::]
+    def get_cl_data(self, code, frequency) -> ICL:
+        key = '%s_%s' % (code, frequency)
+        if key in self.cache_cl_datas.keys():
+            return self.cache_cl_datas[key]
+
+        # 根据回测配置，可自定义不同周期所使用的缠论配置项
+        if frequency in self.cl_config.keys():
+            cl_config = self.cl_config[frequency]
+        elif 'default' in self.cl_config.keys():
+            cl_config = self.cl_config['default']
+        else:
+            cl_config = self.cl_config
+
+        if key not in self.cl_datas.keys():
+            # 第一次进行计算
+            klines = self.klines(code, frequency)
+            self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
+        else:
+            # 更新计算
+            cd = self.cl_datas[key]
+            klines = self.klines(code, frequency)
+            if len(klines) > 0:
+                if len(cd.get_klines()) == 0:
+                    self.cl_datas[key].process_klines(klines)
+                else:
+                    # 判断是追加更新还是从新计算
+                    cl_end_time = cd.get_klines()[-1].date
+                    kline_start_time = klines.iloc[0]['date']
+                    if cl_end_time > kline_start_time:
+                        self.cl_datas[key].process_klines(klines)
                     else:
-                        self.show_klines[f] = self.klines[f][self.klines[f]['date'] <= self.now_date][-2000::]
+                        self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
 
-                self.convert_klines()
-                for f in self.frequencys:
-                    self.cl_datas.update_kline(f, self.show_klines[f])
-            except Exception as e:
-                print(f'ERROR: {self.code} 运行 Next 错误，当前时间 : {self.now_date}，错误信息：{str(e)}')
-                return False
-            if len(self.show_klines[self.frequencys[-1]]) < 100:
-                continue
-            return True
+        # 单次循环内，计算过后进行缓存，避免多次计算
+        self.cache_cl_datas[key] = self.cl_datas[key]
 
-    def convert_klines(self):
+        return self.cache_cl_datas[key]
+
+    def klines(self, code, frequency) -> pd.DataFrame:
+        if code in self.cache_klines.keys():
+            # 直接从缓存中读取
+            return self.cache_klines[code][frequency]
+
+        for f in self.frequencys:
+            key = '%s-%s' % (code, f)
+            if key not in self.all_klines.keys():
+                # 从数据库获取日期区间的所有行情
+                self.all_klines[key] = self.ex.klines(
+                    code, f,
+                    start_date=self._cal_start_date_by_frequency(self.start_date, f),
+                    end_date=fun.datetime_to_str(self.end_date),
+                    args={'limit': None}
+                )
+        klines = {}
+        for f in self.frequencys:
+            key = '%s-%s' % (code, f)
+            if self.market in ['currency', 'futures']:
+                kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-2000::]
+            else:
+                kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-2000::]
+            klines[f] = kline
+        # 转换周期k线，去除未来数据
+        klines = self.convert_klines(klines)
+        # 将结果保存到 缓存中，避免重复读取
+        self.cache_klines[code] = klines
+        return klines[frequency]
+
+    def convert_klines(self, klines: Dict[str, pd.DataFrame]):
         """
         转换 kline，去除未来的 kline数据
         :return:
@@ -142,42 +153,17 @@ class BackTestKlines:
         for i in range(len(self.frequencys), 1, -1):
             min_f = self.frequencys[i - 1]
             max_f = self.frequencys[i - 2]
-            new_kline = self.exchange.convert_kline_frequency(self.show_klines[min_f][-120::], max_f)
-            if len(self.show_klines[max_f]) > 0 and len(new_kline) > 0:
-                self.show_klines[max_f] = self.show_klines[max_f].append(
-                    new_kline
-                ).drop_duplicates(subset=['date'], keep='last')
+            if len(klines[min_f]) == 0:
+                continue
+            new_kline = self.ex.convert_kline_frequency(klines[min_f][-120::], max_f)
+            if len(klines[max_f]) > 0 and len(new_kline) > 0:
+                klines[max_f] = klines[max_f].append(new_kline).drop_duplicates(subset=['date'], keep='last')
                 # 删除大周期中，日期大于最小周期的未来数据
-                self.show_klines[max_f] = self.show_klines[max_f].drop(
-                    self.show_klines[max_f][
-                        self.show_klines[max_f]['date'] > self.show_klines[min_f].iloc[-1]['date']
-                        ].index
+                klines[max_f] = klines[max_f].drop(
+                    klines[max_f][klines[max_f]['date'] > klines[min_f].iloc[-1]['date']].index
                 )
-        return True
 
-    def _next_datetime(self, now_date, frequency):
-        """
-        根据周期，计算下一个时间的起始
-        :param now_date:
-        :param frequency:
-        :return:
-        """
-        if now_date is None:
-            return None
-
-        next_klines = self.klines[frequency][self.klines[frequency]['date'] > now_date]
-
-        if len(next_klines) == 0:
-            return None
-        # next_date = next_klines.iloc[0]['date']
-        # pre_klines = self.klines[frequency][self.klines[frequency]['date'] < next_date]
-        # if len(pre_klines) < 500:
-        #     if len(next_klines) > 501:
-        #         next_date = next_klines.iloc[500]['date']
-        #     else:
-        #         return None
-        # return next_date
-        return next_klines.iloc[0]['date']
+        return klines
 
     def _cal_start_date_by_frequency(self, start_date: datetime, frequency) -> str:
         """

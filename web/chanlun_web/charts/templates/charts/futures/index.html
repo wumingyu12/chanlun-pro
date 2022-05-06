@@ -221,7 +221,7 @@
                         _val = $(this).is(':checked') ? '1' : '0';
                     }
                     cl_setting[_key] = _val;
-                    $.cookie(cookie_pre + '_' + _key, cl_setting[_key]);
+                    $.cookie(cookie_pre + '_' + _key, cl_setting[_key], {expires: 999});
                     console.log('setting change key ' + _key + ' val ' + _val);
                     if (_key === 'show_max_chart') {
                         chart_show_height(_val);
@@ -258,7 +258,7 @@
                         $('#zq_{{ level }} button').removeClass('btn-primary');
                         $(this).addClass('btn-primary');
                         config['{{ level }}']['frequency'] = $(this).attr('data-zq');
-                        $.cookie(cookie_pre + '_frequency_{{ level }}', config['{{ level }}']['frequency']);
+                        $.cookie(cookie_pre + '_frequency_{{ level }}', config['{{ level }}']['frequency'], {expires: 999});
                         fetchData(code, config['{{ level }}'], false);
                     });
 

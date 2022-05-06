@@ -7,10 +7,8 @@ from chanlun.backtesting.base import Operation, POSITION
 from chanlun.backtesting.backtest_trader import BackTestTrader
 
 """
-交易所对象放到外面，不然无法进行序列化
 期货使用天勤自带的模拟账号测试
 """
-ex = ExchangeTq(use_simulate_account=True)
 
 
 class TraderFutures(BackTestTrader):
@@ -18,8 +16,9 @@ class TraderFutures(BackTestTrader):
     期货交易 Demo
     """
 
-    def __init__(self, name, is_stock=True, is_futures=False, mmds=None, log=None):
-        super().__init__(name, is_stock, is_futures, mmds, log)
+    def __init__(self, name, log=None):
+        super().__init__(name=name, mode='real', is_stock=False, is_futures=True, log=log)
+        self.ex = ExchangeTq(use_simulate_account=True)
 
         self.zx = zixuan.ZiXuan('futures')
 
@@ -29,16 +28,16 @@ class TraderFutures(BackTestTrader):
     # 做多买入
     def open_buy(self, code, opt: Operation):
         try:
-            positions = ex.positions(code)
+            positions = self.ex.positions(code)
             if len(positions) > 0 and positions[code].pos_long > 0:
                 return False
 
-            res = ex.order(code, 'open_long', self.unit_volume)
+            res = self.ex.order(code, 'open_long', self.unit_volume)
             if res is False or res['price'] is None:
                 fun.send_dd_msg('futures', f'{code} open long 下单失败')
                 return False
 
-            stock_info = ex.stock_info(code)
+            stock_info = self.ex.stock_info(code)
 
             msg = f"开多仓 {code} 价格 {res['price']} 数量 {self.unit_volume} 原因 {opt.msg}"
             fun.send_dd_msg('futures', msg)
@@ -65,16 +64,16 @@ class TraderFutures(BackTestTrader):
     # 做空卖出
     def open_sell(self, code, opt: Operation):
         try:
-            positions = ex.positions(code)
+            positions = self.ex.positions(code)
             if len(positions) > 0 and positions[code].pos_short > 0:
                 return False
 
-            res = ex.order(code, 'open_short', self.unit_volume)
+            res = self.ex.order(code, 'open_short', self.unit_volume)
             if res is False or res['price'] is None:
                 fun.send_dd_msg('futures', f'{code} open short 下单失败')
                 return False
 
-            stock_info = ex.stock_info(code)
+            stock_info = self.ex.stock_info(code)
 
             msg = f"开空仓 {code} 价格 {res['price']} 数量 {self.unit_volume} 原因 {opt.msg}"
             fun.send_dd_msg('futures', msg)
@@ -101,13 +100,13 @@ class TraderFutures(BackTestTrader):
     # 做多平仓
     def close_buy(self, code, pos: POSITION, opt: Operation):
         try:
-            hold_position = ex.positions(code)
+            hold_position = self.ex.positions(code)
             if len(hold_position) == 0 or hold_position[code].pos_long == 0:
                 # 当前无持仓，不进行操作
                 return {'price': pos.price, 'amount': pos.amount}
             hold_position = hold_position[code]
 
-            res = ex.order(code, 'close_long', pos.amount)
+            res = self.ex.order(code, 'close_long', pos.amount)
             if res is False or res['price'] is None:
                 fun.send_dd_msg('futures', f'{code} 下单失败')
                 return False
@@ -137,13 +136,13 @@ class TraderFutures(BackTestTrader):
     # 做空平仓
     def close_sell(self, code, pos: POSITION, opt: Operation):
         try:
-            hold_position = ex.positions(code)
+            hold_position = self.ex.positions(code)
             if len(hold_position) == 0 or hold_position[code].pos_short == 0:
                 # 当前无持仓，不进行操作
                 return {'price': pos.price, 'amount': pos.amount}
             hold_position = hold_position[code]
 
-            res = ex.order(code, 'close_short', pos.amount)
+            res = self.ex.order(code, 'close_short', pos.amount)
             if res is False or res['price'] is None:
                 fun.send_dd_msg('futures', f'{code} 下单失败')
                 return False

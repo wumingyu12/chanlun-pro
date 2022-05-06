@@ -1,10 +1,10 @@
+import datetime
 from abc import ABC
 from dataclasses import dataclass
 
-import pandas as pd
+import numpy as np
+import talib
 
-from chanlun import cl
-from chanlun.exchange.exchange import Exchange
 from chanlun.cl_interface import *
 
 
@@ -37,7 +37,10 @@ class Operation:
     策略返回的操作指示对象
     """
     opt: str  # 操作指示  buy  买入  sell  卖出
-    mmd: str  # 触发指示的 买卖点 例如：1buy  2buy  1sell 2sell
+    # 触发指示的
+    # 买卖点 例如：1buy  2buy l2buy 3buy l3buy  1sell 2sell l2sell 3sell l3sell down_pz_bc_buy
+    # 背驰点 例如：down_pz_bc_buy down_qs_bc_buy up_pz_bc_sell up_qs_bc_sell
+    mmd: str
     loss_price: float = None  # 止损价格
     info: Dict[str, object] = None  # 自定义保存的一些信息
     msg: str = ''
@@ -46,57 +49,43 @@ class Operation:
         return f'mmd {self.mmd} opt {self.opt} loss_price {self.loss_price} msg: {self.msg}'
 
 
-class CLDatas(object):
+class MarketDatas(ABC):
     """
-    缠论数据类，用于回测与正式交易获取缠论数据的类
+    市场数据类，用于在回测与实盘获取指定行情数据类
     """
 
-    def __init__(self, code, frequencys, ex: Exchange, cl_config=None):
-        self.code = code
+    def __init__(self, market: str, frequencys: List[str], cl_config=None):
+        """
+        初始化
+        """
+        self.market = market
         self.frequencys = frequencys
-        self.ex = ex
         self.cl_config = cl_config
 
-        # 用于保存原始的 k 线数据
-        self.klines: Dict[str, pd.DataFrame] = {}
-        # 存储周期对应的缠论数据
+        # 按照 code_frequency 进行索引保存，存储周期对应的缠论数据
         self.cl_datas: Dict[str, ICL] = {}
 
-        # 初始化就调用交易所结果获取数据
-        if self.ex is not None:
-            for _f in self.frequencys:
-                self.klines[_f] = self.ex.klines(code, _f)
+        # 按照 code_frequency 进行索引保存，减少多次计算时间消耗；每次循环缓存的计算，在下次循环会重置为 {}
+        self.cache_cl_datas: Dict[str, ICL] = {}
 
-    def update_kline(self, frequency, klines: pd.DataFrame):
-        # 检查k线的更新时间，不能小于之前的
-        if frequency in self.klines.keys():
-            if self.klines[frequency].iloc[-1]['date'] > klines.iloc[-1]['date']:
-                raise Exception('CLDatas 更新K线数据错误，新的日期不能小于原有的')
-        self.klines[frequency] = klines
-
-    def __getitem__(self, item) -> ICL:
+    @abstractmethod
+    def klines(self, code, frequency) -> pd.DataFrame:
         """
-        按需重写这个方法，在需要使用缠论数据的时候，进行计算并返回
+        获取标的周期内的k线数据
         """
-        _f = self.frequencys[item]
-        if _f in self.cl_datas.keys():
-            return self.cl_datas[_f]
 
-        cd: ICL = cl.CL(self.code, _f, self.cl_config).process_klines(self.klines[_f])
-        self.cl_datas[_f] = cd
-
-        return cd
-
-    def all_datas(self) -> Dict[str, ICL]:
+    @abstractmethod
+    def last_k_info(self, code) -> dict:
         """
-        返回所有周期的缠论数据
+        获取最后一根K线数据，根据 frequencys 最后一个 小周期获取数据
+        return dict {'date', 'open', 'close', 'high', 'low'}
         """
-        cds = {}
-        for i in range(len(self.frequencys)):
-            f = self.frequencys[i]
-            cd = self.__getitem__(i)
-            cds[f] = cd
-        return cds
+
+    @abstractmethod
+    def get_cl_data(self, code, frequency) -> ICL:
+        """
+        获取标的周期的缠论数据
+        """
 
 
 class Strategy(ABC):
@@ -108,22 +97,22 @@ class Strategy(ABC):
         pass
 
     @abstractmethod
-    def open(self, code, cl_datas: [CLDatas, List[ICL]]) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas) -> List[Operation]:
         """
         观察行情数据，给出开仓操作建议
         :param code:
-        :param cl_datas:
+        :param market_data:
         :return:
         """
 
     @abstractmethod
-    def close(self, code, mmd: str, pos: POSITION, cl_datas: [CLDatas, List[ICL]]) -> [Operation, None]:
+    def close(self, code, mmd: str, pos: POSITION, market_data: MarketDatas) -> [Operation, None]:
         """
         盯当前持仓，给出平仓当下建议
         :param code:
         :param mmd:
         :param pos:
-        :param cl_datas:
+        :param market_data:
         :return:
         """
 
@@ -231,3 +220,65 @@ class Strategy(ABC):
             pos.loss_price = min(pos.loss_price, last_done_bi.high)
 
         return
+
+    @staticmethod
+    def points_jiaodu(points: List[float], position='up'):
+        """
+        提供一系列数据点，给出其趋势角度，以此判断其方向
+        用于判断类似 macd 背驰，macd柱子创新低而黄白线则新高
+        """
+        if len(points) == 0:
+            return 0
+        # 去一下棱角
+        points = talib.MA(np.array(points), 2)
+        # 先给原始数据编序号
+        new_points = []
+        for i in range(len(points)):
+            if points[i] is not None:
+                new_points.append([i, points[i]])
+
+        # 根据位置参数，决定找分型类型
+        fxs = []
+        for i in range(1, len(new_points)):
+            p1 = new_points[i - 1]
+            p2 = new_points[i]
+            p3 = new_points[i + 1] if len(new_points) > (i + 1) else None
+            if position == 'up' and p1[1] <= p2[1] and ((p3 is not None and p2[1] >= p3[1]) or p3 is None):
+                fxs.append(p2)
+            elif position == 'down' and p1[1] >= p2[1] and ((p3 is not None and p2[1] <= p3[1]) or p3 is None):
+                fxs.append(p2)
+
+        if len(fxs) < 2:
+            return 0
+        # 按照大小排序
+        fxs = sorted(fxs, key=lambda f: f[1], reverse=True if position == 'up' else False)
+
+        def jiaodu(_p1: list, _p2: list):
+            # 计算斜率
+            k = (_p1[1] - _p2[1]) / (_p1[0] - _p2[0])
+            # 斜率转弧度
+            k = math.atan(k)
+            # 弧度转角度
+            j = math.degrees(k)
+            return j
+
+        return jiaodu(fxs[0], fxs[1])
+
+    @staticmethod
+    def check_datetime_mmd(start_datetime: datetime.datetime, cd: ICL, check_line: str = 'bi'):
+        """
+        检查指定时间后出现的买卖点信息
+        """
+        mmd_infos = {}
+        lines = cd.get_bis() if check_line == 'bi' else cd.get_xds()
+        for _l in lines[::-1]:
+            if _l.start.k.date >= start_datetime:
+                line_mmds = _l.line_mmds()
+                for _m in line_mmds:
+                    if _m not in mmd_infos.keys():
+                        mmd_infos[_m] = 1
+                    else:
+                        mmd_infos[_m] += 1
+            else:
+                break
+        return mmd_infos

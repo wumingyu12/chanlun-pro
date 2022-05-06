@@ -64,7 +64,7 @@ class ExchangeDB(Exchange):
                         l decimal(20, 8) not null,
                         o decimal(20, 8) not null,
                         c decimal(20, 8) not null,
-                        v decimal(20, 8) not null,
+                        v decimal(28, 8) not null,
                         UNIQUE INDEX dt_f (code, dt, f)
                     )
         """
@@ -78,7 +78,7 @@ class ExchangeDB(Exchange):
                         l decimal(20, 8) not null,
                         o decimal(20, 8) not null,
                         c decimal(20, 8) not null,
-                        v decimal(20, 8) not null,
+                        v decimal(28, 8) not null,
                         UNIQUE INDEX dt_f (dt, f)
                     )
         """

@@ -12,10 +12,10 @@ class StrategyXDMMD(Strategy):
 
         self._max_loss_rate = 10
 
-    def open(self, code, cl_datas: CLDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas) -> List[Operation]:
         opts = []
 
-        data = cl_datas[0]
+        data = market_data.get_cl_data(code, market_data.frequencys[0])
         if len(data.get_xds()) == 0 or len(data.get_bis()) == 0 or len(data.get_xd_zss()) == 0:
             return opts
 
@@ -68,11 +68,11 @@ class StrategyXDMMD(Strategy):
 
         return opts
 
-    def close(self, code, mmd: str, pos: POSITION, cl_datas: CLDatas) -> [Dict, None]:
+    def close(self, code, mmd: str, pos: POSITION, market_data: MarketDatas) -> [Dict, None]:
         if pos.balance == 0:
             return False
 
-        data = cl_datas[0]
+        data = market_data.get_cl_data(code, market_data.frequencys[0])
         price = data.get_klines()[-1].c
 
         # 止盈止损检查

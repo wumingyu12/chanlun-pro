@@ -1,13 +1,13 @@
-import pickle
+#:  -*- coding: utf-8 -*-
 import time
 import traceback
 
+from chanlun import fun
 from chanlun.cl_interface import Config
 from chanlun.exchange.exchange_binance import ExchangeBinance
-from chanlun import rd, fun
-from chanlun.backtesting.base import CLDatas
-from chanlun.trader.trader_currency import TraderCurrency
 from chanlun.strategy.strategy_demo import StrategyDemo
+from chanlun.trader.online_market_datas import OnlineMarketDatas
+from chanlun.trader.trader_currency import TraderCurrency
 
 logger = fun.get_logger('./logs/trader_currency.log')
 
@@ -43,22 +43,18 @@ try:
 
     p_redis_key = 'trader_currency'
 
+    # 交易对象
+    TR = TraderCurrency('Currency', log=logger.info)
+    # 从 Redis 中加载数据
+    TR.load_from_redis(p_redis_key)
+    # 数据对象
+    Data = OnlineMarketDatas('currency', frequencys, ex, cl_config)
     # 设置使用的策略
     STR = StrategyDemo()
 
-    # 从 Redis 中恢复交易对象
-    p_bytes = rd.get_byte(p_redis_key)
-    if p_bytes is not None:
-        TR = pickle.loads(p_bytes)
-    else:
-        TR = TraderCurrency(
-            'Currency', is_stock=False, is_futures=True, log=logger.info, mmds=None
-        )
-
-    # 单独设置一些参数，更新之前缓存的参数
+    # 将策略与数据对象加入到交易对象中
     TR.set_strategy(STR)
-    # TR.allow_mmds = ['1buy', '2buy', '3buy', '1sell', '2sell', '3sell']
-    TR.is_test = False
+    TR.set_data(Data)
 
     logger.info('Run symbols: %s' % run_codes)
 
@@ -81,16 +77,12 @@ try:
 
             for code in run_codes:
                 try:
-                    # logger.info('Run %s' % code)
-                    # 每次重新创建对象
-                    cldatas = CLDatas(code, frequencys, ex, cl_config)
-                    TR.run(code, cldatas)
+                    TR.run(code)
                 except Exception as e:
                     logger.error(traceback.format_exc())
 
-            # 保存对象到 Redis 中
-            p_obj = pickle.dumps(TR)
-            rd.save_byte(p_redis_key, p_obj)
+            # 保存交易数据到 Redis 中
+            TR.save_to_redis(p_redis_key)
 
         except Exception as e:
             logger.error(traceback.format_exc())

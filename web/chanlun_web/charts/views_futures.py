@@ -54,7 +54,6 @@ def kline_show(request):
     cd = cl.CL(code, frequency, cl_config).process_klines(klines)
     stock_info = ex.stock_info(code)
     orders = rd.stock_order_query(code)
-    orders = fun.convert_stock_order_by_frequency(orders, frequency)
     chart = kcharts.render_charts(
         stock_info['code'] + ':' + stock_info['name'] + ':' + cd.frequency,
         cd, orders=orders, config=chart_config)

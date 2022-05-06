@@ -1,6 +1,7 @@
 from wtpy import BaseCtaStrategy, WtBarRecords
 from wtpy import CtaContext
 
+from chanlun import cl
 from chanlun.backtesting.base import *
 from chanlun.cl_interface import *
 

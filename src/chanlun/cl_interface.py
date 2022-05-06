@@ -3,7 +3,7 @@ import datetime
 import math
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Union
 
 import pandas as pd
 
@@ -128,24 +128,48 @@ class FX:
         if three_k is None:
             return ld
         if self.type == 'ding':
-            # 第三个缠论K线要一根单阳线
-            if len(three_k.klines) > 1 or three_k.klines[0].o > three_k.klines[0].c:
+            # 第三个缠论K线要一根单阴线
+            if len(three_k.klines) > 1:
                 return ld
-            if three_k.h < (two_k.h - (two_k.h - two_k.l) / 2):
-                # 第三个K线的高点，低于第二根的50%以下
+            if three_k.klines[0].c > three_k.klines[0].o:
+                return ld
+            # 第三个K线的高点，低于第二根的50%以下
+            if three_k.h < (two_k.h - ((two_k.h - two_k.l) * 0.5)):
                 ld += 1
+            # 第三个最低点是三根中最低的
             if three_k.l < one_k.l and three_k.l < two_k.l:
-                # 第三个最低点是三根中最低的
+                ld += 1
+            # 第三根的K线的收盘价要低于前两个K线
+            if three_k.klines[0].c < one_k.l and three_k.klines[0].c < two_k.l:
+                ld += 1
+            # 第三个缠论K线的实体，要大于第二根缠论K线
+            if (three_k.h - three_k.l) > (two_k.h - two_k.l):
+                ld += 1
+            # 第三个K线不能有太大的下影线
+            if (three_k.klines[0].h - three_k.klines[0].l) != 0 and \
+                    (three_k.klines[0].c - three_k.klines[0].l) / (three_k.klines[0].h - three_k.klines[0].l) < 0.3:
                 ld += 1
         elif self.type == 'di':
-            # 第三个缠论K线要一根单阴线
-            if len(three_k.klines) > 1 or three_k.klines[0].o < three_k.klines[0].c:
+            # 第三个缠论K线要一根单阳线
+            if len(three_k.klines) > 1:
                 return ld
-            if three_k.l > (two_k.l + (two_k.h - two_k.l) / 2):
-                # 第三个K线的低点，低于第二根的50%之上
+            if three_k.klines[0].c < three_k.klines[0].o:
+                return ld
+            # 第三个K线的低点，高于第二根的50%之上
+            if three_k.l > (two_k.l + ((two_k.h - two_k.l) * 0.5)):
                 ld += 1
+            # 第三个最高点是三根中最高的
             if three_k.h > one_k.h and three_k.h > two_k.h:
-                # 第三个最低点是三根中最低的
+                ld += 1
+            # 第三根的K线的收盘价要高于前两个K线
+            if three_k.klines[0].c > one_k.h and three_k.klines[0].c > two_k.h:
+                ld += 1
+            # 第三个缠论K线的实体，要大于第二根缠论K线
+            if (three_k.h - three_k.l) > (two_k.h - two_k.l):
+                ld += 1
+            # 第三个K线不能有太大的上影线
+            if (three_k.klines[0].h - three_k.klines[0].l) != 0 and \
+                    (three_k.klines[0].h - three_k.klines[0].c) / (three_k.klines[0].h - three_k.klines[0].l) < 0.3:
                 ld += 1
         return ld
 
@@ -235,9 +259,9 @@ class ZS:
     def __init__(self, zs_type: str, start: FX, end: FX = None, zg: float = None, zd: float = None,
                  gg: float = None, dd: float = None, _type: str = None, index: int = 0, line_num: int = 0,
                  level: int = 0, max_ld: dict = None):
-        self.zs_type: str = zs_type  # 标记中枢类型 bi 笔中枢 xd 线段中枢
+        self.zs_type: str = zs_type  # 标记中枢类型 bi 笔中枢 xd 线段中枢 zslx 走势类型中枢
         self.start: FX = start
-        self.lines: List[LINE, BI, XD] = []  # 中枢，记录中枢的线（笔 or 线段）对象
+        self.lines: Union[List[BI], List[XD], List[LINE]] = []  # 中枢，记录中枢的线（笔 or 线段）对象
         self.end: FX = end
         self.zg: float = zg
         self.zd: float = zd
@@ -300,7 +324,7 @@ class BC:
     """
 
     def __init__(self, _type: str, zs: ZS, compare_line: LINE, compare_lines: List[LINE], bc: bool):
-        self.type: str = _type  # 背驰类型 （bi 笔背驰 xd 线段背驰 pz 盘整背驰 qs 趋势背驰）
+        self.type: str = _type  # 背驰类型 （bi 笔背驰 xd 线段背驰 zslx 走势类型背驰 pz 盘整背驰 qs 趋势背驰）
         self.zs: ZS = zs  # 背驰对应的中枢
         self.compare_line: LINE = compare_line  # 比较的笔 or 线段， 在 笔背驰、线段背驰、盘整背驰有用
         self.compare_lines: List[LINE] = compare_lines  # 在趋势背驰的时候使用
@@ -544,6 +568,12 @@ class ICL(metaclass=ABCMeta):
         """
         pass
 
+    # @abstractmethod
+    # def check_bi_inside_bc(self, bi: BI):
+    #     """
+    #
+    #     """
+
     @abstractmethod
     def get_code(self) -> str:
         """
@@ -624,6 +654,13 @@ class ICL(metaclass=ABCMeta):
     def get_xd_zss(self) -> List[ZS]:
         """
         返回计算缠论线段中枢（走势中枢）
+        """
+        pass
+
+    @abstractmethod
+    def get_zslx_zss(self) -> List[ZS]:
+        """
+        返回走势类型中枢
         """
         pass
 

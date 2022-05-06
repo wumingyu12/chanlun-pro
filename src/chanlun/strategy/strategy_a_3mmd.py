@@ -1,3 +1,4 @@
+from chanlun import cl
 from chanlun.backtesting.base import *
 
 
@@ -14,13 +15,13 @@ class StrategyA3mmd(Strategy):
 
         self._max_loss_rate = None  # 最大亏损比例设置
 
-    def open(self, code, cl_datas: CLDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas) -> List[Operation]:
         """
         开仓监控，返回开仓配置
         """
         opts = []
 
-        high_data = cl_datas[0]
+        high_data = market_data.get_cl_data(code, market_data.frequencys[0])
         # 没有笔或中枢，退出
         if len(high_data.get_bis()) == 0 or len(high_data.get_bi_zss()) < 2 or len(high_data.get_xds()) == 0:
             return opts
@@ -93,7 +94,7 @@ class StrategyA3mmd(Strategy):
         if high_bi.mmd_exists(['3buy', '3sell']):
             # 买入条件：针对本级别中枢的本级别3买卖点
             # 自己增加一个低级别背驰并且高级别停顿的买入条件
-            mla = cl.MultiLevelAnalyse(high_data, cl_datas[1])
+            mla = cl.MultiLevelAnalyse(high_data, market_data[1])
             low_qs = mla.low_level_qs(high_bi, 'bi')
             for mmd in high_bi.line_mmds():
                 btd = self.bi_qiang_td(high_bi, high_data)
@@ -150,20 +151,20 @@ class StrategyA3mmd(Strategy):
 
         return opts
 
-    def close(self, code, mmd: str, pos: POSITION, cl_datas: CLDatas) -> [Operation, None]:
+    def close(self, code, mmd: str, pos: POSITION, market_data: MarketDatas) -> [Operation, None]:
         """
         持仓监控，返回平仓配置
         """
         if pos.balance == 0:
             return None
 
-        high_data = cl_datas[0]
+        high_data = market_data.get_cl_data(code, market_data.frequencys[0])
         price = high_data.get_klines()[-1].c
         loss_opt = self.check_loss(mmd, pos, price)
         if loss_opt:
             return loss_opt
 
-        low_data = cl_datas[1]
+        low_data = market_data.get_cl_data(code, market_data.frequencys[1])
 
         high_bi = self.last_done_bi(high_data.get_bis())
         low_bi = self.last_done_bi(low_data.get_bis())

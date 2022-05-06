@@ -1,4 +1,5 @@
 import time
+import traceback
 
 from chanlun.exchange import get_exchange, Market
 from chanlun import fun, rd, zixuan, monitor
@@ -59,6 +60,7 @@ def task_a_1():
                 }, is_send_msg=config['is_send_msg'], cl_config=cl_config)
         except Exception as e:
             print(f'a_1 任务 {stock} 执行异常：', e)
+            print(traceback.format_exc())
 
     return True
 

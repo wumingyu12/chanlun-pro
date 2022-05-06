@@ -7,10 +7,8 @@ from chanlun.backtesting.base import Operation, POSITION
 from chanlun.backtesting.backtest_trader import BackTestTrader
 
 """
-交易所对象放到外面，不然无法进行序列化
 指定使用 binance 接口
 """
-ex = ExchangeBinance()
 
 
 class TraderCurrency(BackTestTrader):
@@ -18,8 +16,10 @@ class TraderCurrency(BackTestTrader):
     数字货币交易者
     """
 
-    def __init__(self, name, is_stock=True, is_futures=False, mmds=None, log=None):
-        super().__init__(name, is_stock, is_futures, mmds, log)
+    def __init__(self, name, log=None):
+        super().__init__(name=name, mode='real', is_stock=False, is_futures=True, log=log)
+
+        self.ex = ExchangeBinance()
 
         # 分仓数
         self.poss_max = 8
@@ -31,15 +31,15 @@ class TraderCurrency(BackTestTrader):
     # 做多买入
     def open_buy(self, code, opt: Operation):
         try:
-            positions = ex.positions()
+            positions = self.ex.positions()
             if len(positions) >= self.poss_max:
                 fun.send_dd_msg('currency', f'{code} open buy 下单失败，达到最大开仓数量')
                 return False
-            balance = ex.balance()
+            balance = self.ex.balance()
             open_usdt = (balance['free'] / (self.poss_max - len(positions)) * 0.98)
-            ticks = ex.ticks([code])
+            ticks = self.ex.ticks([code])
             amount = (open_usdt / ticks[code].last) * self.leverage
-            res = ex.order(code, 'open_long', amount, {'leverage': self.leverage})
+            res = self.ex.order(code, 'open_long', amount, {'leverage': self.leverage})
             if res is False:
                 fun.send_dd_msg('currency', f'{code} open buy 下单失败')
                 return False
@@ -69,16 +69,16 @@ class TraderCurrency(BackTestTrader):
     # 做空卖出
     def open_sell(self, code, opt: Operation):
         try:
-            positions = ex.positions()
+            positions = self.ex.positions()
             if len(positions) >= self.poss_max:
                 fun.send_dd_msg('currency', f'{code} open sell 下单失败，达到最大开仓数量')
                 return False
-            balance = ex.balance()
+            balance = self.ex.balance()
             open_usdt = (balance['free'] / (self.poss_max - len(positions)) * 0.98)
 
-            ticks = ex.ticks([code])
+            ticks = self.ex.ticks([code])
             amount = (open_usdt / ticks[code].last) * self.leverage
-            res = ex.order(code, 'open_short', amount, {'leverage': self.leverage})
+            res = self.ex.order(code, 'open_short', amount, {'leverage': self.leverage})
             if res is False:
                 fun.send_dd_msg('currency', f'{code} open sell 下单失败')
                 return False
@@ -108,12 +108,12 @@ class TraderCurrency(BackTestTrader):
     # 做多平仓
     def close_buy(self, code, pos: POSITION, opt: Operation):
         try:
-            hold_position = ex.positions(code)
+            hold_position = self.ex.positions(code)
             if len(hold_position) == 0:
                 return {'price': pos.price, 'amount': pos.amount}
             hold_position = hold_position[0]
 
-            res = ex.order(code, 'close_long', pos.amount)
+            res = self.ex.order(code, 'close_long', pos.amount)
             if res is False:
                 fun.send_dd_msg('currency', f'{code} 下单失败')
                 return False
@@ -145,12 +145,12 @@ class TraderCurrency(BackTestTrader):
     # 做空平仓
     def close_sell(self, code, pos: POSITION, opt: Operation):
         try:
-            hold_position = ex.positions(code)
+            hold_position = self.ex.positions(code)
             if len(hold_position) == 0:
                 return {'price': pos.price, 'amount': pos.amount}
             hold_position = hold_position[0]
 
-            res = ex.order(code, 'close_short', pos.amount)
+            res = self.ex.order(code, 'close_short', pos.amount)
             if res is False:
                 fun.send_dd_msg('currency', f'{code} 下单失败')
                 return False

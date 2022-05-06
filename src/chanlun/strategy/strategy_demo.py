@@ -11,13 +11,13 @@ class StrategyDemo(Strategy):
 
         self._max_loss_rate = None  # 最大亏损比例设置
 
-    def open(self, code, cl_datas: CLDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas) -> List[Operation]:
         """
         开仓监控，返回开仓配置
         """
         opts = []
 
-        data_now = cl_datas[0]
+        data_now = market_data.get_cl_data(code, market_data.frequencys[0])
         # 没有笔或中枢，退出
         if len(data_now.get_bis()) == 0 or len(data_now.get_bi_zss()) == 0:
             return opts
@@ -79,14 +79,14 @@ class StrategyDemo(Strategy):
 
         return opts
 
-    def close(self, code, mmd: str, pos: POSITION, cl_datas: CLDatas) -> [Operation, None]:
+    def close(self, code, mmd: str, pos: POSITION, market_data: MarketDatas) -> [Operation, None]:
         """
         持仓监控，返回平仓配置
         """
         if pos.balance == 0:
             return None
 
-        data_now = cl_datas[0]
+        data_now = market_data.get_cl_data(code, market_data.frequencys[0])
         price = data_now.get_klines()[-1].c
 
         # 止盈止损检查

@@ -172,13 +172,12 @@ def jhs_save(market, code, name, jh: dict):
     jh_type = jh['type']
 
     key = f'stock_code:{code}_frequency:{frequency}_jhtype:{jh_type}'
-    is_exists = Robj().hexists(hkey, key)
-    if is_exists is not None:
-        ex_val = Robj().hget(hkey, key)
+    ex_val = Robj().hget(hkey, key)
+    if ex_val is not None:
         ex_val = json.loads(ex_val)
         if 'is_done' in ex_val.keys() and ex_val['is_done'] == is_done and ex_val['is_td'] == is_td:
             # 没有变化，直接返回
-            return is_exists
+            return True
 
     val = {
         'code': code,

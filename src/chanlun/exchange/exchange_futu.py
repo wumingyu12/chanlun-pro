@@ -126,15 +126,15 @@ class ExchangeFutu(Exchange):
         CTX().subscribe(codes, [SubType.QUOTE], subscribe_push=False)
         ret, data = CTX().get_stock_quote(codes)
         if ret == RET_OK:
-            return {_d[1]['code']: Tick(code=_d[1]['code'], 
-            last=_d[1]['last_price'], 
-            high=_d[1]['high_price'], 
-            low=_d[1]['low_price'], 
-            open=_d[1]['open_price'], 
-            volume=_d[1]['volume'], 
-            buy1=_d[1]['last_price'], 
-            sell1=_d[1]['last_price'],) 
-            for _d in data.iterrows()}
+            return {_d[1]['code']: Tick(code=_d[1]['code'],
+                                        last=_d[1]['last_price'],
+                                        high=_d[1]['high_price'],
+                                        low=_d[1]['low_price'],
+                                        open=_d[1]['open_price'],
+                                        volume=_d[1]['volume'],
+                                        buy1=_d[1]['last_price'],
+                                        sell1=_d[1]['last_price'], )
+                    for _d in data.iterrows()}
 
         print('Ticks Error : ', data)
         return {}
@@ -231,14 +231,14 @@ class ExchangeFutu(Exchange):
         ret, poss = TTX().position_list_query(code=code)
         if ret == RET_OK:
             return [{'code': _p[1]['code'],
-            'name': _p[1]['stock_name'],
-            'type': _p[1]['position_side'], 
-            'amount': _p[1]['qty'], 
-            'can_sell_amount': _p[1]['can_sell_qty'], 
-            'price': _p[1]['cost_price'], 
-            'profit': _p[1]['pl_ratio'], 
-            'profit_val': _p[1]['pl_val'],} 
-            for _p in poss.iterrows() if _p[1]['qty'] != 0.0]
+                     'name': _p[1]['stock_name'],
+                     'type': _p[1]['position_side'],
+                     'amount': _p[1]['qty'],
+                     'can_sell_amount': _p[1]['can_sell_qty'],
+                     'price': _p[1]['cost_price'],
+                     'profit': _p[1]['pl_ratio'],
+                     'profit_val': _p[1]['pl_val'], }
+                    for _p in poss.iterrows() if _p[1]['qty'] != 0.0]
 
         else:
             print('Position Error : ', poss)

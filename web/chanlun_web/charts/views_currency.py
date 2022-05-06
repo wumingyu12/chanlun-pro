@@ -58,7 +58,6 @@ def kline_show(request):
     cd = cl.CL(code, frequency, cl_config).process_klines(klines)
 
     orders = rd.currency_order_query(code)
-    orders = fun.convert_currency_order_by_frequency(orders, frequency)
 
     chart = kcharts.render_charts(f'{code}:{cd.frequency}', cd, orders=orders, config=chart_config)
 

@@ -7,11 +7,9 @@ from chanlun.backtesting.backtest_trader import BackTestTrader
 from chanlun.backtesting.base import Operation, POSITION
 
 """
-交易所对象放到外面，不然无法进行序列化
 使用通达信的行情接口，其中部分接口依赖 富途，需要启动富途才可正常使用
 不实际产生交易，只添加持仓并发送短信通知
 """
-ex = ExchangeTDX()
 
 
 class TraderAStock(BackTestTrader):
@@ -21,18 +19,19 @@ class TraderAStock(BackTestTrader):
     没有实际的交易接口，只用来记录添加到持仓自选，并发送消息，实盘需要根据消息自行决定是否进行买卖操作
     """
 
-    def __init__(self, name, is_stock=True, is_futures=False, mmds=None, log=None):
-        super().__init__(name, is_stock, is_futures, mmds, log)
+    def __init__(self, name, log=None):
+        super().__init__(name=name, mode='real', is_stock=True, is_futures=False, log=log)
+        self.ex = ExchangeTDX()
 
         self.zx = zixuan.ZiXuan('stock')
 
     # 做多买入
     def open_buy(self, code, opt: Operation):
-        tick = ex.ticks([code])
+        tick = self.ex.ticks([code])
         if code not in tick.keys():
             return False
 
-        stock = ex.stock_info(code)
+        stock = self.ex.stock_info(code)
         if stock is None:
             return False
 
@@ -66,10 +65,10 @@ class TraderAStock(BackTestTrader):
 
     # 做多平仓
     def close_buy(self, code, pos: POSITION, opt):
-        tick = ex.ticks([code])
+        tick = self.ex.ticks([code])
         if code not in tick.keys():
             return False
-        stock = ex.stock_info(code)
+        stock = self.ex.stock_info(code)
         if stock is None:
             return False
 

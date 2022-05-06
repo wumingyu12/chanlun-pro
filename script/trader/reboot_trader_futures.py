@@ -1,12 +1,12 @@
-import pickle
+#:  -*- coding: utf-8 -*-
 import time
 import traceback
 
+from chanlun import fun, zixuan
 from chanlun.cl_interface import Config
 from chanlun.exchange.exchange_tq import ExchangeTq
-from chanlun import rd, fun, zixuan
-from chanlun.backtesting.base import CLDatas
 from chanlun.strategy import strategy_demo
+from chanlun.trader.online_market_datas import OnlineMarketDatas
 from chanlun.trader.trader_futures import TraderFutures
 
 logger = fun.get_logger('./logs/trader_futures.log')
@@ -16,29 +16,8 @@ logger.info('期货自动化交易程序')
 try:
     zx = zixuan.ZiXuan('futures')
     ex = ExchangeTq(use_simulate_account=True)
-
-    p_redis_key = 'trader_futures'
-
-    # 设置使用的策略
-    STR = strategy_demo.StrategyDemo()
-
-    # 从 Redis 中恢复交易对象
-    p_bytes = rd.get_byte(p_redis_key)
-    if p_bytes is not None:
-        TR = pickle.loads(p_bytes)
-    else:
-        TR = TraderFutures(
-            'futures', is_stock=False, is_futures=True, log=logger.info, mmds=None
-        )
-
-    # 单独设置一些参数，更新之前缓存的参数
-    TR.set_strategy(STR)
-    # TR.allow_mmds = ['1buy', '2buy', '3buy', '1sell', '2sell', '3sell']
-    TR.is_test = False
-
     # 执行的 标的与周期 设置
     frequencys = ['10s']
-
     cl_config = {
         # 分型默认配置
         'fx_qj': Config.FX_QJ_K.value,
@@ -60,6 +39,21 @@ try:
         'zs_qj': Config.ZS_QJ_CK.value,
         'zs_wzgx': Config.ZS_WZGX_ZGD.value,
     }
+
+    p_redis_key = 'trader_futures'
+
+    # 交易对象
+    TR = TraderFutures('futures', log=logger.info)
+    # 从Redis 中加载交易数据
+    TR.load_from_redis(p_redis_key)
+    # 数据对象
+    Data = OnlineMarketDatas('futures', frequencys, ex, cl_config)
+    # 设置使用的策略
+    STR = strategy_demo.StrategyDemo()
+
+    # 将策略与数据对象加入到交易对象中
+    TR.set_strategy(STR)
+    TR.set_data(Data)
 
     while True:
         try:
@@ -83,17 +77,12 @@ try:
 
             for code in run_codes:
                 try:
-                    # logger.info('Run %s' % code)
-                    # 每次重新创建对象
-                    cldatas = CLDatas(code, frequencys, ex, cl_config)
-
-                    TR.run(code, cldatas)
+                    TR.run(code)
                 except Exception as e:
                     logger.error(traceback.format_exc())
 
-            # 保存对象到 Redis 中
-            p_obj = pickle.dumps(TR)
-            rd.save_byte(p_redis_key, p_obj)
+            # 保存交易数据到 Redis 中
+            TR.save_to_redis(p_redis_key)
 
         except Exception as e:
             logger.error(traceback.format_exc())

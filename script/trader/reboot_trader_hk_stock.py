@@ -1,13 +1,13 @@
-import pickle
+#:  -*- coding: utf-8 -*-
 import time
 import traceback
 
-from chanlun import rd, fun
+from chanlun import fun
 from chanlun.cl_interface import Config
 from chanlun.exchange.exchange_futu import ExchangeFutu
-from chanlun.backtesting.base import CLDatas
-from chanlun.trader.trader_hk_stock import TraderHKStock
 from chanlun.strategy.strategy_demo import StrategyDemo
+from chanlun.trader.online_market_datas import OnlineMarketDatas
+from chanlun.trader.trader_hk_stock import TraderHKStock
 
 logger = fun.get_logger('./logs/trader_hk_stock.log')
 
@@ -51,25 +51,20 @@ try:
         'zs_wzgx': Config.ZS_WZGX_ZGD.value,
     }
 
-    code_cl_datas = {}
-
     p_redis_key = 'trader_hk_stock'
 
+    # 交易对象
+    TR = TraderHKStock('hk', log=logger.info)
+    # 从Redis 中加载交易数据
+    TR.load_from_redis(p_redis_key)
+    # 数据对象
+    Data = OnlineMarketDatas('hk', frequencys, ex, cl_config)
+    # 设置使用的策略
     STR = StrategyDemo()
 
-    # 从 Redis 中恢复交易对象
-    p_bytes = rd.get_byte(p_redis_key)
-    if p_bytes is not None:
-        TR = pickle.loads(p_bytes)
-    else:
-        TR = TraderHKStock(
-            'HKStock', is_stock=False, is_futures=False, log=logger.info
-        )
-
-    # 单独设置一些参数，更新之前缓存的参数
+    # 将策略与数据对象加入到交易对象中
     TR.set_strategy(STR)
-    TR.allow_mmds = None
-    TR.is_test = False
+    TR.set_data(Data)
 
     while True:
         try:
@@ -89,16 +84,12 @@ try:
 
             for code in run_codes:
                 try:
-                    # 每次重新创建对象
-                    cldatas = CLDatas(code, frequencys, ex, cl_config)
-
-                    TR.run(code, cldatas)
+                    TR.run(code)
                 except Exception as e:
                     logger.error(traceback.format_exc())
 
-            # 保存对象到 Redis 中
-            p_obj = pickle.dumps(TR)
-            rd.save_byte(p_redis_key, p_obj)
+            # 保存交易数据到 Redis 中
+            TR.save_to_redis(p_redis_key)
 
         except Exception as e:
             logger.error(traceback.format_exc())
