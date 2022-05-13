@@ -261,7 +261,7 @@ class ZS:
                  level: int = 0, max_ld: dict = None):
         self.zs_type: str = zs_type  # 标记中枢类型 bi 笔中枢 xd 线段中枢 zslx 走势类型中枢
         self.start: FX = start
-        self.lines: Union[List[BI], List[XD], List[LINE]] = []  # 中枢，记录中枢的线（笔 or 线段）对象
+        self.lines: List[Union[BI, XD, LINE]] = []  # 中枢，记录中枢的线（笔 or 线段）对象
         self.end: FX = end
         self.zg: float = zg
         self.zd: float = zd
@@ -300,6 +300,15 @@ class ZS:
         if zgzd == 0:
             zgzd = 1
         return (zgzd / (self.gg - self.dd)) * 100
+
+    def zs_mmds(self):
+        """
+        获取中枢内线的所有买点列表
+        """
+        mmds = []
+        for _l in self.lines:
+            mmds += _l.line_mmds()
+        return mmds
 
     def __str__(self):
         return f'index: {self.index} zs_type: {self.zs_type} level: {self.level} FX: ({self.start.k.date}-{self.end.k.date}) type: {self.type} zg: {self.zg} zd: {self.zd} gg: {self.gg} dd: {self.dd} done: {self.done} real: {self.real}'
@@ -412,6 +421,7 @@ class TZXL:
         self.min: float = _min
         self.pre_line: LINE = pre_line
         self.line_bad: bool = line_bad
+        self.is_up_line: bool = False
         self.lines: List[LINE] = [line]
         self.done: bool = done
 
@@ -664,6 +674,38 @@ class ICL(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def create_dn_zs(self, zs_type: str, lines: List[LINE]) -> List[ZS]:
+        """
+        创建段内中枢
+        @param zs_type: 中枢类型：bi 笔中枢 xd 线段中枢
+        @param lines: 线的列表
+        """
+        pass
+
+    @abstractmethod
+    def beichi_pz(self, zs: ZS, now_line: LINE) -> (bool, LINE):
+        """
+        判断中枢与指定线是否构成盘整背驰
+        @param zs: 中枢
+        @param now_line: 需要对比的线
+        """
+
+    @abstractmethod
+    def beichi_qs(self, lines: List[LINE], zss: List[ZS], now_line: LINE) -> (bool, List[LINE]):
+        """
+        判断指定线与之前的中枢，是否形成了趋势背驰
+        @parma lines: 线的列表，用来查找之前的线
+        @param zss：中枢列表，用来获取最后两个中枢，判断配置关系
+        @param now_line: 最后一个线
+        """
+
+    @abstractmethod
+    def zss_is_qs(self, one_zs: ZS, two_zs: ZS) -> bool:
+        """
+        判断两个中枢是否形成趋势（根据设置的位置关系配置，来判断两个中枢是否有重叠）
+        """
+
 
 @abstractmethod
 def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> List[ICL]:
@@ -675,27 +717,3 @@ def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> Lis
     :return: 返回计算好的缠论数据对象，List 列表格式，按照传入的 klines.keys 顺序返回 如上调用：[0] 返回 30m 周期数据 [1] 返回 5m 数据
     """
     pass
-
-
-class IMultiLevelAnalyse(metaclass=ABCMeta):
-    """
-    多级别分析工具类
-    """
-
-    @abstractmethod
-    def low_level_qs(self, up_line: LINE, low_line_type='bi') -> LOW_LEVEL_QS:
-        """
-        根据高级别线，查询低级别的趋势
-        """
-
-    @abstractmethod
-    def up_bi_low_level_qs(self) -> LOW_LEVEL_QS:
-        """
-        高级别笔，最后一笔的低级别趋势信息(低级别查找的是笔)
-        """
-
-    @abstractmethod
-    def up_xd_low_level_qs(self) -> LOW_LEVEL_QS:
-        """
-        高级别线段，最后一线段的低级别趋势信息(低级别查找的是笔)
-        """

@@ -285,7 +285,9 @@
                     $('#zq_low').html('')
                     for (let i = 0; i < frequencys.length; i++) {
                         let f = frequencys[i]
-                        $('#next_btn').append('<button class="btn btn-info next_frequency" value="0" data-frequency="' + f + '">' + f + '</button>  ')
+                        if (i == 0) {
+                            $('#next_btn').append('<button class="btn btn-info next_frequency" value="0" data-frequency="' + f + '">' + f + '</button>  ')
+                        }
                         $('#zq_high').append('<button type="button" class="btn btn-xs btn-default" data-zq="' + f + '">' + f + '</button>')
                         $('#zq_low').append('<button type="button" class="btn btn-xs btn-default" data-zq="' + f + '">' + f + '</button>')
                     }

@@ -1,6 +1,6 @@
 from chanlun import cl
 from chanlun.backtesting.base import *
-
+from chanlun.cl_analyse import MultiLevelAnalyse
 
 class StrategyA3mmd(Strategy):
     """
@@ -94,7 +94,7 @@ class StrategyA3mmd(Strategy):
         if high_bi.mmd_exists(['3buy', '3sell']):
             # 买入条件：针对本级别中枢的本级别3买卖点
             # 自己增加一个低级别背驰并且高级别停顿的买入条件
-            mla = cl.MultiLevelAnalyse(high_data, market_data[1])
+            mla = MultiLevelAnalyse(high_data, market_data.get_cl_data(code, market_data.frequencys[1]))
             low_qs = mla.low_level_qs(high_bi, 'bi')
             for mmd in high_bi.line_mmds():
                 btd = self.bi_qiang_td(high_bi, high_data)
@@ -185,7 +185,7 @@ class StrategyA3mmd(Strategy):
         # 卖出条件：次级别盘整背驰卖出
         # 以上两个可以总结为 次级别 盘整与趋势背驰卖出，线上笔 done，标识高级别也出现了顶底分型
         # 避免被小级别骗出去，在加一个高级别的笔停顿条件
-        mla = cl.MultiLevelAnalyse(high_data, low_data)
+        mla = MultiLevelAnalyse(high_data, low_data)
         low_qs = mla.low_level_qs(high_bi, 'bi')
         if 'buy' in mmd and high_bi.type == 'up' and high_bi.td and (low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
             return Operation(opt='sell', mmd=mmd, msg='次级别背驰 %s' % ([low_qs.pz_bc, low_qs.qs_bc]))

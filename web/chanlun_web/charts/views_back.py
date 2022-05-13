@@ -34,7 +34,6 @@ def kline_show(request):
     start = request.POST.get('start')
     end = request.POST.get('end')
     frequencys: str = request.POST.get('frequencys')
-    frequency: str = request.POST.get('frequency')
 
     # 缠论配置设置
     cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_fx_cgd', 'bi_qj', 'xd_bzh', 'xd_qj', 'zslx_bzh',
@@ -42,20 +41,18 @@ def kline_show(request):
                      'zs_xd_type', 'zs_qj', 'zs_wzgx']
     cl_config = {_k: request.POST.get(_k) for _k in cl_config_key}
     if bk_hq is None:
-        bk_hq = BackTestKlines(market, code, start, end, frequencys.split(','), cl_config=cl_config)
-        bk_hq.start()
+        bk_hq = BackTestKlines(market, start, end, frequencys.split(','), cl_config=cl_config)
+        bk_hq.init(code, frequencys[0])
 
-    is_next = bk_hq.next(frequency)
+    is_next = bk_hq.next()
     if not is_next:
         return HttpResponse('')
 
-    cl_datas = bk_hq.cl_datas
-
     charts = '{'
-    for i in range(len(bk_hq.frequencys)):
-        cd = cl_datas[i]
-        c = kcharts.render_charts(f'{code}:{cd.frequency}', cd)
-        charts += '"' + cd.frequency + '" : ' + c + ','
+    for f in bk_hq.frequencys:
+        cd = bk_hq.get_cl_data(code, f)
+        c = kcharts.render_charts(f'{code}:{f}', cd)
+        charts += '"' + cd.get_frequency() + '" : ' + c + ','
     charts += '}'
 
     return HttpResponse(charts)

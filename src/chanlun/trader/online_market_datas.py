@@ -1,7 +1,7 @@
 """
 线上行情数据获取对象，用于实盘交易执行
 """
-from typing import List
+from typing import List, Dict
 
 import pandas as pd
 
@@ -16,12 +16,32 @@ class OnlineMarketDatas(MarketDatas):
     线上实盘交易数据获取类
     """
 
-    def __init__(self, market: str, frequencys: List[str], ex: Exchange, cl_config: dict):
+    def __init__(self, market: str, frequencys: List[str], ex: Exchange, cl_config: dict, use_cache=True):
+        """
+        初始化
+        use_cache 是否使用缓存，如果设置为 True，在每次循环都需要显式调用 clear_cache 清除缓存，避免后续无法获取最新行情数据
+        """
         super().__init__(market, frequencys, cl_config)
         self.ex = ex
 
+        self.use_cache = use_cache
+
+        # 缓存请求的 k 线数据，需要显示清除，key 为 code_frequency 格式
+        self.cache_klines: Dict[str, pd.DataFrame] = {}
+
+    def clear_cache(self):
+        """
+        需要在实盘每次循环完后清空缓存
+        """
+        self.cache_klines = {}
+
     def klines(self, code, frequency) -> pd.DataFrame:
-        return self.ex.klines(code, frequency)
+        key = f'{code}_{frequency}'
+        if self.use_cache and key in self.cache_klines.keys():
+            return self.cache_klines[key]
+        klines = self.ex.klines(code, frequency)
+        self.cache_klines[key] = klines
+        return klines
 
     def last_k_info(self, code) -> dict:
         klines = self.klines(code, self.frequencys[-1])

@@ -88,6 +88,8 @@ try:
                 except Exception as e:
                     logger.error(traceback.format_exc())
 
+            # 清空之前获取的k线缓存，避免后续无法获取最新数据
+            Data.clear_cache()
             # 保存交易数据到 Redis 中
             TR.save_to_redis(p_redis_key)
 

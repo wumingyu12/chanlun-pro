@@ -1,12 +1,13 @@
 import copy
-import datetime
 import os
 import pickle
 import time
 import traceback
-import numpy as np
-import pandas as pd
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
+from typing import Tuple
 
+import numpy as np
 import prettytable as pt
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Grid
@@ -15,6 +16,7 @@ from chanlun import cl, kcharts, fun
 from chanlun.backtesting.backtest_klines import BackTestKlines
 from chanlun.backtesting.backtest_trader import BackTestTrader
 from chanlun.backtesting.base import POSITION
+from chanlun.backtesting.optimize import OptimizationSetting
 from chanlun.cl_interface import *
 
 
@@ -130,7 +132,7 @@ class BackTest:
         self.datas = BackTestKlines(
             self.market, self.start_datetime, self.end_datetime, self.frequencys, self.cl_config
         )
-        self.log.info('Load OK')
+        # self.log.info('Load OK')
         return
 
     def info(self):
@@ -182,6 +184,65 @@ class BackTest:
         self.log.info(f'运行完成，执行时间：{_et - _st}')
         return True
 
+    def run_params(self, new_cl_setting: dict):
+        """
+        参数优化，执行不同的参数配置
+        """
+        for k, v in new_cl_setting.items():
+            if 'default' in self.cl_config.keys():
+                self.cl_config['default'][k] = v
+            else:
+                self.cl_config[k] = v
+        self.run()
+        # 保存到新的文件中，进行落地
+        new_save_file = f'./data/bk/_optimization_{time.time()}.pkl'
+        old_save_file = self.save_file
+        self.save_file = new_save_file
+        self.save()
+        self.save_file = old_save_file
+
+        # 如果是交易模式，评价标准是最终余额，信号模式，总盈利比率
+        if self.mode == 'trade':
+            balance = self.trader.balance
+        else:
+            pos_pd = self.positions()
+            balance = pos_pd['profit_rate'].sum() if len(pos_pd) > 0 else 0
+
+        return {'end_balance': balance, 'params': new_cl_setting, 'save_file': new_save_file}
+
+    def run_optimization(
+            self,
+            optimization_setting: OptimizationSetting,
+            max_workers: int = None,
+    ):
+        cl_settings: List[Dict] = optimization_setting.generate_cl_settings()
+
+        self.log.info("开始执行穷举算法优化")
+        self.log.info(f"参数优化空间：{len(cl_settings)}")
+
+        start = time.perf_counter()
+
+        with ProcessPoolExecutor(
+                max_workers,
+                mp_context=get_context("spawn")
+        ) as executor:
+            results = list(executor.map(self.run_params, cl_settings))
+            results.sort(reverse=True, key=lambda r: r['end_balance'])
+
+            end = time.perf_counter()
+            cost: int = int((end - start))
+            self.log.info(f"穷举算法优化完成，耗时{cost}秒")
+
+            for r in results:
+                BT = BackTest()
+                BT.load(r['save_file'])
+                print('* * ' * 10)
+                print(f'参数：{r["params"]}')
+                print(f'落地文件：{r["save_file"]}')
+                BT.result(True)
+
+            return results
+
     def show_charts(self, code, frequency, change_cl_config=None, show_futu='macd'):
         """
         显示指定代码指定周期的图表
@@ -212,11 +273,11 @@ class BackTest:
         render = kcharts.render_charts('%s - %s' % (code, frequency), cd, show_futu=show_futu, orders=orders)
         return render
 
-    def result(self):
+    def result(self, is_print=True):
         """
         输出回测结果
         """
-
+        res = {'mode': self.mode}
         if self.mode == 'trade':
             # 实际交易所需要看的指标
             # 基准收益率
@@ -279,16 +340,43 @@ class BackTest:
 
             # 总的手续费
             total_fee = self.trader.fee_total
-            base_year_rate = (base_close / base_open - 1) / total_days * annual_days * 100
+            base_annual_return = (base_close / base_open - 1) / total_days * annual_days * 100
 
-            print(f'首个交易日：{start_date} 最后交易日：{end_date} 总交易日：{total_days}')
-            print(f'起始资金：{self.init_balance} 结束资金：{end_balance:,.2f} 总手续费：{total_fee:,.2f}')
-            print('基准收益率：%.2f%%  基准年化收益：%.2f%%' % ((base_close - base_open) / base_open * 100, base_year_rate))
-            print(f'总收益率：{total_return:,.2f}% 年化收益率：{annual_return:,.2f}%')
-            print(f'最大回撤：{max_drawdown:,.2f} 百分比最大回撤：{max_ddpercent:,.2f}% 最长回撤天数：{max_drawdown_duration}')
-            print(
-                f'日均收益率：{daily_return:,.2f}% 收益标准差：{return_std:,.2f}% Sharpe Ratio: {sharpe_ratio:,.2f} 收益回撤比：{return_drawdown_ratio:,.2f} '
-            )
+            res['start_date'] = start_date
+            res['end_date'] = end_date
+            res['total_days'] = total_days
+            res['init_balance'] = self.init_balance
+            res['end_balance'] = end_balance
+            res['total_fee'] = total_fee
+            res['base_return'] = (base_close - base_open) / base_open * 100
+            res['base_annual_return'] = base_annual_return
+            res['total_return'] = total_return
+            res['annual_return'] = annual_return
+            res['max_drawdown'] = max_drawdown
+            res['max_ddpercent'] = max_ddpercent
+            res['max_drawdown_duration'] = max_drawdown_duration
+            res['daily_return'] = daily_return
+            res['return_std'] = return_std
+            res['sharpe_ratio'] = sharpe_ratio
+            res['return_drawdown_ratio'] = return_drawdown_ratio
+        else:
+            res['start_date'] = ''
+            res['end_date'] = ''
+            res['total_days'] = 0
+            res['init_balance'] = self.init_balance
+            res['end_balance'] = self.trader.balance
+            res['total_fee'] = 0
+            res['base_return'] = 0
+            res['base_annual_return'] = 0
+            res['total_return'] = 0
+            res['annual_return'] = 0
+            res['max_drawdown'] = 0
+            res['max_ddpercent'] = 0
+            res['max_drawdown_duration'] = 0
+            res['daily_return'] = 0
+            res['return_std'] = 0
+            res['sharpe_ratio'] = 0
+            res['return_drawdown_ratio'] = 0
 
         tb = pt.PrettyTable()
         tb.field_names = ["买卖点", "成功", "失败", '胜率', "盈利", '亏损', '净利润', '回吐比例', '平均盈利', '平均亏损', '盈亏比']
@@ -316,8 +404,30 @@ class BackTest:
                 [mmd, win_num, loss_num, f'{str(round(shenglv, 2))}%', round(win_balance, 2), round(loss_balance, 2),
                  round(net_balance, 2), round(back_rate, 2), round(win_mean_balance, 2), round(loss_mean_balance, 2),
                  round(ykb, 4)])
+        res['mmd_infos'] = tb
+        if is_print:
+            self.print_result(res)
+            return
 
-        return tb
+        return res
+
+    @staticmethod
+    def print_result(res: dict):
+        """
+        打印结果信息
+        """
+        if res['mode'] == 'trade':
+            print(f'首个交易日：{res["start_date"]} 最后交易日：{res["end_date"]} 总交易日：{res["total_days"]}')
+            print(f'起始资金：{res["init_balance"]} 结束资金：{res["end_balance"]:,.2f} 总手续费：{res["total_fee"]:,.2f}')
+            print(f'基准收益率：{res["base_return"]:,.2f}%  基准年化收益：{res["base_annual_return"]:,.2f}%%')
+            print(f'总收益率：{res["total_return"]:,.2f}% 年化收益率：{res["annual_return"]:,.2f}%')
+            print(
+                f'最大回撤：{res["max_drawdown"]:,.2f} 百分比最大回撤：{res["max_ddpercent"]:,.2f}% 最长回撤天数：{res["max_drawdown_duration"]}')
+            print(
+                f'日均收益率：{res["daily_return"]:,.2f}% 收益标准差：{res["return_std"]:,.2f}% Sharpe Ratio: {res["sharpe_ratio"]:,.2f} 收益回撤比：{res["return_drawdown_ratio"]:,.2f} '
+            )
+        print(res['mmd_infos'])
+        return
 
     def backtest_charts(self):
         """
