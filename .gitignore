@@ -160,7 +160,7 @@ my_**.py
 my_**.ipynb
 **/license.lic
 /src/cl_vnpy/.vntrader
-
+/src/cl_myquant/gmcache
 # 无用的排除
 /web/currency
 /web/stock

@@ -178,7 +178,7 @@ def task_futures():
         return True
 
     ex = get_exchange(Market.FUTURES)
-    if ex.is_trader_day() is False:
+    if ex.now_trading() is False:
         return True
 
     print(f'{fun.now_dt()} Run futures Task: Config {config}')

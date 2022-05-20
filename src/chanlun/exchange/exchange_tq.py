@@ -160,7 +160,7 @@ class ExchangeTq(Exchange):
         res_ticks = {}
         for _code in codes:
             tick = self.get_api().get_tick_serial(_code, data_length=1)
-            self.get_api().wait_update(time.time() + 1)
+            self.get_api().register_update_notify(time.time() + 1)
             res_ticks[_code] = Tick(
                 code=_code,
                 last=tick.iloc[-1]['last_price'],
@@ -203,7 +203,7 @@ class ExchangeTq(Exchange):
             raise Exception('账户链接失败，暂时不可用，请稍后尝试')
 
         account = api.get_account()
-        api.wait_update(time.time() + 2)
+        api.register_update_notify(time.time() + 2)
         return account
 
     def positions(self, code: str = None) -> Dict[str, Position]:
@@ -216,7 +216,7 @@ class ExchangeTq(Exchange):
             raise Exception('账户链接失败，暂时不可用，请稍后尝试')
 
         positions = api.get_position(symbol=code)
-        api.wait_update(time.time() + 2)
+        api.register_update_notify(time.time() + 2)
         if isinstance(positions, Position):
             return {code: positions}
         else:
@@ -285,7 +285,7 @@ class ExchangeTq(Exchange):
         while amount_left > 0:
 
             quote = api.get_quote(code)
-            api.wait_update(time.time() + 2)
+            api.register_update_notify(time.time() + 2)
             price = quote.ask_price1 if direction == 'BUY' else quote.bid_price1
             if price is None:
                 continue
@@ -295,7 +295,7 @@ class ExchangeTq(Exchange):
                                      volume=int(amount_left),
                                      limit_price=price,
                                      )
-            api.wait_update(time.time() + 5)
+            api.register_update_notify(time.time() + 5)
 
             if order.status == 'FINISHED':
                 if order.is_error:
@@ -325,7 +325,7 @@ class ExchangeTq(Exchange):
             raise Exception('账户链接失败，暂时不可用，请稍后尝试')
 
         orders = api.get_order()
-        api.wait_update(time.time() + 2)
+        api.register_update_notify(time.time() + 2)
 
         res_orders = []
         for _id in orders:
@@ -345,7 +345,7 @@ class ExchangeTq(Exchange):
             raise Exception('账户链接失败，暂时不可用，请稍后尝试')
 
         orders = api.get_order()
-        api.wait_update(time.time() + 2)
+        api.register_update_notify(time.time() + 2)
         for _id in orders:
             _o = orders[_id]
             if _o.status == 'ALIVE':
@@ -365,7 +365,7 @@ class ExchangeTq(Exchange):
 
         while True:
             api.cancel_order(order)
-            api.wait_update(time.time() + 2)
+            api.register_update_notify(time.time() + 2)
             if order.status == 'FINISHED':
                 break
 

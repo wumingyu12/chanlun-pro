@@ -335,6 +335,10 @@
                                                     {% if config.zs_bi_type == 'zs_type_dn' %}selected{% endif %}>
                                                 笔中枢：段内中枢
                                             </option>
+                                            <option value="zs_type_fx"
+                                                    {% if config.zs_bi_type == 'zs_type_fx' %}selected{% endif %}>
+                                                笔中枢：方向中枢
+                                            </option>
                                         </select>
                                     </div>
                                     <div class="btn-group btn-group-xs btn-corner" role="group">
@@ -346,6 +350,10 @@
                                             <option value="zs_type_dn"
                                                     {% if config.zs_xd_type == 'zs_type_dn' %}selected{% endif %}>
                                                 走势中枢：段内中枢
+                                            </option>
+                                            <option value="zs_type_fx"
+                                                    {% if config.zs_xd_type == 'zs_type_fx' %}selected{% endif %}>
+                                                走势中枢：方向中枢
                                             </option>
                                         </select>
                                     </div>

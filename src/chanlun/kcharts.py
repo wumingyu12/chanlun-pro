@@ -78,6 +78,9 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     color_zslx = '#A1C0FC'
     color_zslx_zs = '#00BFFF'
 
+    color_last_bi_zs = 'RGB(144,238,144,0.5)'
+    color_last_xd_zs = 'RGB(255,182,193,0.5)'
+
     brush_opts = opts.BrushOpts(tool_box=["rect", "polygon", "lineX", "lineY", "keep", "clear"],
                                 x_axis_index="all", brush_link="all",
                                 out_of_brush={"colorAlpha": 0.1}, brush_type="lineX")
@@ -89,8 +92,10 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     xds = cl_data.get_xds()
     zslxs = cl_data.get_zslxs()
     bi_zss = cl_data.get_bi_zss()
-    zs_zss = cl_data.get_xd_zss()
+    xd_zss = cl_data.get_xd_zss()
     zslx_zss = cl_data.get_zslx_zss()
+    last_bi_zs = cl_data.get_last_bi_zs()
+    last_xd_zs = cl_data.get_last_xd_zs()
 
     idx = cl_data.get_idx()
 
@@ -173,7 +178,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         line_xu_xds['index'].append(x.end.k.date)
         line_xu_xds['val'].append(x.end.val)
 
-    # 画 走势类型
+    # 画 走势段
     line_zslxs = {'index': [], 'val': []}
     line_xu_zslxs = {'index': [], 'val': []}
     zslxs_done = [_qs for _qs in zslxs if _qs.is_done()]
@@ -217,9 +222,9 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
 
         line_bi_zss.append(l_zs)
 
-    # 画 走势 中枢
+    # 画 线段 中枢
     line_zs_zss = []
-    for zs in zs_zss:
+    for zs in xd_zss:
         if config['show_xd_zs'] is False:
             break
         if zs.real is False:
@@ -243,7 +248,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
 
         line_zs_zss.append(l_zs)
 
-    # 画 走势类型 中枢
+    # 画 走势段 中枢
     line_zslx_zss = []
     for zs in zslx_zss:
         if config['show_zslx_zs'] is False:
@@ -268,6 +273,31 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         l_zs.append(zs.done)
 
         line_zslx_zss.append(l_zs)
+
+    # 画最后一笔中枢
+    line_last_bi_zs = []
+    if last_bi_zs is not None:
+        start_index = last_bi_zs.start.k.date
+        end_index = last_bi_zs.end.k.date
+        line_last_bi_zs = [
+            [start_index, start_index, end_index, end_index, start_index],
+            [last_bi_zs.zg, last_bi_zs.zd, last_bi_zs.zd, last_bi_zs.zg, last_bi_zs.zg],
+            color_last_bi_zs,
+            last_bi_zs.level + 1,
+            last_bi_zs.done
+        ]
+    # 画最后一线段中枢
+    line_last_xd_zs = []
+    if last_xd_zs is not None:
+        start_index = last_xd_zs.start.k.date
+        end_index = last_xd_zs.end.k.date
+        line_last_xd_zs = [
+            [start_index, start_index, end_index, end_index, start_index],
+            [last_xd_zs.zg, last_xd_zs.zd, last_xd_zs.zd, last_xd_zs.zg, last_xd_zs.zg],
+            color_last_xd_zs,
+            last_xd_zs.level + 1,
+            last_xd_zs.done
+        ]
 
     # 分型中的 背驰 和 买卖点信息，归类，一起显示
     fx_bcs_mmds = {}
@@ -313,7 +343,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
 
     # 画 背驰
     scatter_bc = {'i': [], 'val': []}  # 背驰
-    bc_maps = {'bi': '笔背驰', 'xd': '线段背驰', 'zslx': '走势类型背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
+    bc_maps = {'bi': '笔背驰', 'xd': '线段背驰', 'zslx': '走势段背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
     zs_type_maps = {'bi': '笔', 'xd': '线段', 'zslx': '走势'}
     for fx_index in fx_bcs_mmds.keys():
         fx_bc_info = fx_bcs_mmds[fx_index]
@@ -498,7 +528,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     # 画 完成大趋势
     line_qs = (
         Line().add_xaxis(line_zslxs['index']).add_yaxis(
-            "走势类型",
+            "走势段",
             line_zslxs['val'],
             label_opts=opts.LabelOpts(is_show=False),
             linestyle_opts=opts.LineStyleOpts(width=2, color=color_zslx)
@@ -508,7 +538,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     # 画 未完成大趋势
     line_xu_qs = (
         Line().add_xaxis(line_xu_zslxs['index']).add_yaxis(
-            "走势类型",
+            "走势段",
             line_xu_zslxs['val'],
             label_opts=opts.LabelOpts(is_show=False),
             linestyle_opts=opts.LineStyleOpts(width=2, type_='dashed', color=color_zslx)
@@ -580,11 +610,11 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             )
         )
         overlap_kline = overlap_kline.overlap(xd_zs)
-    # 画 走势类型 中枢
+    # 画 走势段 中枢
     for zs in line_zslx_zss:
         xd_zs = (
             Line().add_xaxis(zs[0]).add_yaxis(
-                "走势类型中枢",
+                "走势段中枢",
                 zs[1],
                 symbol=None,
                 label_opts=opts.LabelOpts(is_show=False),
@@ -594,6 +624,38 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             )
         )
         overlap_kline = overlap_kline.overlap(xd_zs)
+
+    # 画最后一笔、线段中枢
+    if len(line_last_bi_zs) > 0:
+        overlap_kline = overlap_kline.overlap(
+            (
+                Line().add_xaxis(line_last_bi_zs[0]).add_yaxis(
+                    "笔中枢",
+                    line_last_bi_zs[1],
+                    symbol=None,
+                    label_opts=opts.LabelOpts(is_show=False),
+                    linestyle_opts=opts.LineStyleOpts(width=line_last_bi_zs[3], color=line_last_bi_zs[2],
+                                                      type_='solid' if line_last_bi_zs[4] else 'dashed'),
+                    # areastyle_opts=opts.AreaStyleOpts(opacity=0.2, color=line_last_bi_zs[2]),
+                    tooltip_opts=opts.TooltipOpts(is_show=False),
+                )
+            )
+        )
+    if len(line_last_xd_zs) > 0:
+        overlap_kline = overlap_kline.overlap(
+            (
+                Line().add_xaxis(line_last_xd_zs[0]).add_yaxis(
+                    "线段中枢",
+                    line_last_xd_zs[1],
+                    symbol=None,
+                    label_opts=opts.LabelOpts(is_show=False),
+                    linestyle_opts=opts.LineStyleOpts(width=line_last_xd_zs[3], color=line_last_xd_zs[2],
+                                                      type_='solid' if line_last_xd_zs[4] else 'dashed'),
+                    # areastyle_opts=opts.AreaStyleOpts(opacity=0.2, color=line_last_xd_zs[2]),
+                    tooltip_opts=opts.TooltipOpts(is_show=False),
+                )
+            )
+        )
 
     # 画背驰
     scatter_bc_tu = (

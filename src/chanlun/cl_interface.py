@@ -7,6 +7,17 @@ from typing import List, Dict, Union
 
 import pandas as pd
 
+"""
+CL_*** 配置项，可以在调用缠论计算时，通过传递 config 变量进行变更，如 config['CL_BI_FX_STRICT'] = True
+"""
+
+"""
+笔分型是否严格处理
+False : 不严格处理，允许顶的最低点低于底分型最低点，允许底分型的最高点高于顶分型的最高点
+True：严格处理，不允许顶的最低点低于底分型最低点，不允许底分型的最高点高于顶分型的最高点
+"""
+CL_BI_FX_STRICT = False
+
 
 class Config(Enum):
     """
@@ -50,6 +61,7 @@ class Config(Enum):
     ### 中枢配置项
     ZS_TYPE_BZ = 'zs_type_bz'  # 计算的中枢类型，标准中枢，中枢维持的方法
     ZS_TYPE_DN = 'zs_type_dn'  # 计算中枢的类型，段内中枢，形成线段内的中枢
+    ZS_TYPE_FX = 'zs_type_fx'  # 计算中枢的类型，方向中枢，进入与离开线的方向相反，严格的分为上涨与下跌中枢
     ZS_QJ_DD = 'zs_qj_dd'  # 中枢区间，使用线段的顶底点作为区间
     ZS_QJ_CK = 'zs_qj_ck'  # 中枢区间，使用线段中缠论K线的最高最低作为区间
     ZS_QJ_K = 'zs_qj_k'  # 中枢区间，使用线段中原始K线的最高最低作为区间
@@ -322,9 +334,10 @@ class MMD:
     def __init__(self, name: str, zs: ZS):
         self.name: str = name  # 买卖点名称
         self.zs: ZS = zs  # 买卖点对应的中枢对象
+        self.msg: str = ''  # 买卖点信息
 
     def __str__(self):
-        return f'MMD: {self.name} ZS: {self.zs}'
+        return f'MMD: {self.name} ZS: {self.zs} MSG: {self.msg}'
 
 
 class BC:
@@ -670,7 +683,21 @@ class ICL(metaclass=ABCMeta):
     @abstractmethod
     def get_zslx_zss(self) -> List[ZS]:
         """
-        返回走势类型中枢
+        返回走势段中枢
+        """
+        pass
+
+    @abstractmethod
+    def get_last_bi_zs(self) -> Union[ZS, None]:
+        """
+        返回最后的笔中枢，需要 CL_CAL_LAST_ZS 设置为 True 才会有中枢
+        """
+        pass
+
+    @abstractmethod
+    def get_last_xd_zs(self) -> Union[ZS, None]:
+        """
+        返回最后的线段中枢，需要 CL_CAL_LAST_ZS 设置为 True 才会有中枢
         """
         pass
 

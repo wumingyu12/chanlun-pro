@@ -26,10 +26,10 @@ class StrategyASingleAllMmd(Strategy):
         opts = []
 
         # 增加基准（上证指数）的走势过滤
-        base_data = market_data.get_cl_data('SH.000001', market_data.frequencys[0])
-        if len(base_data.get_xds()) == 0:
-            return opts
-        base_xd = base_data.get_xds()[-1]
+        # base_data = market_data.get_cl_data('SH.000001', market_data.frequencys[0])
+        # if len(base_data.get_xds()) == 0:
+        #     return opts
+        # base_xd = base_data.get_xds()[-1]
 
         high_data = market_data.get_cl_data(code, market_data.frequencys[0])
         if len(high_data.get_xds()) == 0 or len(high_data.get_xd_zss()) == 0 \
@@ -86,8 +86,8 @@ class StrategyASingleAllMmd(Strategy):
             opts.append(Operation('buy', 'down_pz_bc_buy', loss_price, info, '线段背驰'))
 
         # 3类买卖点，在基准的向下线段进行中，不进行开仓
-        if base_xd.type == 'down' and base_xd.is_done() is False:
-            return opts
+        # if base_xd.type == 'down' and base_xd.is_done() is False:
+        #     return opts
 
         # 笔的 3 类买卖点，类似右侧纪要，要在走势中枢 zd / zg （在严格点要在 zg - zd 一半以上位置）  以上位置才可以做
         # 这里先暂时用宽松的 zd zg 判断
