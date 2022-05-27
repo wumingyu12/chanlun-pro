@@ -187,6 +187,14 @@
                                                     {% if config.fx_bh == 'fx_bh_no' %}selected{% endif %}>
                                                 分型包含：不允许所有包含
                                             </option>
+                                            <option value="fx_bh_no_qbh"
+                                                    {% if config.fx_bh == 'fx_bh_no_qbh' %}selected{% endif %}>
+                                                分型包含：不允许前分型包含后分型
+                                            </option>
+                                            <option value="fx_bh_no_hbq"
+                                                    {% if config.fx_bh == 'fx_bh_no_hbq' %}selected{% endif %}>
+                                                分型包含：不允许后分型包含前分型
+                                            </option>
                                         </select>
                                     </div>
                                 </div>

@@ -4,6 +4,7 @@ from django.shortcuts import render
 
 from chanlun.exchange import get_exchange, Market
 from chanlun import rd, cl, fun, kcharts, zixuan
+from chanlun.cl_utils import batch_cls
 from . import utils
 
 '''
@@ -62,7 +63,7 @@ def kline_chart(request):
 
     ex = get_exchange(Market.US)
     klines = ex.klines(code, frequency=frequency, end_date=None if kline_dt == '' else kline_dt)
-    cd = cl.CL(code, frequency, cl_config).process_klines(klines)
+    cd = batch_cls(code, {frequency:klines}, cl_config, )[0]
     stock_info = ex.stock_info(code)
     orders = rd.stock_order_query(code)
     chart = kcharts.render_charts(

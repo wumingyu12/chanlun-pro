@@ -16,7 +16,7 @@ class MultiLevelAnalyse:
         """
         low_lines = self._query_low_lines(up_line, low_line_type)
         low_zss = self._query_low_zss(low_lines, low_line_type)
-        qs_bc_info = self._query_qs_and_bc(low_zss, low_line_type)
+        qs_bc_info = self._query_qs_and_bc(low_lines, low_zss, low_line_type)
 
         low_level_qs = LOW_LEVEL_QS()
         low_level_qs.zss = low_zss
@@ -26,6 +26,7 @@ class MultiLevelAnalyse:
         low_level_qs.last_line = low_lines[-1] if len(low_lines) > 0 else None
         low_level_qs.qs = qs_bc_info['qs']
         low_level_qs.pz = qs_bc_info['pz']
+        low_level_qs.line_bc = qs_bc_info['line_bc']
         low_level_qs.qs_bc = qs_bc_info['qs_bc']
         low_level_qs.pz_bc = qs_bc_info['pz_bc']
         low_level_qs.bc_line = qs_bc_info['bc_line']
@@ -75,7 +76,7 @@ class MultiLevelAnalyse:
         low_zss = self.low_cd.create_dn_zs(zs_type, low_lines)
         return low_zss
 
-    def _query_qs_and_bc(self, low_zss: List[ZS], low_line_type='bi'):
+    def _query_qs_and_bc(self, low_lines: List[LINE], low_zss: List[ZS], low_line_type='bi'):
         """
         根据低级别线和中枢，计算并给出是否中枢已经背驰信息
         """
@@ -83,8 +84,23 @@ class MultiLevelAnalyse:
         pz = False
         qs_bc = False
         pz_bc = False
+        line_bc = False
+
+        # 判断是否线背
+        if len(low_lines) >= 3:
+            one_line = low_lines[-3]
+            two_line = low_lines[-1]
+            if two_line.type == 'up' \
+                    and two_line.high > one_line.high and two_line.low > one_line.low \
+                    and self.low_cd.compare_ld_beichi(one_line.ld, two_line.ld, two_line.type):
+                line_bc = True
+            elif two_line.type == 'down' \
+                    and two_line.low < one_line.low and two_line.high < one_line.high \
+                    and self.low_cd.compare_ld_beichi(one_line.ld, two_line.ld, two_line.type):
+                line_bc = True
+
         if len(low_zss) == 0:
-            return {'qs': qs, 'pz': pz, 'qs_bc': qs_bc, 'pz_bc': pz_bc, 'bc_line': None}
+            return {'qs': qs, 'pz': pz, 'line_bc': line_bc, 'qs_bc': qs_bc, 'pz_bc': pz_bc, 'bc_line': None}
 
         # 判断是否盘整背驰
         pz = True if low_zss[-1].type in ['up', 'down'] else False
@@ -100,4 +116,4 @@ class MultiLevelAnalyse:
         if pz_bc or qs_bc:
             bc_line = low_zss[-1].lines[-1]
 
-        return {'qs': qs, 'pz': pz, 'qs_bc': qs_bc, 'pz_bc': pz_bc, 'bc_line': bc_line}
+        return {'qs': qs, 'pz': pz, 'line_bc': line_bc, 'qs_bc': qs_bc, 'pz_bc': pz_bc, 'bc_line': bc_line}

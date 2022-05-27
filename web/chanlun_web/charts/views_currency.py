@@ -1,3 +1,4 @@
+from chanlun.cl_utils import batch_cls
 from .apps import login_required
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -55,7 +56,7 @@ def kline_show(request):
 
     ex = get_exchange(Market.CURRENCY)
     klines = ex.klines(code, frequency=frequency, end_date=None if kline_dt == '' else kline_dt)
-    cd = cl.CL(code, frequency, cl_config).process_klines(klines)
+    cd = batch_cls(code, {frequency:klines}, cl_config, )[0]
 
     orders = rd.currency_order_query(code)
 

@@ -1,3 +1,4 @@
+from chanlun.cl_utils import batch_cls
 from .apps import login_required
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -86,7 +87,7 @@ def kline_chart(request):
 
     ex = get_exchange(Market.A)
     klines = ex.klines(code, frequency=frequency)
-    cd = cl.CL(code, frequency, cl_config).process_klines(klines)
+    cd = batch_cls(code, {frequency:klines}, cl_config, )[0]
     stock_info = ex.stock_info(code)
     orders = rd.stock_order_query(code)
     chart = kcharts.render_charts(

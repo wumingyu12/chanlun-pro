@@ -86,6 +86,7 @@ def xuangu_sz(context: Context):
 
 def xuangu_zf(context: Context):
     """
+    TODO 涨跌幅排行的效果不好（不管是涨幅高的还是涨幅低的）
     根据进二十日涨幅前100选股
     """
     global market_data
@@ -128,7 +129,7 @@ def xuangu_zf(context: Context):
         except KeyError:
             pass
     # 涨跌幅排序
-    symbol_20day_rank.sort(key=lambda r: r['change'], reverse=True)
+    symbol_20day_rank.sort(key=lambda r: r['change'], reverse=False)
     # 选取排名前 100 选手
     symbols = [s['symbol'] for s in symbol_20day_rank[0:100]]
     print('排行前100股票代码：', symbols)

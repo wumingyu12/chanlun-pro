@@ -1,11 +1,11 @@
 import copy
+import hashlib
 import os
 import pickle
 import time
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
-from typing import Tuple
 
 import numpy as np
 import prettytable as pt
@@ -27,7 +27,7 @@ class BackTest:
 
     def __init__(self, config: dict = None):
         # 日志记录
-        self.log = fun.get_logger()
+        self.log = fun.get_logger('my_backtest.log')
 
         if config is None:
             return
@@ -187,26 +187,79 @@ class BackTest:
     def run_params(self, new_cl_setting: dict):
         """
         参数优化，执行不同的参数配置
-        """
-        for k, v in new_cl_setting.items():
-            if 'default' in self.cl_config.keys():
-                self.cl_config['default'][k] = v
-            else:
-                self.cl_config[k] = v
-        self.run()
-        # 保存到新的文件中，进行落地
-        new_save_file = f'./data/bk/_optimization_{time.time()}.pkl'
-        old_save_file = self.save_file
-        self.save_file = new_save_file
-        self.save()
-        self.save_file = old_save_file
 
-        # 如果是交易模式，评价标准是最终余额，信号模式，总盈利比率
-        if self.mode == 'trade':
-            balance = self.trader.balance
-        else:
-            pos_pd = self.positions()
-            balance = pos_pd['profit_rate'].sum() if len(pos_pd) > 0 else 0
+        注意事项：如果有修改过 Strategy 策略文件，并需要重新进行参数优化的，需要手动将 notebook/data/bk/_optimization_*.pkl 文件删除
+        注意事项：如果有修改过 Strategy 策略文件，并需要重新进行参数优化的，需要手动将 notebook/data/bk/_optimization_*.pkl 文件删除
+        注意事项：如果有修改过 Strategy 策略文件，并需要重新进行参数优化的，需要手动将 notebook/data/bk/_optimization_*.pkl 文件删除
+
+        """
+        copy_cl_config = copy.deepcopy(self.cl_config)
+        for k, v in new_cl_setting.items():
+            if 'default' in copy_cl_config.keys():
+                copy_cl_config['default'][k] = v
+            else:
+                copy_cl_config[k] = v
+        # 生成一个唯一的key，用于避免重复执行相同配置的回测
+        key = f"{self.base_code}_{self.market}_{self.codes}_{self.frequencys}_{self.start_datetime}_{self.end_datetime}_{type(self.strategy)}_{copy_cl_config}"
+        key = hashlib.md5(key.encode(encoding='UTF-8')).hexdigest()
+        # 保存到新的文件中，进行落地
+        new_save_file = f'./data/bk/_optimization_{key}.pkl'
+
+        BT = BackTest({
+            'save_file': new_save_file,
+            # 设置策略对象
+            'strategy': self.strategy,
+            # 回测模式：signal 信号模式，固定金额开仓； trade 交易模式，按照实际金额开仓
+            'mode': self.mode,
+            # 市场配置，currency 数字货币  a 沪深  hk  港股  futures  期货
+            'market': self.market,
+            # 基准代码，用于获取回测的时间列表
+            'base_code': self.base_code,
+            # 回测的标的代码
+            'codes': self.codes,
+            # 回测的周期，这里设置里，在策略中才能取到对应周期的数据
+            'frequencys': self.frequencys,
+            # 回测开始的时间
+            'start_datetime': self.start_datetime,
+            # 回测的结束时间
+            'end_datetime': self.end_datetime,
+            # 是否是股票，True 当日开仓不可平仓，False 当日开当日可平
+            'is_stock': self.is_stock,
+            # 是否是期货，True 可做空，False 不可做空
+            'is_futures': self.is_futures,
+            # mode 为 trade 生效，初始账户资金
+            'init_balance': self.init_balance,
+            # mode 为 trade 生效，交易手续费率
+            'fee_rate': self.fee_rate,
+            # mode 为 trade 生效，最大持仓数量（分仓）
+            'max_pos': self.max_pos,
+            # 缠论计算的配置，详见缠论配置说明
+            'cl_config': copy_cl_config,
+        })
+
+        BT.log.info(f'执行参数优化，参数配置：{new_cl_setting}，落地文件：{new_save_file}')
+        balance = 0
+        try:
+            # 判断文件不存在，执行回测，文件存在，加载回测结果
+            if os.path.isfile(new_save_file) is False:
+                BT.log.info(f'落地文件：{new_save_file} 不存在，开始执行回测')
+                BT.run()
+                BT.save()
+            else:
+                BT.log.info(f'落地文件：{new_save_file} 已经存在，直接进行加载')
+                BT.load(new_save_file)
+
+            # 如果是交易模式，评价标准是最终余额，信号模式，总盈利比率
+            if BT.mode == 'trade':
+                balance = BT.trader.balance
+            else:
+                pos_pd = BT.positions()
+                balance = pos_pd['profit_rate'].sum() if len(pos_pd) > 0 else 0
+
+            BT.log.info(f'回测{new_cl_setting} : {new_save_file} 结果：{balance}')
+        except Exception:
+            BT.log.errow(f'执行回测异常：{new_cl_setting} : {new_save_file}')
+            BT.log.error(traceback.format_exc())
 
         return {'end_balance': balance, 'params': new_cl_setting, 'save_file': new_save_file}
 
@@ -241,7 +294,7 @@ class BackTest:
                 print(f'落地文件：{r["save_file"]}')
                 BT.result(True)
 
-            return results
+        return results
 
     def show_charts(self, code, frequency, change_cl_config=None, show_futu='macd'):
         """

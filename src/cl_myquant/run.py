@@ -17,6 +17,7 @@ from gm.api import *
 run(strategy_id='013ab6e5-d64f-11ec-a46d-7a4f4371764a',
     filename='strategy/strategy_test.py',
     mode=MODE_BACKTEST,
+    # TODO 这里的 token 替换为自己的
     token='7eb4ebc68c8aaa69261b9e9d01541a6067cc7453',
     backtest_start_time='2017-01-01 08:00:00',
     backtest_end_time='2022-05-01 16:00:00',

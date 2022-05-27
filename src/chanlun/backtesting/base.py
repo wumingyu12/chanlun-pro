@@ -127,10 +127,10 @@ class Strategy(ABC):
 
         if 'buy' in mmd:
             if price < pos.loss_price:
-                return Operation('sell', mmd, msg='%s 止损' % mmd)
+                return Operation('sell', mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
         elif 'sell' in mmd:
             if price > pos.loss_price:
-                return Operation('sell', mmd, msg='%s 止损' % mmd)
+                return Operation('sell', mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
         return None
 
     @staticmethod
@@ -155,6 +155,31 @@ class Strategy(ABC):
             if bi.is_done():
                 return bi
         return None
+
+    @staticmethod
+    def last_done_xd(xds: List[XD]):
+        """
+        获取最后一个 完成线段
+        """
+        for xd in xds[::-1]:
+            if xd.is_done():
+                return xd
+        return None
+
+    @staticmethod
+    def bi_td(bi: BI, cd: ICL):
+        """
+        判断是否笔停顿
+        """
+        if bi.is_done() is False:
+            return False
+        last_price = cd.get_klines()[-1].c
+        if bi.type == 'up' and last_price < bi.end.klines[-1].l:
+            return True
+        elif bi.type == 'down' and last_price > bi.end.klines[-1].h:
+            return True
+
+        return False
 
     @staticmethod
     def bi_qiang_td(bi: BI, cd: ICL):
@@ -269,16 +294,22 @@ class Strategy(ABC):
         """
         检查指定时间后出现的买卖点信息
         """
-        mmd_infos = {}
+        mmd_infos = {
+            '1buy': 0,
+            '2buy': 0,
+            '3buy': 0,
+            'l3buy': 0,
+            '1sell': 0,
+            '2sell': 0,
+            '3sell': 0,
+            'l3sell': 0
+        }
         lines = cd.get_bis() if check_line == 'bi' else cd.get_xds()
         for _l in lines[::-1]:
             if _l.start.k.date >= start_datetime:
                 line_mmds = _l.line_mmds()
                 for _m in line_mmds:
-                    if _m not in mmd_infos.keys():
-                        mmd_infos[_m] = 1
-                    else:
-                        mmd_infos[_m] += 1
+                    mmd_infos[_m] += 1
             else:
                 break
         return mmd_infos

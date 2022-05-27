@@ -7,6 +7,7 @@ from django.shortcuts import render
 from chanlun import cl
 from chanlun import kcharts
 from chanlun.exchange import exchange_tdx
+from chanlun.cl_utils import batch_cls
 
 g_code = 'SH.000001'
 g_frequencys = ['y', 'm', 'w', 'd', '60m', '30m', '5m', '1m']
@@ -76,6 +77,6 @@ def kline_chart(request):
         chart_config[_k] = bool(int(request.POST.get(_k, '1')))
 
     klines = g_klines[frequency]
-    cd = cl.CL(g_code, frequency, cl_config).process_klines(klines)
+    cd = batch_cls(g_code, {frequency:klines}, cl_config, )[0]
     chart = kcharts.render_charts('上证指数:' + cd.frequency, cd, config=chart_config)
     return HttpResponse(chart)

@@ -15,14 +15,24 @@ def get_logger(filename=None, level=logging.INFO):
     """
     获取一个日志记录的对象
     """
-    logger = logging.getLogger('currency')
+    logger = logging.getLogger(f'{filename}')
     logger.setLevel(level)
     fmt = logging.Formatter('%(asctime)s - %(levelname)s : %(message)s')
     stream_handler = logging.StreamHandler()
-    logger.addHandler(stream_handler)
 
-    if filename:
-        file_handler = logging.FileHandler(filename=filename)
+    # 判断之前的handle 是否存在，不存在添加
+    stream_exists = False
+    file_exists = False
+    for _h in logger.handlers:
+        if isinstance(_h, logging.StreamHandler):
+            stream_exists = True
+        if isinstance(_h, logging.FileHandler):
+            file_exists = True
+    if stream_exists is False:
+        logger.addHandler(stream_handler)
+
+    if filename and file_exists is False:
+        file_handler = logging.FileHandler(filename=filename, encoding='utf-8')
         file_handler.setFormatter(fmt)
         logger.addHandler(file_handler)
 

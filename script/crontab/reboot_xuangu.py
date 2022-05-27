@@ -6,6 +6,7 @@ from chanlun.cl_interface import *
 from chanlun import zixuan
 
 from chanlun import cl
+from chanlun.cl_utils import batch_cls
 from chanlun.xuangu import xuangu
 from chanlun.exchange.exchange_tdx import ExchangeTDX
 
@@ -207,7 +208,7 @@ for code in codes:
         for f in frequencys:
             k = ex.klines(code, f)
             klines[f] = k
-        cds: List[ICL] = cl.batch_cls(code, klines, cl_config)
+        cds: List[ICL] = batch_cls(code, klines, cl_config)
         """
         *** 这里使用自己需要的选股条件方法进行判断 ***
         """

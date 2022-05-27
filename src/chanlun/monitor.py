@@ -1,10 +1,12 @@
 """
 监控相关代码
 """
+import imp
 from chanlun.exchange import get_exchange, Market
 from chanlun.fun import *
 from chanlun.cl_interface import *
 from chanlun import cl, rd
+from chanlun.cl_utils import batch_cls
 
 
 def monitoring_code(market: str, code: str, name: str, frequencys: list,
@@ -30,7 +32,7 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
     ex = get_exchange(Market(market))
 
     klines = {f: ex.klines(code, f) for f in frequencys}
-    cl_datas: List[ICL] = cl.batch_cls(code, klines, cl_config)
+    cl_datas: List[ICL] = batch_cls(code, klines, cl_config)
 
     jh_msgs = []
     bc_maps = {

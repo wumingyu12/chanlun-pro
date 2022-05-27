@@ -1,9 +1,11 @@
 # 回放行情所需
 
-from chanlun import cl, fun
+from chanlun import fun
 from chanlun.backtesting.base import MarketDatas
 from chanlun.cl_interface import *
 from chanlun.exchange.exchange_db import ExchangeDB
+
+from chanlun import cl
 
 
 class BackTestKlines(MarketDatas):

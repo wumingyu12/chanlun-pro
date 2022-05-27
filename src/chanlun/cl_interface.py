@@ -3,7 +3,7 @@ import datetime
 import math
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import List, Dict, Union
+from typing import List, Tuple, Union, Dict
 
 import pandas as pd
 
@@ -29,6 +29,8 @@ class Config(Enum):
     FX_BH_YES = 'fx_bh_yes'  # 不判断顶底关系，即接受所有关系
     FX_BH_DINGDI = 'fx_bh_dingdi'  # 顶不可以在底中，但底可以在顶中
     FX_BH_DIDING = 'fx_bh_diding'  # 底不可以在顶中，但顶可以在底中
+    FX_BH_NO_QBH = 'fx_bh_no_qbh'  # 不允许前一个分型包含后一个分型
+    FX_BH_NO_HBQ = 'fx_bh_no_hbq'  # 不允许后一个分型包含前一个分型
     FX_BH_NO = 'fx_bh_no'  # 顶不可以在底中，底不可以在顶中
 
     ### 笔配置项
@@ -185,7 +187,7 @@ class FX:
                 ld += 1
         return ld
 
-    def high(self, qj_type: [str, Config]) -> float:
+    def high(self, qj_type: str) -> float:
         """
         获取分型最高点
         """
@@ -207,7 +209,7 @@ class FX:
 
         return high
 
-    def low(self, qj_type: [str, Config]) -> float:
+    def low(self, qj_type: str) -> float:
         """
         获取分型的最低点（取原始K线的最低点）
         """
@@ -414,7 +416,7 @@ class BI(LINE):
         """
         return any(_bc.type in bc_type and _bc.bc for _bc in self.bcs)
 
-    def add_bc(self, _type: str, zs: [ZS, None], compare_line: [LINE, None], compare_lines: List[LINE],
+    def add_bc(self, _type: str, zs: Union[ZS, None], compare_line: Union[LINE, None], compare_lines: List[LINE],
                bc: bool) -> bool:
         """
         添加背驰点
@@ -428,8 +430,8 @@ class TZXL:
     特征序列
     """
 
-    def __init__(self, line: [LINE, None], pre_line: LINE, _max: float, _min: float, line_bad: bool, done: bool):
-        self.line: [LINE, None] = line
+    def __init__(self, line: Union[LINE, None], pre_line: LINE, _max: float, _min: float, line_bad: bool, done: bool):
+        self.line: Union[LINE, None] = line
         self.max: float = _max
         self.min: float = _min
         self.pre_line: LINE = pre_line
@@ -528,7 +530,7 @@ class XD(LINE):
         """
         return any(_bc.type in bc_type and _bc.bc for _bc in self.bcs)
 
-    def add_bc(self, _type: str, zs: [ZS, None], compare_line: LINE, compare_lines: List[LINE], bc: bool) -> bool:
+    def add_bc(self, _type: str, zs: Union[ZS, None], compare_line: LINE, compare_lines: List[LINE], bc: bool) -> bool:
         """
         添加背驰点
         """
@@ -550,14 +552,18 @@ class LOW_LEVEL_QS:
     def __init__(self):
         self.zss: List[ZS] = []  # 低级别线构成的中枢列表
         self.zs_num: int = 0
-        self.lines: List[LINE] = []  # 包含的低级别线
+        self.lines: List[Union[BI, XD]] = []  # 包含的低级别线
         self.line_num: int = 0
-        self.bc_line: [LINE, None] = None  # 背驰的线
-        self.last_line: [LINE, None] = None  # 最后一个线
+        self.bc_line: Union[LINE, None] = None  # 背驰的线
+        self.last_line: Union[LINE, None] = None  # 最后一个线
         self.qs: bool = False  # 是否形成趋势
         self.pz: bool = False  # 是否形成盘整
+        self.line_bc: bool = False  # 是否形成（笔、线段）背驰
         self.qs_bc: bool = False  # 是否趋势背驰
         self.pz_bc: bool = False  # 是否盘整背驰
+
+    def __str__(self):
+        return f'低级别信息：中枢 {self.zs_num} 线 {self.line_num} 趋势 {self.qs} 盘整 {self.pz} 线背驰 {self.line_bc} 盘整背驰 {self.pz_bc} 趋势背驰 {self.qs_bc}'
 
 
 class ICL(metaclass=ABCMeta):
@@ -566,12 +572,13 @@ class ICL(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def __init__(self, code: str, frequency: str, config: [dict, None] = None):
+    def __init__(self, code: str, frequency: str, config: Union[dict, None] = None, use_cache: bool = True):
         """
         缠论计算
         :param code: 代码
         :param frequency: 周期
         :param config: 计算缠论依赖的配置项
+        :param use_cache: 是否使用缓存，默认使用，减少重复计算
         """
         pass
 
@@ -711,7 +718,7 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def beichi_pz(self, zs: ZS, now_line: LINE) -> (bool, LINE):
+    def beichi_pz(self, zs: ZS, now_line: LINE) -> Tuple[bool, LINE]:
         """
         判断中枢与指定线是否构成盘整背驰
         @param zs: 中枢
@@ -719,7 +726,7 @@ class ICL(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def beichi_qs(self, lines: List[LINE], zss: List[ZS], now_line: LINE) -> (bool, List[LINE]):
+    def beichi_qs(self, lines: List[LINE], zss: List[ZS], now_line: LINE) -> Tuple[bool, List[LINE]]:
         """
         判断指定线与之前的中枢，是否形成了趋势背驰
         @parma lines: 线的列表，用来查找之前的线
@@ -728,19 +735,14 @@ class ICL(metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def compare_ld_beichi(self, one_ld: dict, two_ld: dict, hist_type: str):
+        """
+        比较两个力度，后者小于前者，返回 True
+        hist_type：[up, down] up 统计 macd 的红柱子之和，down 统计 macd 绿柱子之和
+        """
+
+    @abstractmethod
     def zss_is_qs(self, one_zs: ZS, two_zs: ZS) -> bool:
         """
         判断两个中枢是否形成趋势（根据设置的位置关系配置，来判断两个中枢是否有重叠）
         """
-
-
-@abstractmethod
-def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> List[ICL]:
-    """
-    批量计算并获取 缠论 数据
-    :param code: 计算的标的
-    :param klines: 计算的 k线 数据，每个周期对应一个 k线DataFrame，例如 ：{'30m': klines_30m, '5m': klines_5m}
-    :param config: 缠论配置
-    :return: 返回计算好的缠论数据对象，List 列表格式，按照传入的 klines.keys 顺序返回 如上调用：[0] 返回 30m 周期数据 [1] 返回 5m 数据
-    """
-    pass

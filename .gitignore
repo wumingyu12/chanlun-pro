@@ -147,6 +147,7 @@ cython_debug/
 data
 predict
 **/.pytest_cache
+.vscode
 
 # 配置文件排除
 /src/chanlun/config.py
