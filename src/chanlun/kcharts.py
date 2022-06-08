@@ -37,35 +37,31 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     if config is None:
         config = {}
 
-    if 'show_bi_zs' not in config.keys():
-        config['show_bi_zs'] = True
-    if 'show_xd_zs' not in config.keys():
-        config['show_xd_zs'] = True
-    if 'show_zsd_zs' not in config.keys():
-        config['show_zsd_zs'] = True
-    if 'show_bi_mmd' not in config.keys():
-        config['show_bi_mmd'] = True
-    if 'show_xd_mmd' not in config.keys():
-        config['show_xd_mmd'] = True
-    if 'show_zsd_mmd' not in config.keys():
-        config['show_zsd_mmd'] = True
-    if 'show_bi_bc' not in config.keys():
-        config['show_bi_bc'] = True
-    if 'show_xd_bc' not in config.keys():
-        config['show_xd_bc'] = True
-    if 'show_zsd_bc' not in config.keys():
-        config['show_zsd_bc'] = True
-
-    if 'show_ma' not in config.keys():
-        config['show_ma'] = True
-    if 'show_boll' not in config.keys():
-        config['show_boll'] = True
-
-    # 指标计算
-    if 'idx_ma_period' not in config.keys():
-        config['idx_ma_period'] = 5
-    if 'idx_boll_period' not in config.keys():
-        config['idx_boll_period'] = 20
+    default_config = {
+        # 展示配置项
+        'show_bi_zs': True,
+        'show_xd_zs': True,
+        'show_zsd_zs': True,
+        'show_bi_mmd': True,
+        'show_xd_mmd': True,
+        'show_zsd_mmd': True,
+        'show_bi_bc': True,
+        'show_xd_bc': True,
+        'show_zsd_bc': True,
+        'show_ma': True,
+        'show_boll': True,
+        # 指标配置项
+        'idx_ma_period': 5,
+        'idx_boll_period': 20,
+    }
+    for _k, _v in default_config.items():
+        if _k not in config.keys():
+            config[_k] = _v
+        else:
+            if 'show_' in _k:
+                config[_k] = bool(config[_k])
+            elif 'idx_' in _k:
+                config[_k] = int(config[_k])
 
     # 颜色配置
     color_k_up = '#FD1050'

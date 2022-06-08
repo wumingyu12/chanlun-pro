@@ -48,7 +48,7 @@ def kline_show(request):
     # 图表显示设置
     chart_bool_keys = ['show_bi_zs', 'show_xd_zs', 'show_bi_mmd', 'show_xd_mmd', 'show_bi_bc', 'show_xd_bc', 'show_ma',
                        'show_boll', 'idx_boll_period', 'idx_ma_period']
-    chart_config = {_k: bool(int(request.POST.get(_k, '1'))) for _k in chart_bool_keys}
+    chart_config = {_k: request.POST.get(_k, '1') for _k in chart_bool_keys}
 
     ex = get_exchange(Market.FUTURES)
     klines = ex.klines(code, frequency=frequency)
