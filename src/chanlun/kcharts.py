@@ -59,7 +59,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             config[_k] = _v
         else:
             if 'show_' in _k:
-                config[_k] = bool(config[_k])
+                config[_k] = bool(int(config[_k]))
             elif 'idx_' in _k:
                 config[_k] = int(config[_k])
 
