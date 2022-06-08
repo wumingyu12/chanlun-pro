@@ -4,8 +4,10 @@ from chanlun import fun
 from chanlun.backtesting.base import MarketDatas
 from chanlun.cl_interface import *
 from chanlun.exchange.exchange_db import ExchangeDB
-
+from tqdm.auto import tqdm
 from chanlun import cl
+
+from typing import Dict
 
 
 class BackTestKlines(MarketDatas):
@@ -47,6 +49,9 @@ class BackTestKlines(MarketDatas):
         # 用于循环的日期列表
         self.loop_datetime_list: list = []
 
+        # 进度条
+        self.bar: Union[tqdm, None] = None
+
         self.time_fmt = '%Y-%m-%d %H:%M:%S'
 
     def init(self, base_code: str, frequency: str):
@@ -61,6 +66,8 @@ class BackTestKlines(MarketDatas):
         )
         self.loop_datetime_list = list(klines['date'].to_list())
 
+        self.bar = tqdm(total=len(self.loop_datetime_list))
+
     def next(self):
         if len(self.loop_datetime_list) == 0:
             return False
@@ -68,6 +75,7 @@ class BackTestKlines(MarketDatas):
         # 清除之前的 cl_datas 、klines 缓存，重新计算
         self.cache_cl_datas = {}
         self.cache_klines = {}
+        self.bar.update(1)
         return True
 
     def last_k_info(self, code) -> dict:
@@ -143,6 +151,7 @@ class BackTestKlines(MarketDatas):
             klines[f] = kline
         # 转换周期k线，去除未来数据
         klines = self.convert_klines(klines)
+        # print(frequency, len(klines[frequency]))
         # 将结果保存到 缓存中，避免重复读取
         self.cache_klines[code] = klines
         return klines[frequency]
@@ -175,7 +184,8 @@ class BackTestKlines(MarketDatas):
         :return:
         """
         market_days_freq_maps = {
-            'a': {'w': 10000, 'd': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
+            'a': {'w': 10000, 'd': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25,
+                  '1m': 5},
             'hk': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
             'us': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
             'currency': {'d': 300, '120m': 200, '4h': 100, '60m': 50, '30m': 50, '15m': 25, '5m': 5, '1m': 1},

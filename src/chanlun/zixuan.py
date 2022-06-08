@@ -68,6 +68,15 @@ class ZiXuan(object):
             rd.zx_save(self.market_type, zx_name, stocks)
         return True
 
+    def clear_zx_stocks(self, zx_name):
+        """
+        清空自选组内的股票
+        """
+        stocks = self.zx_stocks(zx_name)
+        for s in stocks:
+            self.del_stock(zx_name, s['code'])
+        return True
+
     def query_code_zx_names(self, code):
         """
         查询代码所在的自选分组

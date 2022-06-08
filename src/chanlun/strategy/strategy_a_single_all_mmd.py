@@ -1,4 +1,5 @@
 from chanlun.backtesting.base import *
+from chanlun.cl_utils import cal_zs_macd_infos
 
 
 class StrategyASingleAllMmd(Strategy):
@@ -53,21 +54,23 @@ class StrategyASingleAllMmd(Strategy):
             'high_bi': high_bi
         }
 
+        zs_macd_infos = cal_zs_macd_infos(high_bi_zs, high_data)
+
         # 笔的 1、2 类买卖点，类似左侧交易，要在走势中枢的 zg / zd 下方才可以做
-        if high_bi.mmd_exists(['1buy']) and high_bi.low <= high_xd_zs.dd and high_bi_zs.dif_up_cross_num > 0 \
+        if high_bi.mmd_exists(['1buy']) and high_bi.low <= high_xd_zs.dd and zs_macd_infos.dif_up_cross_num > 0 \
                 and high_bi.td:
             opts.append(Operation('buy', '1buy', loss_price, info, '一买'))
-        if high_bi.mmd_exists(['1sell']) and high_bi.high >= high_xd_zs.gg and high_bi_zs.dif_down_cross_num > 0 \
+        if high_bi.mmd_exists(['1sell']) and high_bi.high >= high_xd_zs.gg and zs_macd_infos.dif_down_cross_num > 0 \
                 and high_bi.td:
             opts.append(Operation('buy', '1sell', loss_price, info, '一卖'))
 
         if high_bi.mmd_exists(['2buy']) and high_xd_zs.zd > high_bi.low > high_same_bi.low \
-                and high_bi_zs.dif_up_cross_num > 0 \
+                and zs_macd_infos.dif_up_cross_num > 0 \
                 and high_bi.td:
             opts.append(Operation('buy', '2buy', loss_price, info, '二买'))
 
         if high_bi.mmd_exists(['2sell']) and high_xd_zs.zg < high_bi.high < high_same_bi.high \
-                and high_bi_zs.dif_down_cross_num > 0 \
+                and zs_macd_infos.dif_down_cross_num > 0 \
                 and high_bi.td:
             opts.append(Operation('buy', '2sell', loss_price, info, '二卖'))
 
@@ -95,14 +98,14 @@ class StrategyASingleAllMmd(Strategy):
                 and high_xd_zs.lines[-1].index == high_xd.index \
                 and high_bi_zs.zf() > 30 \
                 and len(high_xd_bi_zss) <= 1 \
-                and high_bi.ld['macd']['dif']['max'] > 0 \
+                and high_bi.get_ld(high_data)['macd']['dif']['max'] > 0 \
                 and high_bi.td:
             opts.append(Operation('buy', '3buy', loss_price, info, '三买'))
         if high_bi.mmd_exists(['3sell']) and high_bi.high < (high_xd_zs.zg - (high_xd_zs.zg - high_xd_zs.zd) / 2) \
                 and high_xd_zs.lines[-1].index == high_xd.index \
                 and high_bi_zs.zf() > 30 \
                 and len(high_xd_bi_zss) <= 1 \
-                and high_bi.ld['macd']['dif']['min'] < 0 \
+                and high_bi.get_ld(high_data)['macd']['dif']['min'] < 0 \
                 and high_bi.td:
             opts.append(Operation('buy', '3sell', loss_price, info, '三卖'))
 
@@ -115,7 +118,7 @@ class StrategyASingleAllMmd(Strategy):
                 and high_bi.low > high_xd_zs.zd \
                 and high_bi.low > high_bi_zs_start_bi.low \
                 and high_bi.index == high_bi_zs.lines[-1].index \
-                and high_bi.ld['macd']['dif']['max'] > 0 \
+                and high_bi.get_ld(high_data)['macd']['dif']['max'] > 0 \
                 and high_bi.td:
             opts.append(Operation('buy', 'l3buy', loss_price, info, '类三买'))
         if high_bi.type == 'up' and high_bi_zs_start_bi.mmd_exists(['3sell']) and len(high_xd_bi_zss) == 2 \
@@ -124,7 +127,7 @@ class StrategyASingleAllMmd(Strategy):
                 and high_bi.high < high_xd_zs.zg \
                 and high_bi.high < high_bi_zs_start_bi.high \
                 and high_bi.index == high_bi_zs.lines[-1].index \
-                and high_bi.ld['macd']['dif']['max'] < 0 \
+                and high_bi.get_ld(high_data)['macd']['dif']['max'] < 0 \
                 and high_bi.td:
             opts.append(Operation('buy', 'l3sell', loss_price, info, '类三卖'))
 

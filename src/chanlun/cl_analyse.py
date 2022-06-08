@@ -18,10 +18,8 @@ class MultiLevelAnalyse:
         low_zss = self._query_low_zss(low_lines, low_line_type)
         qs_bc_info = self._query_qs_and_bc(low_lines, low_zss, low_line_type)
 
-        low_level_qs = LOW_LEVEL_QS()
-        low_level_qs.zss = low_zss
+        low_level_qs = LOW_LEVEL_QS(low_zss, low_lines)
         low_level_qs.zs_num = len(low_zss)
-        low_level_qs.lines = low_lines
         low_level_qs.line_num = len(low_lines)
         low_level_qs.last_line = low_lines[-1] if len(low_lines) > 0 else None
         low_level_qs.qs = qs_bc_info['qs']
@@ -92,11 +90,13 @@ class MultiLevelAnalyse:
             two_line = low_lines[-1]
             if two_line.type == 'up' \
                     and two_line.high > one_line.high and two_line.low > one_line.low \
-                    and self.low_cd.compare_ld_beichi(one_line.ld, two_line.ld, two_line.type):
+                    and self.low_cd.compare_ld_beichi(one_line.get_ld(self.low_cd), two_line.get_ld(self.low_cd),
+                                                      two_line.type):
                 line_bc = True
             elif two_line.type == 'down' \
                     and two_line.low < one_line.low and two_line.high < one_line.high \
-                    and self.low_cd.compare_ld_beichi(one_line.ld, two_line.ld, two_line.type):
+                    and self.low_cd.compare_ld_beichi(one_line.get_ld(self.low_cd), two_line.get_ld(self.low_cd),
+                                                      two_line.type):
                 line_bc = True
 
         if len(low_zss) == 0:

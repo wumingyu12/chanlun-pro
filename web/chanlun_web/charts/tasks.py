@@ -22,7 +22,7 @@ def query_task_config(task_name):
 
     # 缠论配置
     cl_config_keys = [
-        'fx_qj', 'fx_bh', 'bi_type', 'bi_qj', 'bi_bzh', 'bi_fx_cgd', 'xd_bzh', 'xd_qj', 'zslx_bzh', 'zslx_qj',
+        'fx_qj', 'fx_bh', 'bi_type', 'bi_qj', 'bi_bzh', 'bi_fx_cgd', 'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj',
         'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx', 'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal'
     ]
     cl_config = {_k: config[_k] for _k in cl_config_keys}

@@ -36,8 +36,8 @@ def kline_show(request):
     frequencys: str = request.POST.get('frequencys')
 
     # 缠论配置设置
-    cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_fx_cgd', 'bi_qj', 'xd_bzh', 'xd_qj', 'zslx_bzh',
-                     'zslx_qj', 'zs_bi_type',
+    cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_fx_cgd', 'bi_qj', 'xd_bzh', 'xd_qj', 'zsd_bzh',
+                     'zsd_qj', 'zs_bi_type',
                      'zs_xd_type', 'zs_qj', 'zs_wzgx']
     cl_config = {_k: request.POST.get(_k) for _k in cl_config_key}
     if bk_hq is None:

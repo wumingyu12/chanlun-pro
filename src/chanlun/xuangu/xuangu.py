@@ -1,4 +1,4 @@
-from chanlun.cl_interface import *
+from chanlun.cl_utils import *
 
 """
 根据缠论数据，选择自己所需要的形态方法集合
@@ -63,7 +63,6 @@ def xg_single_xd_bi_zs_zf_5(cl_datas: List[ICL]):
         return None
     xd = cd.get_xds()[-1]
     bi_zs = cd.get_bi_zss()[-1]
-    bi = cd.get_bis()[-1]
     kline = cd.get_klines()[-1]
 
     if xd.type == 'up' \
@@ -100,3 +99,31 @@ def xg_single_xd_bi_23_overlapped(cl_datas: List[ICL]):
         return '线段向上，当前笔突破中枢高点后 2，3 买重叠'
 
     return None
+
+
+def xg_single_day_bc_and_up_jincha(cl_datas: List[ICL]):
+    """
+    日线级别，倒数第二个向下笔背驰（笔背驰、盘整背驰、趋势背驰），后续macd在水上金叉
+    """
+    cd = cl_datas[0]
+    if len(cd.get_bis()) <= 5 or len(cd.get_xds()) == 0:
+        return None
+    xd = cd.get_xds()[-1]
+    bis = cd.get_bis()
+    down_bis = [bi for bi in bis if bi.type == 'down']
+    if len(down_bis) < 2:
+        return None
+    if xd.type != 'down':
+        return None
+    if down_bis[-1].low < down_bis[-2].low:
+        return None
+    macd_dif = cd.get_idx()['macd']['dif'][-1]
+    macd_dea = cd.get_idx()['macd']['dea'][-1]
+    if macd_dif < 0 or macd_dea < 0:
+        return None
+    if down_bis[-2].bc_exists(['bi', 'pz', 'qs']) is False:
+        return None
+    # last_bi_macd_infos = cal_line_macd_infos(bis[-1], cd)
+    # if bis[-1].type == 'up' and last_bi_macd_infos.gold_cross_num > 0:
+    return f'前down笔背驰 {down_bis[-2].line_bcs()} macd 在零轴之上，等待接下来向上笔金叉出现。'
+    # return None

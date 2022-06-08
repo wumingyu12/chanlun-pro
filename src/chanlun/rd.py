@@ -3,7 +3,7 @@ import random
 import time
 
 import redis
-
+from typing import Dict
 from chanlun import config
 from chanlun.cl_interface import *
 
@@ -408,9 +408,9 @@ def task_config_query(task_name, return_obj=True):
         'xd_bzh': Config.XD_BZH_YES.value,
         'xd_qj': Config.XD_QJ_DD.value,
         # 'xd_split': Config.XD_SPLIT_YES,
-        # 走势类型默认配置
-        'zslx_bzh': Config.ZSLX_BZH_YES.value,
-        'zslx_qj': Config.ZSLX_QJ_DD.value,
+        # 走势段默认配置
+        'zsd_bzh': Config.ZSD_BZH_YES.value,
+        'zsd_qj': Config.ZSD_QJ_DD.value,
         # 中枢默认配置
         'zs_bi_type': Config.ZS_TYPE_DN.value,  # 笔中枢类型
         'zs_xd_type': Config.ZS_TYPE_DN.value,  # 走势中枢类型

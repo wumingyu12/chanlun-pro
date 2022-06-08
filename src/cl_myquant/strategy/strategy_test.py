@@ -13,9 +13,9 @@ strategy: Strategy  # 策略对象
 cl_config = {
     'fx_bh': 'fx_bh_yes', 'fx_qj': 'fx_qj_k',
     'bi_type': 'bi_type_old', 'bi_bzh': 'bi_bzh_yes', 'bi_qj': 'bi_qj_dd', 'bi_fx_cgd': 'bi_fx_cgd_no',
-    'xd_bzh': 'xd_bzh_no', 'zslx_bzh': 'zslx_bzh_no',
+    'xd_bzh': 'xd_bzh_no', 'zsd_bzh': 'zsd_bzh_no',
     'zs_bi_type': 'zs_type_dn', 'zs_xd_type': 'zs_type_bz',
-    'zs_wzgx': 'zs_wzgx_zggdd', 'xd_qj': 'xd_qj_dd', 'zslx_qj': 'zslx_qj_dd', 'zs_qj': 'zs_qj_ck'
+    'zs_wzgx': 'zs_wzgx_zggdd', 'xd_qj': 'xd_qj_dd', 'zsd_qj': 'zsd_qj_dd', 'zs_qj': 'zs_qj_ck'
 }
 
 

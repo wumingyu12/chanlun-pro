@@ -2,9 +2,11 @@
 import datetime
 import math
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
-from typing import List, Tuple, Union, Dict
+from typing import *
 
+import numpy as np
 import pandas as pd
 
 """
@@ -23,7 +25,7 @@ class Config(Enum):
     """
     缠论配置项
     """
-    ### 分型配置项
+    # 分型配置项
     FX_QJ_CK = 'fx_qj_ck'  # 用顶底的缠论K线，获取分型区间
     FX_QJ_K = 'fx_qj_k'  # 用顶底的原始k线，获取分型区间
     FX_BH_YES = 'fx_bh_yes'  # 不判断顶底关系，即接受所有关系
@@ -33,7 +35,7 @@ class Config(Enum):
     FX_BH_NO_HBQ = 'fx_bh_no_hbq'  # 不允许后一个分型包含前一个分型
     FX_BH_NO = 'fx_bh_no'  # 顶不可以在底中，底不可以在顶中
 
-    ### 笔配置项
+    # 笔配置项
     BI_TYPE_OLD = 'bi_type_old'  # 笔类型，使用老笔规则
     BI_TYPE_NEW = 'bi_type_new'  # 笔类型，使用新笔规则
     BI_TYPE_JDB = 'bi_type_jdb'  # 笔类型，简单笔
@@ -46,21 +48,21 @@ class Config(Enum):
     BI_FX_CHD_YES = 'bi_fx_cgd_yes'  # 笔内分型，次高低可以成笔
     BI_FX_CHD_NO = 'bi_fx_cgd_no'  # 笔内分型，次高低不可以成笔
 
-    ### 线段配置项
+    # 线段配置项
     XD_BZH_NO = 'xd_bzh_no'  # 线段不进行标准化
-    XD_BZH_YES = 'xd_bzh_yes'  # 线段进行标准化，则线段的起止点落在线段的最高最低点
+    XD_BZH_YES = 'xd_bzh_yes'  # 线段进行标准化，则线段的起止点落在 线段的最高最低点
     XD_QJ_DD = 'xd_qj_dd'  # 线段区间，使用线段的顶底点作为区间
     XD_QJ_CK = 'xd_qj_ck'  # 线段区间，使用线段中缠论K线的最高最低作为区间
     XD_QJ_K = 'xd_qj_k'  # 线段区间，使用线段中原始K线的最高最低作为区间
 
-    ### 走势类型配置项
-    ZSLX_BZH_NO = 'zslx_bzh_no'  # 走势类型不进行标准化
-    ZSLX_BZH_YES = 'zslx_bzh_yes'  # 走势类型进行标准化
-    ZSLX_QJ_DD = 'zslx_qj_dd'  # 走势类型区间，使用线段的顶底点作为区间
-    ZSLX_QJ_CK = 'zslx_qj_ck'  # 走势类型区间，使用线段中缠论K线的最高最低作为区间
-    ZSLX_QJ_K = 'zslx_qj_k'  # 走势类型区间，使用线段中原始K线的最高最低作为区间
+    # 走势段配置项
+    ZSD_BZH_NO = 'zsd_bzh_no'  # 走势段不进行标准化
+    ZSD_BZH_YES = 'zsd_bzh_yes'  # 走势段进行标准化
+    ZSD_QJ_DD = 'zsd_qj_dd'  # 走势段区间，使用线段的顶底点作为区间
+    ZSD_QJ_CK = 'zsd_qj_ck'  # 走势段区间，使用线段中缠论K线的最高最低作为区间
+    ZSD_QJ_K = 'zsd_qj_k'  # 走势段区间，使用线段中原始K线的最高最低作为区间
 
-    ### 中枢配置项
+    # 中枢配置项
     ZS_TYPE_BZ = 'zs_type_bz'  # 计算的中枢类型，标准中枢，中枢维持的方法
     ZS_TYPE_DN = 'zs_type_dn'  # 计算中枢的类型，段内中枢，形成线段内的中枢
     ZS_TYPE_FX = 'zs_type_fx'  # 计算中枢的类型，方向中枢，进入与离开线的方向相反，严格的分为上涨与下跌中枢
@@ -113,7 +115,7 @@ class CLKline:
         self.up_qs = None  # 合并时之前的趋势
 
     def __str__(self):
-        return f"index: {self.index} k_index:{self.k_index} date: {self.date} h: {self.h} l: {self.l} _n:{self.n} _q:{self.q}"
+        return f"index: {self.index} k_index:{self.k_index} date: {self.date} h: {self.h} l: {self.l} _n:{self.n} _q:{self.q} "
 
 
 class FX:
@@ -147,7 +149,7 @@ class FX:
                 return ld
             if three_k.klines[0].c > three_k.klines[0].o:
                 return ld
-            # 第三个K线的高点，低于第二根的50%以下
+            # 第三个K线的高点，低于第二根的 50% 以下
             if three_k.h < (two_k.h - ((two_k.h - two_k.l) * 0.5)):
                 ld += 1
             # 第三个最低点是三根中最低的
@@ -169,7 +171,7 @@ class FX:
                 return ld
             if three_k.klines[0].c < three_k.klines[0].o:
                 return ld
-            # 第三个K线的低点，高于第二根的50%之上
+            # 第三个K线的低点，高于第二根的 50% 之上
             if three_k.l > (two_k.l + ((two_k.h - two_k.l) * 0.5)):
                 ld += 1
             # 第三个最高点是三根中最高的
@@ -243,8 +245,15 @@ class LINE:
         self.high: float = 0  # 根据缠论配置，得来的高低点（顶底高低 或 缠论K线高低 或 原始K线高低）
         self.low: float = 0  # 根据缠论配置，得来的高低点（顶底高低 或 缠论K线高低 或 原始K线高低）
         self.type: str = _type  # 线的方向类型 （up 上涨  down 下跌）
-        self.ld: dict = {}  # 记录线的力度信息
         self.index: int = index  # 线的索引，后续查找方便
+
+    def get_ld(self, cl) -> dict:
+        """
+        返回线的力度信息
+        """
+        return {
+            'macd': query_macd_ld(cl, self.start, self.end)
+        }
 
     def ding_high(self) -> float:
         return self.end.val if self.type == 'up' else self.start.val
@@ -272,8 +281,8 @@ class ZS:
 
     def __init__(self, zs_type: str, start: FX, end: FX = None, zg: float = None, zd: float = None,
                  gg: float = None, dd: float = None, _type: str = None, index: int = 0, line_num: int = 0,
-                 level: int = 0, max_ld: dict = None):
-        self.zs_type: str = zs_type  # 标记中枢类型 bi 笔中枢 xd 线段中枢 zslx 走势类型中枢
+                 level: int = 0):
+        self.zs_type: str = zs_type  # 标记中枢类型 bi 笔中枢 xd 线段中枢 zsd 走势段中枢
         self.start: FX = start
         self.lines: List[Union[BI, XD, LINE]] = []  # 中枢，记录中枢的线（笔 or 线段）对象
         self.end: FX = end
@@ -285,15 +294,6 @@ class ZS:
         self.index: int = index
         self.line_num: int = line_num  # 中枢包含的 笔或线段 个数
         self.level: int = level  # 中枢级别 0 本级别 1 上一级别 ...
-        self.max_ld: dict = max_ld  # 记录中枢中最大笔力度
-
-        # 记录中枢内，macd 的变化情况
-        self.dif_up_cross_num = 0  # dif 线上穿零轴的次数
-        self.dea_up_cross_num = 0  # dea 线上穿令咒的次数
-        self.dif_down_cross_num = 0  # dif 线下穿零轴的次数
-        self.dea_down_cross_num = 0  # dea 线下穿零轴的次数
-        self.gold_cross_num = 0  # 金叉次数
-        self.die_cross_num = 0  # 死叉次数
 
         self.done = False  # 记录中枢是否完成
         self.real = True  # 记录是否是有效中枢
@@ -325,7 +325,7 @@ class ZS:
         return mmds
 
     def __str__(self):
-        return f'index: {self.index} zs_type: {self.zs_type} level: {self.level} FX: ({self.start.k.date}-{self.end.k.date}) type: {self.type} zg: {self.zg} zd: {self.zd} gg: {self.gg} dd: {self.dd} done: {self.done} real: {self.real}'
+        return f'index: {self.index} zs_type: {self.zs_type} level: {self.level} FX: ({self.start.k.date}-{self.end.k.date}) type: {self.type} zg: {self.zg} zd: {self.zd} gg: {self.gg} dd: {self.dd} done: {self.done} real: {self.real} '
 
 
 class MMD:
@@ -348,7 +348,7 @@ class BC:
     """
 
     def __init__(self, _type: str, zs: ZS, compare_line: LINE, compare_lines: List[LINE], bc: bool):
-        self.type: str = _type  # 背驰类型 （bi 笔背驰 xd 线段背驰 zslx 走势类型背驰 pz 盘整背驰 qs 趋势背驰）
+        self.type: str = _type  # 背驰类型 （bi 笔背驰 xd 线段背驰 zsd 走势段背驰 pz 盘整背驰 qs 趋势背驰）
         self.zs: ZS = zs  # 背驰对应的中枢
         self.compare_line: LINE = compare_line  # 比较的笔 or 线段， 在 笔背驰、线段背驰、盘整背驰有用
         self.compare_lines: List[LINE] = compare_lines  # 在趋势背驰的时候使用
@@ -547,23 +547,35 @@ class XD(LINE):
         return f'XD index: {self.index} type: {self.type} start: {self.start_line.start.k.date} end: {self.end_line.end.k.date} high: {self.high} low: {self.low} done: {self.is_done()}'
 
 
+@dataclass
 class LOW_LEVEL_QS:
-
-    def __init__(self):
-        self.zss: List[ZS] = []  # 低级别线构成的中枢列表
-        self.zs_num: int = 0
-        self.lines: List[Union[BI, XD]] = []  # 包含的低级别线
-        self.line_num: int = 0
-        self.bc_line: Union[LINE, None] = None  # 背驰的线
-        self.last_line: Union[LINE, None] = None  # 最后一个线
-        self.qs: bool = False  # 是否形成趋势
-        self.pz: bool = False  # 是否形成盘整
-        self.line_bc: bool = False  # 是否形成（笔、线段）背驰
-        self.qs_bc: bool = False  # 是否趋势背驰
-        self.pz_bc: bool = False  # 是否盘整背驰
+    zss: List[ZS]  # 低级别线构成的中枢列表
+    lines: List[Union[LINE, BI, XD]]  # 包含的低级别线
+    zs_num: int = 0
+    line_num: int = 0
+    bc_line: Union[LINE, None] = None  # 背驰的线
+    last_line: Union[LINE, None] = None  # 最后一个线
+    qs: bool = False  # 是否形成趋势
+    pz: bool = False  # 是否形成盘整
+    line_bc: bool = False  # 是否形成（笔、线段）背驰
+    qs_bc: bool = False  # 是否趋势背驰
+    pz_bc: bool = False  # 是否盘整背驰
 
     def __str__(self):
         return f'低级别信息：中枢 {self.zs_num} 线 {self.line_num} 趋势 {self.qs} 盘整 {self.pz} 线背驰 {self.line_bc} 盘整背驰 {self.pz_bc} 趋势背驰 {self.qs_bc}'
+
+
+@dataclass
+class MACD_INFOS:
+    # 记录中枢内，macd 的变化情况
+    dif_up_cross_num = 0  # dif 线上穿零轴的次数
+    dea_up_cross_num = 0  # dea 线上穿令咒的次数
+    dif_down_cross_num = 0  # dif 线下穿零轴的次数
+    dea_down_cross_num = 0  # dea 线下穿零轴的次数
+    gold_cross_num = 0  # 金叉次数
+    die_cross_num = 0  # 死叉次数
+    last_dif = 0
+    last_dea = 0
 
 
 class ICL(metaclass=ABCMeta):
@@ -572,15 +584,13 @@ class ICL(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def __init__(self, code: str, frequency: str, config: Union[dict, None] = None, use_cache: bool = True):
+    def __init__(self, code: str, frequency: str, config: Union[dict, None] = None):
         """
         缠论计算
         :param code: 代码
         :param frequency: 周期
         :param config: 计算缠论依赖的配置项
-        :param use_cache: 是否使用缓存，默认使用，减少重复计算
         """
-        pass
 
     @abstractmethod
     def process_klines(self, klines: pd.DataFrame):
@@ -667,9 +677,9 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_zslxs(self) -> List[XD]:
+    def get_zsds(self) -> List[XD]:
         """
-        返回计算缠论走势类型列表
+        返回计算缠论走势段列表
         """
         pass
 
@@ -688,7 +698,7 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_zslx_zss(self) -> List[ZS]:
+    def get_zsd_zss(self) -> List[ZS]:
         """
         返回走势段中枢
         """
@@ -718,7 +728,7 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def beichi_pz(self, zs: ZS, now_line: LINE) -> Tuple[bool, LINE]:
+    def beichi_pz(self, zs: ZS, now_line: LINE) -> Tuple[bool, Union[LINE, None]]:
         """
         判断中枢与指定线是否构成盘整背驰
         @param zs: 中枢
@@ -746,3 +756,40 @@ class ICL(metaclass=ABCMeta):
         """
         判断两个中枢是否形成趋势（根据设置的位置关系配置，来判断两个中枢是否有重叠）
         """
+
+
+def query_macd_ld(cd: ICL, start_fx: FX, end_fx: FX):
+    """
+    计算分型区间 macd 力度
+    实际比较力度是根据 hist 的 up_sum 和 down_sum 进行比较
+    向上线段，比较 up_sum 红柱子总和
+    向下线段，比较 down_sum 绿柱子总和
+    """
+    if start_fx.index > end_fx.index:
+        raise Exception(
+            '%s - %s - %s 计算力度，开始分型不可以大于结束分型' % (cd.get_code(), cd.get_frequency(), cd.get_klines()[-1].date))
+
+    dea = np.array(cd.get_idx()['macd']['dea'][start_fx.k.k_index:end_fx.k.k_index + 1])
+    dif = np.array(cd.get_idx()['macd']['dif'][start_fx.k.k_index:end_fx.k.k_index + 1])
+    hist = np.array(cd.get_idx()['macd']['hist'][start_fx.k.k_index:end_fx.k.k_index + 1])
+    if len(hist) == 0:
+        hist = np.array([0])
+    if len(dea) == 0:
+        dea = np.array([0])
+    if len(dif) == 0:
+        dif = np.array([0])
+
+    hist_abs = abs(hist)
+    hist_up = np.array([_i for _i in hist if _i > 0])
+    hist_down = np.array([_i for _i in hist if _i < 0])
+    hist_sum = hist_abs.sum()
+    hist_up_sum = hist_up.sum()
+    hist_down_sum = abs(hist_down.sum())
+    end_dea = dea[-1]
+    end_dif = dif[-1]
+    end_hist = hist[-1]
+    return {
+        'dea': {'end': end_dea, 'max': np.max(dea), 'min': np.min(dea)},
+        'dif': {'end': end_dif, 'max': np.max(dif), 'min': np.min(dif)},
+        'hist': {'sum': hist_sum, 'up_sum': hist_up_sum, 'down_sum': hist_down_sum, 'end': end_hist},
+    }

@@ -75,23 +75,23 @@ def kline_chart(request):
     code = request.POST.get('code')
     frequency = request.POST.get('frequency')
     # 缠论配置设置
-    cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_qj', 'bi_bzh', 'bi_fx_cgd', 'xd_bzh', 'xd_qj', 'zslx_bzh',
-                     'zslx_qj', 'zs_bi_type',
+    cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_qj', 'bi_bzh', 'bi_fx_cgd', 'xd_bzh', 'xd_qj', 'zsd_bzh',
+                     'zsd_qj', 'zs_bi_type',
                      'zs_xd_type', 'zs_qj', 'zs_wzgx', 'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
-                     'idx_boll_period', 'idx_ma_period']
+                     ]
     cl_config = {_k: request.POST.get(_k) for _k in cl_config_key}
     # 图表显示设置
     chart_bool_keys = ['show_bi_zs', 'show_xd_zs', 'show_bi_mmd', 'show_xd_mmd', 'show_bi_bc', 'show_xd_bc', 'show_ma',
-                       'show_boll']
+                       'show_boll', 'idx_boll_period', 'idx_ma_period']
     chart_config = {_k: bool(int(request.POST.get(_k, '1'))) for _k in chart_bool_keys}
 
     ex = get_exchange(Market.A)
     klines = ex.klines(code, frequency=frequency)
-    cd = batch_cls(code, {frequency:klines}, cl_config, )[0]
+    cd = batch_cls(code, {frequency: klines}, cl_config, )[0]
     stock_info = ex.stock_info(code)
     orders = rd.stock_order_query(code)
     chart = kcharts.render_charts(
-        stock_info['code'] + ':' + stock_info['name'] + ':' + cd.frequency,
+        stock_info['code'] + ':' + stock_info['name'] + ':' + cd.get_frequency(),
         cd, orders=orders, config=chart_config)
     return HttpResponse(chart)
 

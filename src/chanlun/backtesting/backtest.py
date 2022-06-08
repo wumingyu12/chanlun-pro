@@ -243,7 +243,7 @@ class BackTest:
             # 判断文件不存在，执行回测，文件存在，加载回测结果
             if os.path.isfile(new_save_file) is False:
                 BT.log.info(f'落地文件：{new_save_file} 不存在，开始执行回测')
-                BT.run()
+                BT.run()  # TODO 节省参数优化执行的时间，这里可以手动设置每次循环的周期
                 BT.save()
             else:
                 BT.log.info(f'落地文件：{new_save_file} 已经存在，直接进行加载')
@@ -440,6 +440,11 @@ class BackTest:
             '1sell': '一类卖点', '2sell': '二类卖点', 'l2sell': '类二类卖点', '3sell': '三类卖点', 'l3sell': '类三类卖点',
             'up_pz_bc_sell': '上涨盘整背驰', 'up_qs_bc_sell': '上涨趋势背驰',
         }
+        total_trade_num = 0  # 总的交易数量
+        total_win_num = 0  # 总的盈利数量
+        total_loss_num = 0  # 总的亏损数量
+        total_win_balance = 0
+        total_loss_balance = 0
         for k in self.trader.results.keys():
             mmd = mmds[k]
             win_num = self.trader.results[k]['win_num']
@@ -453,10 +458,29 @@ class BackTest:
             loss_mean_balance = 0 if loss_num == 0 else loss_balance / loss_num
             ykb = 0 if loss_mean_balance == 0 or win_mean_balance == 0 else win_mean_balance / loss_mean_balance
 
+            total_trade_num += (win_num + loss_num)
+            total_win_num += win_num
+            total_loss_num += loss_num
+            total_win_balance += win_balance
+            total_loss_balance += loss_balance
+
             tb.add_row(
                 [mmd, win_num, loss_num, f'{str(round(shenglv, 2))}%', round(win_balance, 2), round(loss_balance, 2),
                  round(net_balance, 2), round(back_rate, 2), round(win_mean_balance, 2), round(loss_mean_balance, 2),
                  round(ykb, 4)])
+
+        total_shenglv = 0 if total_win_num == 0 == total_loss_num else total_win_num / (
+                total_win_num + total_loss_num) * 100
+        total_net_balance = total_win_balance - total_loss_balance
+        total_back_rate = 0 if total_win_balance == 0 else total_loss_balance / total_win_balance * 100
+        total_win_mean_balance = 0 if total_win_num == 0 else total_win_balance / total_win_num
+        total_loss_mean_balance = 0 if total_loss_num == 0 else total_loss_balance / total_loss_num
+        total_ykb = 0 if total_loss_mean_balance == 0 else total_win_mean_balance / total_loss_mean_balance
+        tb.add_row([
+            '汇总', total_win_num, total_loss_num, f'{round(total_shenglv, 2)}%', round(total_win_balance, 2),
+            round(total_loss_balance, 2), round(total_net_balance, 2), round(total_back_rate, 2),
+            round(total_win_mean_balance, 2), round(total_loss_mean_balance, 2), round(total_ykb, 4)
+        ])
         res['mmd_infos'] = tb
         if is_print:
             self.print_result(res)

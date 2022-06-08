@@ -15,7 +15,7 @@ PROXY_PORT = '7890'
 # 数据库配置
 DB_HOST = '127.0.0.1'
 DB_PORT = 3306
-DB_USER = 'root'
+DB_USER = 'chanlun'
 DB_PWD = '123456'
 DB_DATABASE = 'chanlun_klines'
 
@@ -31,7 +31,7 @@ EXCHANGE_CURRENCY = 'binance'
 EXCHANGE_US = 'polygon'
 
 # 富途API配置（不使用请将 FUTU_HOST 留空）
-FUTU_HOST = ''
+FUTU_HOST = '127.0.0.1'
 FUTU_PORT = 11111
 FUTU_UNLOCK_PWD = ''
 

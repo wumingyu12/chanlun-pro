@@ -62,21 +62,21 @@ def kline_chart(request):
 
     # 缠论配置设置
     cl_config = {}
-    cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_qj', 'bi_bzh', 'bi_fx_cgd', 'xd_bzh', 'xd_qj', 'zslx_bzh',
-                     'zslx_qj', 'zs_bi_type',
+    cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_qj', 'bi_bzh', 'bi_fx_cgd', 'xd_bzh', 'xd_qj', 'zsd_bzh',
+                     'zsd_qj', 'zs_bi_type',
                      'zs_xd_type', 'zs_qj', 'zs_wzgx', 'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
-                     'idx_boll_period', 'idx_ma_period']
+                     ]
     for _k in cl_config_key:
         cl_config[_k] = request.POST.get(_k)
 
     # 图表显示设置
     chart_bool_keys = ['show_bi_zs', 'show_xd_zs', 'show_bi_mmd', 'show_xd_mmd', 'show_bi_bc', 'show_xd_bc', 'show_ma',
-                       'show_boll']
+                       'show_boll', 'idx_boll_period', 'idx_ma_period']
     chart_config = {}
     for _k in chart_bool_keys:
         chart_config[_k] = bool(int(request.POST.get(_k, '1')))
 
     klines = g_klines[frequency]
-    cd = batch_cls(g_code, {frequency:klines}, cl_config, )[0]
-    chart = kcharts.render_charts('上证指数:' + cd.frequency, cd, config=chart_config)
+    cd = batch_cls(g_code, {frequency: klines}, cl_config, )[0]
+    chart = kcharts.render_charts('上证指数:' + cd.get_frequency(), cd, config=chart_config)
     return HttpResponse(chart)

@@ -2,13 +2,11 @@
 import json
 import time
 
-from chanlun.cl_interface import *
 from chanlun import zixuan
-
-from chanlun import cl
+from chanlun.cl_interface import *
 from chanlun.cl_utils import batch_cls
-from chanlun.xuangu import xuangu
 from chanlun.exchange.exchange_tdx import ExchangeTDX
+from chanlun.xuangu import xuangu
 
 """
 沪深A股 选股程序
@@ -181,9 +179,9 @@ cl_config = {
     # 线段默认配置
     'xd_bzh': Config.XD_BZH_NO.value,
     'xd_qj': Config.XD_QJ_DD.value,
-    # 走势类型默认配置
-    'zslx_bzh': Config.ZSLX_BZH_YES.value,
-    'zslx_qj': Config.ZSLX_QJ_DD.value,
+    # 走势段默认配置
+    'zsd_bzh': Config.ZSD_BZH_YES.value,
+    'zsd_qj': Config.ZSD_QJ_DD.value,
     # 中枢默认配置
     'zs_bi_type': Config.ZS_TYPE_DN.value,  # 笔中枢类型
     'zs_xd_type': Config.ZS_TYPE_DN.value,  # 走势中枢类型
@@ -199,6 +197,9 @@ print('运行股票数量：', len(codes))
 """
 zx = zixuan.ZiXuan('stock')
 zx_group = '选股'
+
+# 清空选股自选
+zx.clear_zx_stocks(zx_group)
 
 choice_stocks = []  # 保存符合要求的股票列表
 _stime = time.time()

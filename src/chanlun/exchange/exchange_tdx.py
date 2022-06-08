@@ -1,3 +1,4 @@
+import pandas as pd
 from pytdx.hq import TdxHq_API
 
 from chanlun import fun, rd
@@ -20,6 +21,9 @@ class ExchangeTDX(Exchange):
         self.connect_ip = {'ip': '123.125.108.24', 'port': 7709}
 
         self.futu_ex = ExchangeFutu()
+
+        # 缓存已经请求的数据
+        self.cache_klines: Dict[str, pd.DataFrame] = {}
 
     def all_stocks(self):
         """
@@ -99,27 +103,41 @@ class ExchangeTDX(Exchange):
             api = TdxHq_API(raise_exception=True, auto_retry=True)
             api.connect(self.connect_ip['ip'], self.connect_ip['port'])
             if 'index' in _type:
+                get_bars = api.get_index_bars
+            else:
+                get_bars = api.get_security_bars
+
+            key = f'{code}_{frequency}'
+            if key not in self.cache_klines.keys():
                 # 获取 3*800 = 2400 条数据
                 klines = pd.concat([
-                    api.to_df(api.get_index_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
+                    api.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
                     for i in [1, 2, 3]
                 ], axis=0, sort=False)
+                klines.loc[:, 'date'] = pd.to_datetime(klines['datetime'])
+                klines.sort_values('date', inplace=True)
             else:
-                klines = pd.concat([
-                    api.to_df(api.get_security_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
-                    for i in [1, 2, 3]
-                ], axis=0, sort=False)
+                klines = self.cache_klines[key]
+                for i in [1, 2, 3]:
+                    _ks = api.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
+                    _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime'])
+                    _ks.sort_values('date', inplace=True)
+                    new_start_dt = _ks.iloc[0]['date']
+                    old_end_dt = klines.iloc[-1]['date']
+                    klines = klines.append(_ks)
+                    # 如果请求的第一个时间大于缓存的最后一个时间，退出
+                    if old_end_dt >= new_start_dt:
+                        break
 
-            klines['code'] = code
-            klines['date'] = pd.to_datetime(klines['datetime'])
-            klines['volume'] = klines['vol']
             # 删除重复数据
-            klines = klines.drop_duplicates(['datetime'], keep='last')
+            self.cache_klines[key] = klines.drop_duplicates(['date'], keep='last')
+
+            klines = self.cache_klines[key].copy()
+            klines.loc[:, 'code'] = code
+            klines.loc[:, 'volume'] = klines['vol']
 
             if frequency in {'y', 'q', 'm', 'w', 'd'}:
                 klines['date'] = klines['date'].apply(self.__convert_date)
-
-            klines = klines.sort_values('date')
 
             klines = klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
@@ -193,9 +211,9 @@ class ExchangeTDX(Exchange):
         elif str(code)[:2] in ['15', '16']:
             return 'etf_cn'
         elif str(code)[:3] in ['101', '104', '105', '106', '107', '108', '109',
-                                '111', '112', '114', '115', '116', '117', '118', '119',
-                                '123', '127', '128',
-                                '131', '139', ]:
+                               '111', '112', '114', '115', '116', '117', '118', '119',
+                               '123', '127', '128',
+                               '131', '139', ]:
             # 10xxxx 国债现货
             # 11xxxx 债券
             # 12xxxx 可转换债券
@@ -222,8 +240,8 @@ class ExchangeTDX(Exchange):
         # 129×××100×××可转换债券；
         # 113A股对应可转债 132
         elif str(code)[:3] in ['102', '110', '113', '120', '122', '124',
-                                '130', '132', '133', '134', '135', '136',
-                                '140', '141', '143', '144', '147', '148']:
+                               '130', '132', '133', '134', '135', '136',
+                               '140', '141', '143', '144', '147', '148']:
             return 'bond_cn'
         else:
             return 'undefined'

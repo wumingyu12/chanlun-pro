@@ -1,8 +1,5 @@
-import datetime
 from abc import ABC
-from dataclasses import dataclass
-
-import numpy as np
+from typing import Dict
 import talib
 
 from chanlun.cl_interface import *
@@ -31,19 +28,20 @@ class POSITION:
     info: Dict = None
 
 
-@dataclass
 class Operation:
     """
     策略返回的操作指示对象
     """
-    opt: str  # 操作指示  buy  买入  sell  卖出
-    # 触发指示的
-    # 买卖点 例如：1buy  2buy l2buy 3buy l3buy  1sell 2sell l2sell 3sell l3sell down_pz_bc_buy
-    # 背驰点 例如：down_pz_bc_buy down_qs_bc_buy up_pz_bc_sell up_qs_bc_sell
-    mmd: str
-    loss_price: float = None  # 止损价格
-    info: Dict[str, object] = None  # 自定义保存的一些信息
-    msg: str = ''
+
+    def __init__(self, opt: str, mmd: str, loss_price: float = 0, info=None, msg: str = ''):
+        self.opt: str = opt  # 操作指示  buy  买入  sell  卖出
+        # 触发指示的
+        # 买卖点 例如：1buy  2buy l2buy 3buy l3buy  1sell 2sell l2sell 3sell l3sell down_pz_bc_buy
+        # 背驰点 例如：down_pz_bc_buy down_qs_bc_buy up_pz_bc_sell up_qs_bc_sell
+        self.mmd: str = mmd
+        self.loss_price: float = loss_price  # 止损价格
+        self.info: Dict[str, object] = info  # 自定义保存的一些信息
+        self.msg: str = msg
 
     def __str__(self):
         return f'mmd {self.mmd} opt {self.opt} loss_price {self.loss_price} msg: {self.msg}'
@@ -117,20 +115,40 @@ class Strategy(ABC):
         """
 
     @staticmethod
+    def idx_ma(cd: ICL, period=5):
+        """
+        返回 boll 指标
+        """
+        prices = np.array([k.c for k in cd.get_klines()[-(period + 10):]])
+        ma = talib.MA(prices, timeperiod=period)
+        return ma
+
+    @staticmethod
+    def idx_boll(cd: ICL, period=20):
+        """
+        返回 boll 指标
+        """
+        prices = np.array([k.c for k in cd.get_klines()[-(period + 10):]])
+        boll_up, boll_mid, boll_low = talib.BBANDS(prices, timeperiod=period)
+        return {
+            'up': boll_up, 'mid': boll_mid, 'low': boll_low
+        }
+
+    @staticmethod
     def check_loss(mmd: str, pos: POSITION, price: float):
         """
         检查是否触发止损，止损返回操作对象，不出发返回 None
         """
         # 止盈止损检查
-        if pos.loss_price is None:
+        if pos.loss_price is None or pos.loss_price == 0:
             return None
 
         if 'buy' in mmd:
             if price < pos.loss_price:
-                return Operation('sell', mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
+                return Operation(opt='sell', mmd=mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
         elif 'sell' in mmd:
             if price > pos.loss_price:
-                return Operation('sell', mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
+                return Operation(opt='sell', mmd=mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
         return None
 
     @staticmethod
@@ -143,7 +161,7 @@ class Strategy(ABC):
                 if 'sell' in mmd else \
                 (price - pos.price) / pos.price * 100
             if profit_rate > 0 and pos.max_profit_rate - profit_rate >= max_back_rate:
-                return Operation('sell', mmd, msg='%s 回调止损' % mmd)
+                return Operation(opt='sell', mmd=mmd, msg='%s 回调止损' % mmd)
         return None
 
     @staticmethod
@@ -313,3 +331,45 @@ class Strategy(ABC):
             else:
                 break
         return mmd_infos
+
+    @staticmethod
+    def check_low_info_by_datetime(low_data: ICL,
+                                   start_datetime: datetime.datetime,
+                                   end_datetime: datetime.datetime):
+        """
+        检查低级别缠论数据中，时间范围内出现的信号信息
+        """
+        infos = {
+            'qiang_ding_fx': 0, 'qiang_di_fx': 0,
+            'up_bi_bc': 0, 'up_xd_bc': 0, 'up_pz_bc': 0, 'up_qs_bc': 0,
+            'down_bi_bc': 0, 'down_xd_bc': 0, 'down_pz_bc': 0, 'down_qs_bc': 0,
+            '1buy': 0, '2buy': 0, '3buy': 0, 'l3buy': 0,
+            '1sell': 0, '2sell': 0, '3sell': 0, 'l3sell': 0
+        }
+        for bi in low_data.get_bis()[::-1]:
+            if bi.end.k.date < start_datetime:
+                break
+            if start_datetime <= bi.end.k.date <= end_datetime:
+                # 买卖点统计
+                for mmd in bi.line_mmds():
+                    infos[mmd] += 1
+                # 背驰统计
+                for bc in bi.line_bcs():
+                    infos[f'{bi.type}_{bc}_bc'] += 1
+        for xd in low_data.get_xds()[::-1]:
+            if xd.end_line.end.k.date < start_datetime:
+                break
+            if start_datetime <= xd.end_line.end.k.date <= end_datetime:
+                # 买卖点统计
+                for mmd in xd.line_mmds():
+                    infos[mmd] += 1
+                # 背驰统计
+                for bc in xd.line_bcs():
+                    infos[f'{xd.type}_{bc}_bc'] += 1
+
+        # 笔区间内的强分型统计
+        fxs = [fx for fx in low_data.get_fxs() if start_datetime <= fx.k.date <= end_datetime]
+        for fx in fxs:
+            if fx.ld() >= 5:
+                infos[f'qiang_{fx.type}_fx'] += 1
+        return infos

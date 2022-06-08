@@ -33,3 +33,77 @@ def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> Lis
             _global_caches[key] = cl.CL(code, f, config)
             cls.append(_global_caches[key].process_klines(k))
     return cls
+
+
+def cal_line_macd_infos(line: LINE, cd: ICL) -> MACD_INFOS:
+    """
+    计算线中macd信息
+    """
+    infos = MACD_INFOS()
+
+    idx = cd.get_idx()
+    dea = np.array(idx['macd']['dea'][line.start.k.k_index:line.end.k.k_index + 1])
+    dif = np.array(idx['macd']['dif'][line.start.k.k_index:line.end.k.k_index + 1])
+    if len(dea) < 2 or len(dif) < 2:
+        return infos
+    zero = np.zeros(len(dea))
+
+    infos.dif_up_cross_num = len(up_cross(dif, zero))
+    infos.dif_down_cross_num = len(down_cross(dif, zero))
+    infos.dea_up_cross_num = len(up_cross(dea, zero))
+    infos.dea_down_cross_num = len(down_cross(dea, zero))
+    infos.gold_cross_num = len(up_cross(dif, dea))
+    infos.die_cross_num = len(down_cross(dif, dea))
+    infos.last_dif = dif[-1]
+    infos.last_dea = dea[-1]
+    return infos
+
+
+def cal_zs_macd_infos(zs: ZS, cd: ICL) -> MACD_INFOS:
+    """
+    计算中枢的macd信息
+    """
+    infos = MACD_INFOS()
+    dea = np.array(cd.get_idx()['macd']['dea'][zs.start.k.k_index:zs.end.k.k_index + 1])
+    dif = np.array(cd.get_idx()['macd']['dif'][zs.start.k.k_index:zs.end.k.k_index + 1])
+    if len(dea) < 2 or len(dif) < 2:
+        return infos
+    zero = np.zeros(len(dea))
+
+    infos.dif_up_cross_num = len(up_cross(dif, zero))
+    infos.dif_down_cross_num = len(down_cross(dif, zero))
+    infos.dea_up_cross_num = len(up_cross(dea, zero))
+    infos.dea_down_cross_num = len(down_cross(dea, zero))
+    infos.gold_cross_num = len(up_cross(dif, dea))
+    infos.die_cross_num = len(down_cross(dif, dea))
+    infos.last_dif = dif[-1]
+    infos.last_dea = dea[-1]
+    return infos
+
+
+def up_cross(one_list: np.array, two_list: np.array):
+    """
+    获取上穿信号列表
+    """
+    assert len(one_list) == len(two_list), '信号输入维度不相等'
+    if len(one_list) < 2:
+        return []
+    cross = []
+    for i in range(1, len(two_list)):
+        if one_list[i - 1] < two_list[i - 1] and one_list[i] > two_list[i]:
+            cross.append(i)
+    return cross
+
+
+def down_cross(one_list: np.array, two_list: np.array):
+    """
+    获取下穿信号列表
+    """
+    assert len(one_list) == len(two_list), '信号输入维度不相等'
+    if len(one_list) < 2:
+        return []
+    cross = []
+    for i in range(1, len(two_list)):
+        if one_list[i - 1] > two_list[i - 1] and one_list[i] < two_list[i]:
+            cross.append(i)
+    return cross

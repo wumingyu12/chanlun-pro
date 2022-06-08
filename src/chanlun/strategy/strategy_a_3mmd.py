@@ -1,6 +1,8 @@
 from chanlun import cl
 from chanlun.backtesting.base import *
 from chanlun.cl_analyse import MultiLevelAnalyse
+from chanlun.cl_utils import cal_zs_macd_infos
+
 
 class StrategyA3mmd(Strategy):
     """
@@ -57,11 +59,12 @@ class StrategyA3mmd(Strategy):
         if len(high_zs.lines) > 7:
             return opts
         # 还要判断黄白线（dif、dea）是否回抽零轴，这里使用 dif 白线 回抽零轴判断，或者两次金叉或死叉来宽松判断
+        zs_macd_infos = cal_zs_macd_infos(high_zs, high_data)
         # TODO 是否粘在一起这个不好判断了，就不考虑了
         if (
-                high_zs.dif_down_cross_num > 0 or high_zs.dif_up_cross_num > 0
+                zs_macd_infos.dif_down_cross_num > 0 or zs_macd_infos.dif_up_cross_num > 0
         ) or (
-                high_zs.die_cross_num >= 2 or high_zs.gold_cross_num >= 2
+                zs_macd_infos.die_cross_num >= 2 or zs_macd_infos.gold_cross_num >= 2
         ):
             pass
         else:
@@ -170,7 +173,7 @@ class StrategyA3mmd(Strategy):
         low_bi = self.last_done_bi(low_data.get_bis())
 
         # 这里的均线根据缠论配置中设置的来
-        idx_ma = high_data.get_idx()['ma'][-1]
+        idx_ma = self.idx_ma(high_data, 5)[-1]
 
         # 卖出条件：05均线卖出 05均线对应的关键点——走势加速
         # 均线角度变化计算比较复杂，使用笔的角度来判断，因为没有考虑到加速那一段，所以角度设定为 50

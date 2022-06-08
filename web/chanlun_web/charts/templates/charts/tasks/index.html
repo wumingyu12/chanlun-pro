@@ -296,34 +296,34 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="col-sm-3 control-label no-padding-right">缠论配置（走势类型）</label>
+                                <label class="col-sm-3 control-label no-padding-right">缠论配置（走势段）</label>
 
                                 <div class="col-sm-9">
                                     <div class="btn-group btn-group-xs btn-corner" role="group">
-                                        <select class="form-control" style="height: auto;" name="zslx_bzh">
-                                            <option value="zslx_bzh_no"
-                                                    {% if config.zslx_bzh == 'zslx_bzh_no' %}selected{% endif %}>
-                                                走势类型不进行标准化
+                                        <select class="form-control" style="height: auto;" name="zsd_bzh">
+                                            <option value="zsd_bzh_no"
+                                                    {% if config.zsd_bzh == 'zsd_bzh_no' %}selected{% endif %}>
+                                                走势段不进行标准化
                                             </option>
-                                            <option value="zslx_bzh_yes"
-                                                    {% if config.zslx_bzh == 'zslx_bzh_yes' %}selected{% endif %}>
-                                                走势类型标准化
+                                            <option value="zsd_bzh_yes"
+                                                    {% if config.zsd_bzh == 'zsd_bzh_yes' %}selected{% endif %}>
+                                                走势段标准化
                                             </option>
                                         </select>
                                     </div>
                                     <div class="btn-group btn-group-xs btn-corner" role="group">
-                                        <select class="form-control" style="height: auto;" name="zslx_qj">
-                                            <option value="zslx_qj_k"
-                                                    {% if config.zslx_qj == 'zslx_qj_k' %}selected{% endif %}>
-                                                走势类型区间：原始K线最高最低
+                                        <select class="form-control" style="height: auto;" name="zsd_qj">
+                                            <option value="zsd_qj_k"
+                                                    {% if config.zsd_qj == 'zsd_qj_k' %}selected{% endif %}>
+                                                走势段区间：原始K线最高最低
                                             </option>
-                                            <option value="zslx_qj_ck"
-                                                    {% if config.zslx_qj == 'zslx_qj_ck' %}selected{% endif %}>
-                                                走势类型区间：缠论K线最高最低
+                                            <option value="zsd_qj_ck"
+                                                    {% if config.zsd_qj == 'zsd_qj_ck' %}selected{% endif %}>
+                                                走势段区间：缠论K线最高最低
                                             </option>
-                                            <option value="zslx_qj_dd"
-                                                    {% if config.zslx_qj == 'zslx_qj_dd' %}selected{% endif %}>
-                                                走势类型区间：起始端点
+                                            <option value="zsd_qj_dd"
+                                                    {% if config.zsd_qj == 'zsd_qj_dd' %}selected{% endif %}>
+                                                走势段区间：起始端点
                                             </option>
                                         </select>
                                     </div>

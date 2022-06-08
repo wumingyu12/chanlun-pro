@@ -1,12 +1,10 @@
 """
 监控相关代码
 """
-import imp
+from chanlun import rd
+from chanlun.cl_utils import batch_cls
 from chanlun.exchange import get_exchange, Market
 from chanlun.fun import *
-from chanlun.cl_interface import *
-from chanlun import cl, rd
-from chanlun.cl_utils import batch_cls
 
 
 def monitoring_code(market: str, code: str, name: str, frequencys: list,
@@ -61,15 +59,23 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
         end_bi = bis[-1]
         end_xd = cd.get_xds()[-1] if len(cd.get_xds()) > 0 else None
         # 检查背驰和买卖点
-        jh_msgs.extend({'type': f'笔 {end_bi.type} {bc_maps[bc_type]}', 'frequency': frequency, 'bi': end_bi} for bc_type in check_types['beichi'] if end_bi.bc_exists([bc_type]))
+        jh_msgs.extend(
+            {'type': f'笔 {end_bi.type} {bc_maps[bc_type]}', 'frequency': frequency, 'bi': end_bi} for bc_type in
+            check_types['beichi'] if end_bi.bc_exists([bc_type]))
 
-        jh_msgs.extend({'type': f'笔 {mmd_maps[mmd]}', 'frequency': frequency, 'bi': end_bi} for mmd in check_types['mmd'] if end_bi.mmd_exists([mmd]))
+        jh_msgs.extend(
+            {'type': f'笔 {mmd_maps[mmd]}', 'frequency': frequency, 'bi': end_bi} for mmd in check_types['mmd'] if
+            end_bi.mmd_exists([mmd]))
 
         if end_xd:
             # 检查背驰和买卖点
-            jh_msgs.extend({'type': f'线段 {end_xd.type} {bc_maps[bc_type]}', 'frequency': frequency, 'xd': end_xd} for bc_type in check_types['beichi_xd'] if end_xd.bc_exists([bc_type]))
+            jh_msgs.extend(
+                {'type': f'线段 {end_xd.type} {bc_maps[bc_type]}', 'frequency': frequency, 'xd': end_xd} for bc_type in
+                check_types['beichi_xd'] if end_xd.bc_exists([bc_type]))
 
-            jh_msgs.extend({'type': f'线段 {mmd_maps[mmd]}', 'frequency': frequency, 'xd': end_xd} for mmd in check_types['mmd_xd'] if end_xd.mmd_exists([mmd]))
+            jh_msgs.extend(
+                {'type': f'线段 {mmd_maps[mmd]}', 'frequency': frequency, 'xd': end_xd} for mmd in check_types['mmd_xd']
+                if end_xd.mmd_exists([mmd]))
 
     send_msgs = ""
     for jh in jh_msgs:
