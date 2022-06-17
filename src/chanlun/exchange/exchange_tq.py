@@ -1,6 +1,7 @@
 import threading
 
 import tqsdk
+from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 from tqsdk.objs import Account, Position
 
 from chanlun import config, fun
@@ -95,6 +96,7 @@ class ExchangeTq(Exchange):
             )
         return g_all_stocks
 
+    @retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5), retry=retry_if_result(lambda _r: _r is None))
     def klines(self, code: str, frequency: str,
                start_date: str = None, end_date: str = None,
                args=None) -> [pd.DataFrame, None]:
@@ -112,6 +114,9 @@ class ExchangeTq(Exchange):
         global g_look, g_klines
         try:
             return self._extracted_from_klines_9(start_date, end_date, code, frequency)
+        except Exception as e:
+            print(f'TQ 获取 {code} - {frequency} 行情异常： {e}')
+            return None
         finally:
             g_look.release()
 

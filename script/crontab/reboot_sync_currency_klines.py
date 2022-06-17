@@ -14,18 +14,33 @@ line_exchange = ExchangeBinance()
 # 创建表
 stocks = line_exchange.all_stocks()
 codes = [s['code'] for s in stocks]
+# codes = ['BTC/USDT', 'ETH/USDT', 'BCH/USDT', 'ADA/USDT', 'XRP/USDT', 'EOS/USDT', 'LTC/USDT', 'LINK/USDT',
+#          'TRX/USDT', 'XLM/USDT']
+sync_frequencys = ['w', 'd', '4h', '60m', '30m', '15m', '5m', '1m']
 exchange.create_tables(codes)
+
+# TODO 同步各个周期的起始时间
+f_start_time_maps = {
+    'w': '2000-01-01 00:00:00',
+    'd': '2000-01-01 00:00:00',
+    '4h': '2000-01-01 00:00:00',
+    '60m': '2000-01-01 00:00:00',
+    '30m': '2000-01-01 00:00:00',
+    '15m': '2000-01-01 00:00:00',
+    '5m': '2000-01-01 00:00:00',
+    '1m': '2000-01-01 00:00:00',
+}
 
 for code in tqdm(codes):
     try:
-        for f in ['w', 'd', '4h', '60m', '30m', '15m', '5m', '1m']:
+        for f in sync_frequencys:
             while True:
                 try:
                     last_dt = exchange.query_last_datetime(code, f)
                     if last_dt is None:
-                        klines = line_exchange.klines(code, f, end_date='2021-06-01 00:00:00')
+                        klines = line_exchange.klines(code, f, end_date=f_start_time_maps[f])
                         if len(klines) == 0:
-                            klines = line_exchange.klines(code, f, start_date='2021-06-01 00:00:00')
+                            klines = line_exchange.klines(code, f, start_date=f_start_time_maps[f])
                     else:
                         klines = line_exchange.klines(code, f, start_date=last_dt)
 

@@ -14,6 +14,7 @@ from gm.api import *
         backtest_commission_ratio回测佣金比例
         backtest_slippage_ratio回测滑点比例
 '''
+# TODO 这里的 strategy_id 替换为自己的
 run(strategy_id='013ab6e5-d64f-11ec-a46d-7a4f4371764a',
     filename='strategy/strategy_test.py',
     mode=MODE_BACKTEST,

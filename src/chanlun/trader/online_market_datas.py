@@ -57,7 +57,9 @@ class OnlineMarketDatas(MarketDatas):
         key = '%s-%s' % (code, frequency)
 
         # 根据回测配置，可自定义不同周期所使用的缠论配置项
-        if frequency in self.cl_config.keys():
+        if code in self.cl_config.keys():
+            cl_config = self.cl_config[code]
+        elif frequency in self.cl_config.keys():
             cl_config = self.cl_config[frequency]
         elif 'default' in self.cl_config.keys():
             cl_config = self.cl_config['default']
@@ -65,6 +67,9 @@ class OnlineMarketDatas(MarketDatas):
             cl_config = self.cl_config
 
         klines = self.klines(code, frequency)
+
+        # print(f'{code} - {frequency} kline len : {len(klines)} cl_config : {cl_config}')
+
         if key not in self.cl_datas.keys():
             self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
         else:

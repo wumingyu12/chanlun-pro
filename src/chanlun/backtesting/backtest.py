@@ -76,6 +76,9 @@ class BackTest:
         # 回测循环加载下次周期，默认None 为回测最小周期
         self.next_frequency = None
 
+        # 参数优化，评价指标字段，默认为最终盈利百分比总和
+        self.evaluate = 'profit_rate'
+
     def save(self):
         """
         保存回测结果到配置的文件中
@@ -243,18 +246,15 @@ class BackTest:
             # 判断文件不存在，执行回测，文件存在，加载回测结果
             if os.path.isfile(new_save_file) is False:
                 BT.log.info(f'落地文件：{new_save_file} 不存在，开始执行回测')
-                BT.run()  # TODO 节省参数优化执行的时间，这里可以手动设置每次循环的周期
+                BT.run(self.next_frequency)  # 节省参数优化执行的时间，这里可以手动设置每次循环的周期
                 BT.save()
             else:
                 BT.log.info(f'落地文件：{new_save_file} 已经存在，直接进行加载')
                 BT.load(new_save_file)
 
             # 如果是交易模式，评价标准是最终余额，信号模式，总盈利比率
-            if BT.mode == 'trade':
-                balance = BT.trader.balance
-            else:
-                pos_pd = BT.positions()
-                balance = pos_pd['profit_rate'].sum() if len(pos_pd) > 0 else 0
+            pos_pd = BT.positions()
+            balance = pos_pd[self.evaluate].sum() if len(pos_pd) > 0 else 0
 
             BT.log.info(f'回测{new_cl_setting} : {new_save_file} 结果：{balance}')
         except Exception:
@@ -267,11 +267,23 @@ class BackTest:
             self,
             optimization_setting: OptimizationSetting,
             max_workers: int = None,
+            next_frequency: str = None,
+            evaluate: str = 'profit_rate'
     ):
+        """
+        运行参数优化
+        @param optimization_setting: 优化参数对象
+        @param max_workers: 最大运行进程数
+        @param next_frequency: 回测每次循环的周期
+        @param evaluate: 评价的指标 允许 profit_rate /  max_profit_rate
+        """
         cl_settings: List[Dict] = optimization_setting.generate_cl_settings()
 
         self.log.info("开始执行穷举算法优化")
         self.log.info(f"参数优化空间：{len(cl_settings)}")
+
+        self.next_frequency = next_frequency  # 每次循环的周期
+        self.evaluate = evaluate
 
         start = time.perf_counter()
 
@@ -280,7 +292,7 @@ class BackTest:
                 mp_context=get_context("spawn")
         ) as executor:
             results = list(executor.map(self.run_params, cl_settings))
-            results.sort(reverse=True, key=lambda r: r['end_balance'])
+            results.sort(reverse=True, key=lambda _r: _r['end_balance'])
 
             end = time.perf_counter()
             cost: int = int((end - start))
@@ -296,12 +308,14 @@ class BackTest:
 
         return results
 
-    def show_charts(self, code, frequency, change_cl_config=None, show_futu='macd'):
+    def show_charts(self, code, frequency, change_cl_config=None, show_futu='macd', chart_config=None):
         """
         显示指定代码指定周期的图表
         """
         # 根据配置中指定的缠论配置进行展示图表
-        if frequency in self.cl_config.keys():
+        if code in self.cl_config.keys():
+            cl_config = self.cl_config[code]
+        elif frequency in self.cl_config.keys():
             cl_config = self.cl_config[frequency]
         elif 'default' in self.cl_config.keys():
             cl_config = self.cl_config['default']
@@ -323,7 +337,8 @@ class BackTest:
         klines = bk.all_klines['%s-%s' % (code, frequency)]
         cd: ICL = cl.CL(code, frequency, show_cl_config).process_klines(klines)
         orders = self.trader.orders[code] if code in self.trader.orders else []
-        render = kcharts.render_charts('%s - %s' % (code, frequency), cd, show_futu=show_futu, orders=orders)
+        render = kcharts.render_charts('%s - %s' % (code, frequency), cd, show_futu=show_futu, orders=orders,
+                                       config=chart_config)
         return render
 
     def result(self, is_print=True):

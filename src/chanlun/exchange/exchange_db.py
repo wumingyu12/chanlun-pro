@@ -154,6 +154,25 @@ class ExchangeDB(Exchange):
         db.commit()
         return
 
+    def del_klines(self, code, frequency, _datetime):
+        """
+        删除一条记录
+        """
+        global g_pool_db
+
+        db = g_pool_db.connection()
+        cursor = db.cursor()
+        table = self.__table(code)
+        if self.market in ['a', 'us']:
+            sql = "delete from %s where code='%s' and f = '%s' and dt='%s'" % (
+                table, code, frequency, _datetime.strftime('%Y-%m-%d %H:%M:%S'))
+        else:
+            sql = "delete from %s where f = '%s' and dt='%s'" % (
+                table, frequency, _datetime.strftime('%Y-%m-%d %H:%M:%S'))
+        cursor.execute(sql)
+        db.commit()
+        return
+
     def klines(self, code: str, frequency: str,
                start_date: str = None, end_date: str = None,
                args=None) -> [pd.DataFrame, None]:

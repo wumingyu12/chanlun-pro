@@ -21,3 +21,4 @@ polygon-api-client
 alpaca-trade-api
 mytt
 protobuf~=3.20.1
+tenacity

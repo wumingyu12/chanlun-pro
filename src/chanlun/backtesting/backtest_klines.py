@@ -94,7 +94,9 @@ class BackTestKlines(MarketDatas):
             return self.cache_cl_datas[key]
 
         # 根据回测配置，可自定义不同周期所使用的缠论配置项
-        if frequency in self.cl_config.keys():
+        if code in self.cl_config.keys():
+            cl_config = self.cl_config[code]
+        elif frequency in self.cl_config.keys():
             cl_config = self.cl_config[frequency]
         elif 'default' in self.cl_config.keys():
             cl_config = self.cl_config['default']

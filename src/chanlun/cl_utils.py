@@ -23,6 +23,7 @@ def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> Lis
         _global_caches = {}
 
     cls = []
+    # _time_s = time.time()
     for f, k in klines.items():
         key = hashlib.md5(f'{code}_{f}_{config}'.encode('UTF-8')).hexdigest()
         if key in _global_caches.keys():
@@ -32,7 +33,32 @@ def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> Lis
             # print('重新计算')
             _global_caches[key] = cl.CL(code, f, config)
             cls.append(_global_caches[key].process_klines(k))
+    # print('计算缠论数据用时:' + str(time.time() - _time_s))
     return cls
+
+
+def cal_klines_macd_infos(start_k: Kline, end_k: Kline, cd: ICL) -> MACD_INFOS:
+    """
+    计算线中macd信息
+    """
+    infos = MACD_INFOS()
+
+    idx = cd.get_idx()
+    dea = np.array(idx['macd']['dea'][start_k.index:end_k.index + 1])
+    dif = np.array(idx['macd']['dif'][start_k.index:end_k.index + 1])
+    if len(dea) < 2 or len(dif) < 2:
+        return infos
+    zero = np.zeros(len(dea))
+
+    infos.dif_up_cross_num = len(up_cross(dif, zero))
+    infos.dif_down_cross_num = len(down_cross(dif, zero))
+    infos.dea_up_cross_num = len(up_cross(dea, zero))
+    infos.dea_down_cross_num = len(down_cross(dea, zero))
+    infos.gold_cross_num = len(up_cross(dif, dea))
+    infos.die_cross_num = len(down_cross(dif, dea))
+    infos.last_dif = dif[-1]
+    infos.last_dea = dea[-1]
+    return infos
 
 
 def cal_line_macd_infos(line: LINE, cd: ICL) -> MACD_INFOS:

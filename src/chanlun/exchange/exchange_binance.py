@@ -1,5 +1,6 @@
 import ccxt
 import pymysql.err
+from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
 from chanlun import config
 from chanlun.exchange.exchange import *
@@ -59,6 +60,7 @@ class ExchangeBinance(Exchange):
                 g_all_stocks.append({'code': s, 'name': s})
         return g_all_stocks
 
+    @retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5), retry=retry_if_result(lambda _r: _r is None))
     def klines(self, code: str, frequency: str,
                start_date: str = None, end_date: str = None,
                args=None) -> [pd.DataFrame, None]:
@@ -71,21 +73,21 @@ class ExchangeBinance(Exchange):
             args = {}
         try:
             if start_date is not None or end_date is not None:
-                online_klines = self.__online_klines(code, frequency, start_date, end_date, args)
+                online_klines = self.online_klines(code, frequency, start_date, end_date, args)
                 self.db_exchange.insert_klines(code, frequency, online_klines)
                 return online_klines
 
             db_klines = self.db_exchange.klines(code, frequency)
             if len(db_klines) == 0:
-                online_klines = self.__online_klines(code, frequency, start_date, end_date, args)
+                online_klines = self.online_klines(code, frequency, start_date, end_date, args)
                 self.db_exchange.insert_klines(code, frequency, online_klines)
                 return online_klines
 
             last_datetime = db_klines.iloc[-1]['date'].strftime('%Y-%m-%d %H:%M:%S')
-            online_klines = self.__online_klines(code, frequency, start_date=last_datetime)
+            online_klines = self.online_klines(code, frequency, start_date=last_datetime)
             self.db_exchange.insert_klines(code, frequency, online_klines)
             if len(online_klines) == 1500:
-                online_klines = self.__online_klines(code, frequency, start_date, end_date, args)
+                online_klines = self.online_klines(code, frequency, start_date, end_date, args)
                 self.db_exchange.insert_klines(code, frequency, online_klines)
                 return online_klines
 
@@ -98,11 +100,11 @@ class ExchangeBinance(Exchange):
         except Exception as e:
             print(e)
 
-        return []
+        return None
 
-    def __online_klines(self, code: str, frequency: str,
-                        start_date: str = None, end_date: str = None,
-                        args=None) -> [pd.DataFrame, None]:
+    def online_klines(self, code: str, frequency: str,
+                      start_date: str = None, end_date: str = None,
+                      args=None) -> [pd.DataFrame, None]:
         """
         api 接口请求行情数据
         """

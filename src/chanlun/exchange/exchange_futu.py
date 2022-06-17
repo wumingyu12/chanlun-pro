@@ -1,6 +1,7 @@
 import random
 
 from futu import *
+from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
 from chanlun import config, rd
 from chanlun.exchange.exchange import *
@@ -60,6 +61,7 @@ class ExchangeFutu(Exchange):
                 g_all_stocks.append({'code': s[1]['code'], 'name': s[1]['stock_name']})
         return g_all_stocks
 
+    @retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5), retry=retry_if_result(lambda _r: _r is None))
     def klines(self, code: str, frequency: str,
                start_date: str = None, end_date: str = None,
                args=None) -> [pd.DataFrame, None]:
@@ -83,44 +85,48 @@ class ExchangeFutu(Exchange):
         if 'fq' not in args.keys():
             args['fq'] = AuType.QFQ
 
-        if start_date is None and end_date is None and args['is_history'] is False:
-            # 获取实时 K 线数据
-            # 订阅
-            CTX().subscribe([code], [frequency_map[frequency]['subtype']], is_first_push=False,
-                            subscribe_push=False)
-            # 获取 K 线
-            ret, kline = CTX().get_cur_kline(code, 1000, frequency_map[frequency]['subtype'],
-                                             args['fq'])
-            if ret != RET_OK:
-                print(kline)
-                return None
-        else:
-            if start_date is None and end_date is not None:
-                time_format = '%Y-%m-%d %H:%M:%S'
-                if len(end_date) == 10:
-                    time_format = '%Y-%m-%d'
-                end_datetime = dt.datetime(*time.strptime(end_date, time_format)[:6])
-                if frequency == '1m':
-                    start_date = (end_datetime - dt.timedelta(days=5)).strftime(time_format)
-                elif frequency == '5m':
-                    start_date = (end_datetime - dt.timedelta(days=25)).strftime(time_format)
-                elif frequency == '30m':
-                    start_date = (end_datetime - dt.timedelta(days=150)).strftime(time_format)
-                elif frequency == 'd':
-                    start_date = (end_datetime - dt.timedelta(days=1500)).strftime(time_format)
-                elif frequency == 'w':
-                    start_date = (end_datetime - dt.timedelta(days=2500)).strftime(time_format)
-            ret, kline, pk = CTX().request_history_kline(code=code, start=start_date, end=end_date, max_count=None,
-                                                         ktype=frequency_map[frequency]['ktype'],
-                                                         autype=args['fq'])
-        kline['date'] = pd.to_datetime(kline['time_key'])
-        kline = kline[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
-        if frequency == '120m' and len(kline) > 0:
-            kline = convert_stock_kline_frequency(kline, '120m')
-        if frequency == '10m' and len(kline) > 0:
-            kline = convert_stock_kline_frequency(kline, '10m')
+        try:
+            if start_date is None and end_date is None and args['is_history'] is False:
+                # 获取实时 K 线数据
+                # 订阅
+                CTX().subscribe([code], [frequency_map[frequency]['subtype']], is_first_push=False,
+                                subscribe_push=False)
+                # 获取 K 线
+                ret, kline = CTX().get_cur_kline(code, 1000, frequency_map[frequency]['subtype'],
+                                                 args['fq'])
+                if ret != RET_OK:
+                    print(kline)
+                    return None
+            else:
+                if start_date is None and end_date is not None:
+                    time_format = '%Y-%m-%d %H:%M:%S'
+                    if len(end_date) == 10:
+                        time_format = '%Y-%m-%d'
+                    end_datetime = dt.datetime(*time.strptime(end_date, time_format)[:6])
+                    if frequency == '1m':
+                        start_date = (end_datetime - dt.timedelta(days=5)).strftime(time_format)
+                    elif frequency == '5m':
+                        start_date = (end_datetime - dt.timedelta(days=25)).strftime(time_format)
+                    elif frequency == '30m':
+                        start_date = (end_datetime - dt.timedelta(days=150)).strftime(time_format)
+                    elif frequency == 'd':
+                        start_date = (end_datetime - dt.timedelta(days=1500)).strftime(time_format)
+                    elif frequency == 'w':
+                        start_date = (end_datetime - dt.timedelta(days=2500)).strftime(time_format)
+                ret, kline, pk = CTX().request_history_kline(code=code, start=start_date, end=end_date, max_count=None,
+                                                             ktype=frequency_map[frequency]['ktype'],
+                                                             autype=args['fq'])
+            kline['date'] = pd.to_datetime(kline['time_key'])
+            kline = kline[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+            if frequency == '120m' and len(kline) > 0:
+                kline = convert_stock_kline_frequency(kline, '120m')
+            if frequency == '10m' and len(kline) > 0:
+                kline = convert_stock_kline_frequency(kline, '10m')
+            return kline
+        except Exception as e:
+            print(f'Futu 请求 {code} - {frequency} 行情异常：{e}')
 
-        return kline
+        return None
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         CTX().subscribe(codes, [SubType.QUOTE], subscribe_push=False)

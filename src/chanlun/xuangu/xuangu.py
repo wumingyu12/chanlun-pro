@@ -123,7 +123,54 @@ def xg_single_day_bc_and_up_jincha(cl_datas: List[ICL]):
         return None
     if down_bis[-2].bc_exists(['bi', 'pz', 'qs']) is False:
         return None
-    # last_bi_macd_infos = cal_line_macd_infos(bis[-1], cd)
-    # if bis[-1].type == 'up' and last_bi_macd_infos.gold_cross_num > 0:
-    return f'前down笔背驰 {down_bis[-2].line_bcs()} macd 在零轴之上，等待接下来向上笔金叉出现。'
-    # return None
+    macd_infos = cal_klines_macd_infos(down_bis[-1].start.k.klines[0], cd.get_klines()[-1], cd)
+    if macd_infos.gold_cross_num > 0:
+        return f'前down笔背驰 {down_bis[-2].line_bcs()} macd 在零轴之上，后续又出现金叉，可关注'
+    return None
+
+
+def xg_multiple_low_level_1mmd(cl_datas: List[ICL]):
+    """
+    选择 高级别出现背驰or买卖点，并且低级别出现一二类买卖点
+    周期：三个周期
+    适用市场：沪深A股
+    作者：WX
+    """
+    high_data = cl_datas[0]
+    low_data_1 = cl_datas[1]
+    low_data_2 = cl_datas[2]
+    if len(high_data.get_bis()) == 0:
+        return None
+    if len(low_data_1.get_bis()) == 0 or len(low_data_2.get_bis()) == 0:
+        return None
+
+    # 高级别向下，并且有背驰or买卖点
+    high_bi = high_data.get_bis()[-1]
+    if high_bi.type == 'up':
+        return None
+    if len(high_bi.line_bcs()) == 0 and len(high_bi.line_mmds()) == 0:
+        return None
+    if high_data.get_cl_klines()[-1].index - high_bi.end.klines[-1].index > 3:
+        return None
+
+    # 获取高级别底分型后的低级别笔
+    start_datetime = high_bi.end.klines[0].date
+    low_bis: List[BI] = []
+    for _bi in low_data_1.get_bis():
+        if _bi.end.k.date > start_datetime:
+            low_bis.append(_bi)
+    for _bi in low_data_2.get_bis():
+        if _bi.end.k.date > start_datetime:
+            low_bis.append(_bi)
+
+    # 遍历低级别的笔，找是否有一二类买点
+    exists_12buy_mmd = False
+    for _bi in low_bis:
+        if _bi.mmd_exists(['1buy', '2buy']):
+            exists_12buy_mmd = True
+            break
+
+    if exists_12buy_mmd:
+        return f'{high_data.get_frequency()} 背驰 {high_bi.line_bcs()} 买点 {high_bi.line_mmds()} 并且低级别出现12类买点'
+
+    return None

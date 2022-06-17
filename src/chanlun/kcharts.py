@@ -49,9 +49,9 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         'show_xd_bc': True,
         'show_zsd_bc': True,
         'show_ma': True,
-        'show_boll': True,
+        'show_boll': False,
         # 指标配置项
-        'idx_ma_period': 5,
+        'idx_ma_period': '120,250',
         'idx_boll_period': 20,
     }
     for _k, _v in default_config.items():
@@ -60,6 +60,8 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         else:
             if 'show_' in _k:
                 config[_k] = bool(int(config[_k]))
+            elif _k == 'idx_ma_period':
+                config[_k] = str(config[_k])
             elif 'idx_' in _k:
                 config[_k] = int(config[_k])
 
@@ -576,17 +578,21 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         overlap_kline = overlap_kline.overlap(line_idx_boll)
     if config['show_ma']:
         # 计算ma线
-        ma = talib.MA(np.array([k.c for k in klines]), timeperiod=config['idx_ma_period'])
-        line_idx_ma = (
-            Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
-                series_name="MA",
-                is_symbol_show=False,
-                y_axis=ma,
-                linestyle_opts=opts.LineStyleOpts(width=1, color='red'),
-                label_opts=opts.LabelOpts(is_show=False),
-            ).set_global_opts()
-        )
-        overlap_kline = overlap_kline.overlap(line_idx_ma)
+        ma_colors = ['rgb(255,141,30)', 'rgb(12,174,230)', 'rgb(233,112,220)', 'rgb(0,128,250)', 'rgb(34,197,126)']
+        ma_periods = config['idx_ma_period'].split(',')[0:5]
+        for i in range(len(ma_periods)):
+            ma_period = ma_periods[i]
+            ma = talib.MA(np.array([k.c for k in klines]), timeperiod=int(ma_period))
+            line_idx_ma = (
+                Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+                    series_name=f"MA{ma_period}",
+                    is_symbol_show=False,
+                    y_axis=ma,
+                    linestyle_opts=opts.LineStyleOpts(width=1, color=ma_colors[i]),
+                    label_opts=opts.LabelOpts(is_show=False),
+                ).set_global_opts()
+            )
+            overlap_kline = overlap_kline.overlap(line_idx_ma)
 
     # 画 笔中枢
     for zs in line_bi_zss:
