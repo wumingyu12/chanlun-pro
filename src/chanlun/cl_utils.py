@@ -133,3 +133,16 @@ def down_cross(one_list: np.array, two_list: np.array):
         if one_list[i - 1] > two_list[i - 1] and one_list[i] < two_list[i]:
             cross.append(i)
     return cross
+
+
+def last_done_bi(cd: ICL):
+    """
+    获取最后一个 完成笔
+    """
+    bis = cd.get_bis()
+    if len(bis) == 0:
+        return None
+    for bi in bis[::-1]:
+        if bi.is_done():
+            return bi
+    return None

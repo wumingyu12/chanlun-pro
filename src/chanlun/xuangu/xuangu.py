@@ -106,23 +106,37 @@ def xg_single_day_bc_and_up_jincha(cl_datas: List[ICL]):
     日线级别，倒数第二个向下笔背驰（笔背驰、盘整背驰、趋势背驰），后续macd在水上金叉
     """
     cd = cl_datas[0]
-    if len(cd.get_bis()) <= 5 or len(cd.get_xds()) == 0:
+    if len(cd.get_bis()) <= 5 or len(cd.get_xds()) == 0 or len(cd.get_bi_zss()) == 0:
         return None
     xd = cd.get_xds()[-1]
     bis = cd.get_bis()
+    bi_zs = cd.get_bi_zss()[-1]
+    # 获取所有下跌笔
     down_bis = [bi for bi in bis if bi.type == 'down']
     if len(down_bis) < 2:
         return None
     if xd.type != 'down':
         return None
+
+    # 下跌笔不能再创新低
     if down_bis[-1].low < down_bis[-2].low:
         return None
+
+    # 当前黄白线要在零轴上方
     macd_dif = cd.get_idx()['macd']['dif'][-1]
     macd_dea = cd.get_idx()['macd']['dea'][-1]
     if macd_dif < 0 or macd_dea < 0:
         return None
-    if down_bis[-2].bc_exists(['bi', 'pz', 'qs']) is False:
+
+    # 倒数第二下跌笔要出背驰
+    if down_bis[-2].bc_exists(['pz', 'qs']) is False:
         return None
+
+    # 最后一个中枢 黄白线要上穿零轴
+    zs_macd_info = cal_zs_macd_infos(bi_zs, cd)
+    if zs_macd_info.dif_up_cross_num == 0 and zs_macd_info.dea_up_cross_num == 0:
+        return None
+
     macd_infos = cal_klines_macd_infos(down_bis[-1].start.k.klines[0], cd.get_klines()[-1], cd)
     if macd_infos.gold_cross_num > 0:
         return f'前down笔背驰 {down_bis[-2].line_bcs()} macd 在零轴之上，后续又出现金叉，可关注'
@@ -172,5 +186,56 @@ def xg_multiple_low_level_1mmd(cl_datas: List[ICL]):
 
     if exists_12buy_mmd:
         return f'{high_data.get_frequency()} 背驰 {high_bi.line_bcs()} 买点 {high_bi.line_mmds()} 并且低级别出现12类买点'
+
+    return None
+
+
+def xg_single_bi_2mmd(cl_datas: List[ICL]):
+    """
+    获取笔的二类买卖点
+    周期：单周期
+    适用市场：沪深A股
+    作者：WX
+    """
+    cd = cl_datas[0]
+    if len(cd.get_bis()) == 0:
+        return None
+    bi = cd.get_bis()[-1]
+    for mmd in bi.mmds:
+        if mmd.name == '2buy' and mmd.zs.line_num < 9:
+            zs_macd_info = cal_zs_macd_infos(mmd.zs, cd)
+            if zs_macd_info.dif_up_cross_num > 0 or zs_macd_info.dea_up_cross_num > 0:
+                return f'{cd.get_frequency()} 出现本级别笔二买'
+
+    return None
+
+
+def xg_single_bcmmd_next_di_fx_verif(cl_datas: List[ICL]):
+    """
+    笔出现买点或下跌背驰，并且后续出现底分型验证，则提示
+    周期：单周期
+    适用市场：沪深A股
+    作者：WX
+    """
+    cd = cl_datas[0]
+    if len(cd.get_bis()) == 0:
+        return None
+    bi = last_done_bi(cd)
+    if bi.type != 'down':
+        return None
+
+    for bc in bi.bcs:
+        if bc.type in ['pz', 'qs'] and bc.zs.line_num <= 9:
+            zs_macd_info = cal_zs_macd_infos(bc.zs, cd)
+            if zs_macd_info.dif_up_cross_num > 0 or zs_macd_info.dea_up_cross_num > 0:
+                end_di_fx = [
+                    _fx for _fx in cd.get_fxs() if
+                    (_fx.type == 'di' and _fx.index > bi.end.index and _fx.done)
+                ]
+                if len(end_di_fx) == 0:
+                    return None
+                end_fx = end_di_fx[0]
+                if cd.get_cl_klines()[-1].index - end_fx.k.index <= 3 and end_fx.val > bi.end.val:
+                    return f'{cd.get_frequency()} 出现背驰 {bi.line_bcs()}，并且后续出现验证底分型，可关注'
 
     return None

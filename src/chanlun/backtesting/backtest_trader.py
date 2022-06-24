@@ -32,7 +32,7 @@ class BackTestTrader(object):
         self.allow_mmds = None
 
         # 资金情况
-        self.balance = init_balance
+        self.balance = init_balance if mode == 'trade' else 0
         self.fee_rate = fee_rate
         self.fee_total = 0
         self.max_pos = max_pos
@@ -166,11 +166,15 @@ class BackTestTrader(object):
         """
         total_hold_profit = 0
         for code in self.positions.keys():
-            total_hold_profit += self.position_record(code)
+            now_profit, hold_balance = self.position_record(code)
+            if self.mode == 'trade':
+                total_hold_profit += (now_profit + hold_balance)
+            else:
+                total_hold_profit += now_profit
         now_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
         self.balance_history[now_datetime] = total_hold_profit + self.balance
 
-    def position_record(self, code: str):
+    def position_record(self, code: str) -> Tuple[float, float]:
         """
         持仓记录更新
         :param code:
@@ -205,7 +209,7 @@ class BackTestTrader(object):
                     now_profit += pos.profit_rate / 100 * pos.balance
                 hold_balance += pos.balance
         self.hold_profit_history[code][price_info['date'].strftime('%Y-%m-%d %H:%M:%S')] = now_profit
-        return now_profit + hold_balance
+        return now_profit, hold_balance
 
     def position_codes(self):
         """
@@ -315,6 +319,8 @@ class BackTestTrader(object):
     def close_buy(self, code, pos: POSITION, opt: Operation):
         if self.mode == 'signal':
             price = self.get_price(code)['close']
+            net_profit = (price * pos.amount) - (pos.price * pos.amount)
+            self.balance += net_profit
             return {'price': price, 'amount': pos.amount}
         else:
             price = self.get_price(code)['close']
@@ -330,6 +336,8 @@ class BackTestTrader(object):
     def close_sell(self, code, pos: POSITION, opt: Operation):
         if self.mode == 'signal':
             price = self.get_price(code)['close']
+            net_profit = (pos.price * pos.amount) - (price * pos.amount)
+            self.balance += net_profit
             return {'price': price, 'amount': pos.amount}
         else:
             price = self.get_price(code)['close']

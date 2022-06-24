@@ -190,14 +190,14 @@ def jhs_save(market, code, name, jh: dict):
     }
     Robj().hset(hkey, key, json.dumps(val))
 
-    # 检查超过 24 小时的机会
+    # 检查超过 5 * 24 小时的机会
     if random.randint(0, 100) < 10:
         h_keys = Robj().hkeys(hkey)
         for k in h_keys:
             v = Robj().hget(hkey, k)
             if v is not None:
                 v = json.loads(v)
-                if int(time.time()) - int(v['datetime']) > 24 * 60 * 60:
+                if int(time.time()) - int(v['datetime']) > 5 * 24 * 60 * 60:
                     Robj().hdel(hkey, k)
 
     return False  # False 意思表示有更新

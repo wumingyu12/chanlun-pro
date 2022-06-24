@@ -1,9 +1,9 @@
 from abc import ABC
-from typing import Dict
+
 import talib
 
 from chanlun.cl_interface import *
-from chanlun.cl_utils import cal_zs_macd_infos
+
 
 @dataclass
 class POSITION:

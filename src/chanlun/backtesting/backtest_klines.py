@@ -1,4 +1,6 @@
 # 回放行情所需
+import hashlib
+import json
 
 from chanlun import fun
 from chanlun.backtesting.base import MarketDatas
@@ -43,6 +45,9 @@ class BackTestKlines(MarketDatas):
 
         # 每个周期缓存的k线数据，避免多次请求重复计算
         self.cache_klines: Dict[str, Dict[str, pd.DataFrame]] = {}
+
+        # 保存每个标的的缠论配置唯一key，如果后续在运行中进行变更，则需要重新计算
+        self.cache_cl_config_keys: Dict[str, str] = {}
 
         self.ex = ExchangeDB(self.market)
 
@@ -102,6 +107,16 @@ class BackTestKlines(MarketDatas):
             cl_config = self.cl_config['default']
         else:
             cl_config = self.cl_config
+
+        # 将配置项md5哈希，并对比与之前的计算是否一致，不一致则重新计算
+        cl_config_key = json.dumps(cl_config)
+        cl_config_key = hashlib.md5(cl_config_key.encode(encoding='UTF-8')).hexdigest()
+        if key not in self.cache_cl_config_keys.keys():
+            self.cache_cl_config_keys[key] = cl_config_key
+        elif self.cache_cl_config_keys[key] != cl_config_key:
+            # print(f'{key} 配置项变更为：{cl_config}')
+            self.cache_cl_config_keys[key] = cl_config_key
+            del (self.cl_datas[key])
 
         if key not in self.cl_datas.keys():
             # 第一次进行计算

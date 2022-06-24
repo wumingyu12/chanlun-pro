@@ -59,6 +59,9 @@ class StrategySonLevel1MMD(Strategy):
         if len(high_data.get_bis()) == 0 or len(high_data.get_bi_zss()) == 0:
             return opts
         high_bi = self.last_done_bi(high_data.get_bis())
+        # 如果最后 缠论K线，距离结束分型太远，退出
+        if high_data.get_cl_klines()[-1].index - high_bi.end.klines[-1].index > 3:
+            return opts
         # 如果没有背驰和买卖点，直接返回
         if len(high_bi.line_bcs()) == 0 and (high_bi.line_mmds()) == 0:
             return opts
@@ -177,17 +180,43 @@ class StrategySonLevel1MMD(Strategy):
                 low_frequency = f
                 break
 
-        # 低级别出现一类买卖点
-        if low_level_1mmd is True:
-            if 'buy' in mmd and high_bi.type == 'up':
-                return Operation(
-                    'sell', mmd,
-                    msg=f'高级买卖点 {high_bi.line_mmds()} 背驰 {high_bi.line_bcs()}，低级别 {low_frequency} 出现 {self.info_msg(low_infos)}'
-                )
-            if 'sell' in mmd and high_bi.type == 'down':
-                return Operation(
-                    'sell', mmd,
-                    msg=f'高级买卖点 {high_bi.line_mmds()} 背驰 {high_bi.line_bcs()}，低级别 {low_frequency} 出现 {self.info_msg(low_infos)}'
-                )
+                # 低级别出现一类买卖点
+                if low_level_1mmd is False:
+                    return False
+
+                if 'buy' in mmd and high_bi.type == 'up' and (
+                        high_bi.mmd_exists(['1sell', '2sell', '3sell', 'l3sell']) or
+                        high_bi.bc_exists(['pz', 'qs'])
+                ):
+                    return Operation(
+                        'sell', mmd,
+                        msg=f'高级笔（{high_bi.line_mmds()} / {high_bi.line_bcs()}），低级别 {low_frequency} 出现 {self.info_msg(low_infos)}'
+                    )
+                elif 'sell' in mmd and high_bi.type == 'down' and (
+                        high_bi.mmd_exists(['1buy', '2buy', '3buy', 'l3buy']) or
+                        high_bi.bc_exists(['pz', 'qs'])
+                ):
+                    return Operation(
+                        'sell', mmd,
+                        msg=f'高级笔（{high_bi.line_mmds()} / {high_bi.line_bcs()}），低级别 {low_frequency} 出现 {self.info_msg(low_infos)}'
+                    )
+                elif 'buy' in mmd and high_xd.type == 'up' and high_xd.type == high_bi.type \
+                        and high_xd.end_line.index == high_bi.index and (
+                        high_xd.mmd_exists(['1sell', '2sell', '3sell', 'l3sell']) or
+                        high_xd.bc_exists(['xd', 'pz', 'qs'])
+                ):
+                    return Operation(
+                        'sell', mmd,
+                        msg=f'高级线段（{high_xd.line_mmds()} / {high_xd.line_bcs()}），低级别 {low_frequency} 出现 {self.info_msg(low_infos)}'
+                    )
+                elif 'sell' in mmd and high_xd.type == 'down' and high_xd.type == high_bi.type \
+                        and high_xd.end_line.index == high_bi.index and (
+                        high_xd.mmd_exists(['1buy', '2buy', '3buy', 'l3buy']) or
+                        high_xd.bc_exists(['xd', 'pz', 'qs'])
+                ):
+                    return Operation(
+                        'sell', mmd,
+                        msg=f'高级线段（{high_xd.line_mmds()} / {high_xd.line_bcs()}），低级别 {low_frequency} 出现 {self.info_msg(low_infos)}'
+                    )
 
         return None

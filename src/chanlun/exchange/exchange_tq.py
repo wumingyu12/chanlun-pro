@@ -123,7 +123,7 @@ class ExchangeTq(Exchange):
     def _extracted_from_klines_9(self, start_date, end_date, code, frequency):
         g_look.acquire()
         frequency_maps = {'w': 7 * 24 * 60 * 60, 'd': 24 * 60 * 60, '60m': 60 * 60, '30m': 30 * 60, '15m': 15 * 60,
-                          '5m': 5 * 60, '1m': 1 * 60, '30s': 30, '10s': 10}
+                          '6m': 6 * 60, '5m': 5 * 60, '1m': 1 * 60, '30s': 30, '10s': 10}
 
         if start_date is not None and end_date is not None:
             # 有专业版权限才可以调用此方法

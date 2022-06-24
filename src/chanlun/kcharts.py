@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import talib
 # 画图配置
 from pyecharts import options as opts
@@ -53,6 +54,8 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         # 指标配置项
         'idx_ma_period': '120,250',
         'idx_boll_period': 20,
+        'idx_vol_ma_fast': 5,
+        'idx_vol_ma_slow': 60,
     }
     for _k, _v in default_config.items():
         if _k not in config.keys():
@@ -121,8 +124,8 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         klines_vols.append(k.a)
 
     label_not_show_opts = opts.LabelOpts(is_show=False)
-    red_item_style = opts.ItemStyleOpts(color=color_k_up)
-    green_item_style = opts.ItemStyleOpts(color=color_k_down)
+    red_item_style = opts.ItemStyleOpts(color=color_k_up, opacity=0.5)
+    green_item_style = opts.ItemStyleOpts(color=color_k_down, opacity=0.5)
     vol = []
     for row in klines:
         item_style = red_item_style if row.c > row.o else green_item_style
@@ -774,7 +777,6 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         overlap_kline = overlap_kline.overlap(scatter_sell_orders_tu)
 
     # 成交量
-
     bar_vols = (
         Bar().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
             series_name="volume",
@@ -792,8 +794,42 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             )
         )
     )
+    # 成交量均线
+    vols_ma5 = talib.MA(np.array(klines_vols), timeperiod=config['idx_vol_ma_fast'])
+    vols_ma60 = talib.MA(np.array(klines_vols), timeperiod=config['idx_vol_ma_slow'])
+    line_vols_ma = (
+        Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+            series_name=f"MA{config['idx_vol_ma_fast']}",
+            y_axis=vols_ma5,
+            is_symbol_show=False,
+            label_opts=opts.LabelOpts(is_show=False),
+            itemstyle_opts=opts.ItemStyleOpts(color='white'),
+            linestyle_opts=opts.LineStyleOpts(width=2),
+        ).add_yaxis(
+            series_name=f"MA{config['idx_vol_ma_slow']}",
+            y_axis=vols_ma60,
+            is_symbol_show=False,
+            label_opts=opts.LabelOpts(is_show=False),
+            itemstyle_opts=opts.ItemStyleOpts(color='yellow'),
+            linestyle_opts=opts.LineStyleOpts(width=2),
+        ).set_global_opts(
+            legend_opts=opts.LegendOpts(is_show=True),
+            xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
+            yaxis_opts=opts.AxisOpts(position="right",
+                                     axislabel_opts=opts.LabelOpts(is_show=False),
+                                     axisline_opts=opts.AxisLineOpts(is_show=False),
+                                     axistick_opts=opts.AxisTickOpts(is_show=False)),
+        )
+    )
+
+    # 最下面的柱状图和折线图
+    vols_bar_line = bar_vols.overlap(line_vols_ma)
 
     # MACD
+    # macd_dif, macd_dea, macd_hist = talib.MACD(np.array([k.c for k in klines]),
+    #                                            fastperiod=12,
+    #                                            slowperiod=26,
+    #                                            signalperiod=9)
     bar_macd = (
         Bar().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
             series_name="MACD",
@@ -850,7 +886,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
 
     # Volumn 柱状图
     grid_chart.add(
-        bar_vols,
+        vols_bar_line,
         grid_opts=opts.GridOpts(
             pos_bottom="15%", height="10%", width="96%", pos_left='1%', pos_right='3%'
         ),
@@ -959,6 +995,8 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             )
         )
         futu_chart = kdj_line
+    elif show_futu == 'custom':
+        pass
 
     # 副图技术指标
     grid_chart.add(

@@ -527,7 +527,6 @@ class BackTest:
         """
         base_prices = {'datetime': [], 'val': []}
         balance_history = {'datetime': [], 'val': []}
-        net_profit_history = {'datetime': [], 'val': []}
         hold_profit_history = {'datetime': [], 'val': []}
         hold_num_history = {'datetime': [], 'val': []}
 
@@ -581,12 +580,6 @@ class BackTest:
                 balance_history['datetime'].append(_dt)
                 balance_history['val'].append(balance_history['val'][-1] if len(balance_history['val']) > 0 else 0)
 
-            # 累计净收益数据
-            if _dt in dts_total_nps.keys():
-                total_np += dts_total_nps[_dt]
-            net_profit_history['datetime'].append(_dt)
-            net_profit_history['val'].append(total_np)
-
             # 当前时间持仓累计
             hold_profit_history['datetime'].append(_dt)
             if _dt in _hold_profit_sums.keys():
@@ -602,7 +595,7 @@ class BackTest:
                 hold_num_history['val'].append(0)
 
         return self.__create_backtest_charts(
-            base_prices, balance_history, net_profit_history, hold_profit_history, hold_num_history
+            base_prices, balance_history, hold_profit_history, hold_num_history
         )
 
     def positions(self, code=None, add_columns=None):
@@ -661,21 +654,17 @@ class BackTest:
                 order_objs.extend(iter(orders))
         return pd.DataFrame(order_objs)
 
-    def __create_backtest_charts(self, base_prices, balance_history: dict, net_profit_history: dict,
+    @staticmethod
+    def __create_backtest_charts(base_prices, balance_history: dict,
                                  hold_profit_history: dict,
                                  hold_num_history: dict):
         """
         回测结果图表展示
         :return:
         """
-        if self.mode == 'signal':
-            main_name = '净收益累计'
-            main_x = net_profit_history['datetime']
-            main_y = net_profit_history['val']
-        else:
-            main_name = '资金变化'
-            main_x = balance_history['datetime']
-            main_y = balance_history['val']
+        main_name = '资金变化'
+        main_x = balance_history['datetime']
+        main_y = balance_history['val']
 
         main_chart = (Line().add_xaxis(
             xaxis_data=main_x
