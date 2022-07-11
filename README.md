@@ -8,7 +8,7 @@
 
 [Gitee 地址](https://gitee.com/wang-student/chanlun-pro)
 
-[在线文档](https://yijixiuxin.github.io/chanlun-pro/)
+[在线文档](http://docs.chanlun-trader.com/)
 
 [在线 Demo 展示](http://www.chanlun-trader.com/)  
 _在线Demo只做上证指数的缠论示例_

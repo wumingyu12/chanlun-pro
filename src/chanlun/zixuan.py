@@ -1,5 +1,6 @@
 from chanlun import config
 from chanlun import rd
+from chanlun.exchange import get_exchange, Market
 
 
 class ZiXuan(object):
@@ -12,7 +13,7 @@ class ZiXuan(object):
         初始化
         """
         self.market_type = market_type
-        if market_type == 'stock':
+        if market_type == 'a':
             self.zixuan_list = config.STOCK_ZX
         elif market_type == 'futures':
             self.zixuan_list = config.FUTURES_ZX
@@ -47,6 +48,14 @@ class ZiXuan(object):
         """
         if zx_name not in self.zx_names:
             return False
+        # 如果名称为空，则自动进行获取
+        if name == '' or name == 'undefined':
+            try:
+                ex = get_exchange(Market(self.market_type))
+                stock_info = ex.stock_info(code)
+                name = stock_info['name']
+            except Exception:
+                pass
         # 先删除原来的，如果有的话
         self.del_stock(zx_name, code)
         stocks = self.zx_stocks(zx_name)

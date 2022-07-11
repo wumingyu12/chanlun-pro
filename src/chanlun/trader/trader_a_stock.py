@@ -23,7 +23,7 @@ class TraderAStock(BackTestTrader):
         super().__init__(name=name, mode='real', is_stock=True, is_futures=False, log=log)
         self.ex = ExchangeTDX()
 
-        self.zx = zixuan.ZiXuan('stock')
+        self.zx = zixuan.ZiXuan('a')
 
     # 做多买入
     def open_buy(self, code, opt: Operation):
@@ -55,7 +55,7 @@ class TraderAStock(BackTestTrader):
             'amount': amount,
             'info': opt.msg
         }
-        rd.stock_order_save(code, save_order)
+        rd.order_save('a', code, save_order)
 
         return {'price': price, 'amount': amount}
 
@@ -88,7 +88,7 @@ class TraderAStock(BackTestTrader):
             'amount': pos.amount,
             'info': opt.msg
         }
-        rd.stock_order_save(code, save_order)
+        rd.order_save('a', code, save_order)
 
         return {'price': price, 'amount': pos.amount}
 

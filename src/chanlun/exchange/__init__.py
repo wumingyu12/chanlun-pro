@@ -1,6 +1,7 @@
 from enum import Enum
 from chanlun import config
 
+from chanlun.exchange.exchange import Exchange
 from chanlun.exchange.exchange_tdx import ExchangeTDX
 from chanlun.exchange.exchange_futu import ExchangeFutu
 from chanlun.exchange.exchange_baostock import ExchangeBaostock
@@ -25,7 +26,7 @@ class Market(Enum):
     US = 'us'
 
 
-def get_exchange(market: Market):
+def get_exchange(market: Market) -> Exchange:
     """
     获取市场的交易所对象，根据config配置中设置的进行获取
     """

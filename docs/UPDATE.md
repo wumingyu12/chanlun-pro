@@ -2,6 +2,27 @@
 
 ---
 
+### 2022-07-11
+
+* 策略回测，在K线回放类中，增加 `load_data_to_cache`；
+    * 表示是否将数据装在进内存，默认 True，如果内存告急，可将其设置为 False，以时间换空间，会比原来回测时间多一倍
+* 策略参数优化，同样增加 `load_data_to_cache` 参数，用来减少内存使用；
+    * 参数优化会创建多个进程跑策略，如果都将数据加载如内存，会占用太多内存，内存小会跑失败，可在参数优化中将其设置为 False
+    * `res = BT.run_optimization(setting, max_workers=None, next_frequency='d', evaluate='profit_rate', load_data_to_cache=False)`
+* 策略基类中 `Strategy`，增加 `judge_macd_back_zero` 方法，判断中枢是否有回拉零轴
+* 增加 `KlinesGenerator` K线生成（分钟），目前只支持分钟级别的生成，其他小时、日线需要判断不同市场的交易时间，比较麻烦，不做呢
+    * 示例参考：[合成自定义K线数据（分钟）](合成自定义K线数据（分钟）.md)
+* 缠论计算，可同时计算多个中枢及相对应的买卖点背驰信息
+    * 示例参考：[多中枢类型相同买卖点策略](多中枢类型相同买卖点策略.md)
+* `cl_utils.py` 增加获取笔内缺口数量的方法 `bi_qk_num(cd: ICL, bi: BI)`
+* 页面操作，增加图表订单管理，可在图表中增加指定的订单信息，并统一了下订单保存和读取的方法
+* 增加选股方法示例：
+    * `xg_multiple_zs_tupo_low_3buy` : 高级别中枢突破，在低级别有三买
+    * `xg_single_pre_bi_tk_and_3buy` : 在三买点前一笔，有跳空缺口
+* 沪深行情页面，增加 F10资料 快捷入口，可直达 东方财富的F10 页面
+* 自选组，沪深的参数由原来的 `stock` 更改为 `a`
+* 文档地址修改为：http://docs.chanlun-trader.com/
+
 ### 2022-06-24
 
 * 回测的 `signal` 模式，图表中的累计平仓盈亏曲线改为资金曲线，按照时间累加展示 平仓盈亏+持仓盈亏，更好展示策略资金变化情况；
@@ -36,7 +57,7 @@
 * 策略回测增加进度条，展示当前回测进度
 * `exchange_tdx.py` 请求行情的 klines 增加缓存，避免每次都全量多次查询行情数据
 * 自选类增加清空方法 `clear_zx_stocks`
-* 项目文档重新整理，在线地址 https://yijixiuxin.github.io/chanlun-pro/
+* 项目文档重新整理，在线地址 http://docs.chanlun-trader.com/
 * 策略
     * 增加高级别根据低级别1类买卖点信号开仓策略，采用多周期的笔进行判断（`strategy_son_level_1mmd.py`）
     * 增加高级别根据低级别1类买卖点信号开仓策略，采用低级别递归进行判断（`strategy_zsd_xd_bi_1mmd.py`）

@@ -58,7 +58,7 @@ def kline_show(request):
     klines = ex.klines(code, frequency=frequency, end_date=None if kline_dt == '' else kline_dt)
     cd = batch_cls(code, {frequency: klines}, cl_config, )[0]
 
-    orders = rd.currency_order_query(code)
+    orders = rd.order_query('currency', code)
 
     chart = kcharts.render_charts(f'{code}:{cd.get_frequency()}', cd, orders=orders, config=chart_config)
 

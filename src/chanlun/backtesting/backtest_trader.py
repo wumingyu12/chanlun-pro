@@ -220,7 +220,21 @@ class BackTestTrader(object):
             for mmd in self.positions[_c]:
                 _pos = self.positions[_c][mmd]
                 if _pos.balance > 0:
-                    poss.append(_pos)
+                    poss.append({
+                        'code': _pos.code,
+                        'mmd': _pos.mmd,
+                        'open_datetime': _pos.open_datetime,
+                        'close_datetime': _pos.close_datetime,
+                        'type': _pos.type,
+                        'price': _pos.price,
+                        'amount': _pos.amount,
+                        'loss_price': _pos.loss_price,
+                        'profit_rate': _pos.profit_rate,
+                        'max_profit_rate': _pos.max_profit_rate,
+                        'max_loss_rate': _pos.max_loss_rate,
+                        'open_msg': _pos.open_msg,
+                        'close_msg': _pos.close_msg,
+                    })
 
         if not poss:
             return []
@@ -369,6 +383,7 @@ class BackTestTrader(object):
 
         pos = self.query_code_mmd_pos(code, opt_mmd)
         res = None
+        order_type = None
         # 买点，买入，开仓做多
         if 'buy' in opt_mmd and opt.opt == 'buy':
             if pos.balance > 0:
@@ -376,6 +391,7 @@ class BackTestTrader(object):
             res = self.open_buy(code, opt)
             if res is False:
                 return False
+
             pos.type = '做多'
             pos.price = res['price']
             pos.amount = res['amount']
@@ -385,6 +401,8 @@ class BackTestTrader(object):
             pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
             pos.open_msg = opt.msg
             pos.info = opt.info
+
+            order_type = 'open_long'
 
             self._print_log(
                 f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做多买入（{res['price']} - {res['amount']}），原因： {opt.msg}"
@@ -406,6 +424,8 @@ class BackTestTrader(object):
             pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
             pos.open_msg = opt.msg
             pos.info = opt.info
+
+            order_type = 'open_short'
 
             self._print_log(
                 f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做空卖出（{res['price']} - {res['amount']}），原因： {opt.msg}"
@@ -437,6 +457,8 @@ class BackTestTrader(object):
             profit_rate = round((profit / hold_balance) * 100, 2)
             pos.profit_rate = profit_rate
             pos.close_msg = opt.msg
+
+            order_type = 'close_short'
 
             self._print_log('[%s - %s] // %s 平仓做空（%s - %s） 盈亏：%s (%.2f%%)，原因： %s' % (
                 code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
@@ -470,6 +492,8 @@ class BackTestTrader(object):
             pos.profit_rate = profit_rate
             pos.close_msg = opt.msg
 
+            order_type = 'close_long'
+
             self._print_log('[%s - %s] // %s 平仓做多（%s - %s） 盈亏：%s  (%.2f%%)，原因： %s' % (
                 code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
 
@@ -482,7 +506,7 @@ class BackTestTrader(object):
                 self.orders[code] = []
             self.orders[code].append({
                 'datetime': self.get_now_datetime(),
-                'type': opt.opt,
+                'type': order_type,
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg,

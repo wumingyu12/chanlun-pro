@@ -239,3 +239,60 @@ def xg_single_bcmmd_next_di_fx_verif(cl_datas: List[ICL]):
                     return f'{cd.get_frequency()} 出现背驰 {bi.line_bcs()}，并且后续出现验证底分型，可关注'
 
     return None
+
+
+def xg_multiple_zs_tupo_low_3buy(cl_datas: List[ICL]):
+    """
+    高级别中枢突破，在低级别有三买
+    所谓横有多长竖有多长
+    找一个高级别（比如日线）大级别中枢窄幅震荡（大于9笔的中枢），在 macd 零轴上方，低一级别出现三类买点的股票
+    周期：双周期
+    适用市场：沪深A股
+    作者：WX
+    """
+    high_cd = cl_datas[0]
+    if len(high_cd.get_bi_zss()) == 0:
+        return None
+    high_last_bi_zs = high_cd.get_bi_zss()[-1]
+    if high_last_bi_zs.done is True or high_last_bi_zs.line_num < 9 or high_last_bi_zs.zf() <= 50:
+        return None
+    # macd 黄白线要在上方
+    high_dif = high_cd.get_idx()['macd']['dif'][-1]
+    high_dea = high_cd.get_idx()['macd']['dea'][-1]
+    if high_dif < 0 or high_dea < 0:
+        return None
+
+    # 低级别笔三买
+    low_cd = cl_datas[-1]
+    if len(low_cd.get_bis()) == 0:
+        return None
+
+    low_last_bi = low_cd.get_bis()[-1]
+    if low_last_bi.mmd_exists(['3buy']):
+        return f'{high_cd.get_frequency()} 中枢有可能突破，低级别出现三买，进行关注'
+
+    return None
+
+
+def xg_single_pre_bi_tk_and_3buy(cl_datas: List[ICL]):
+    """
+    在三买点前一笔，有跳空缺口
+    说明突破中枢的力度比较大，可以重点关注
+    周期：单周期
+    使用市场：沪深A股
+    作者：WX
+    """
+    cd = cl_datas[0]
+    if len(cd.get_bis()) < 5:
+        return None
+    pre_bi = cd.get_bis()[-2]
+    now_bi = cd.get_bis()[-1]
+    # 之前一笔要出现向上跳空缺口
+    up_qk_num, _ = bi_qk_num(cd, pre_bi)
+    if up_qk_num <= 0:
+        return None
+    # 出现三类买点，并且前笔的高点大于等于中枢的 gg 点
+    for mmd in now_bi.mmds:
+        if mmd.name == '3buy' and pre_bi.high >= mmd.zs.gg:
+            return f'三买前一笔出现 {up_qk_num} 缺口，可重点关注'
+    return None

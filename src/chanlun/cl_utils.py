@@ -146,3 +146,20 @@ def last_done_bi(cd: ICL):
         if bi.is_done():
             return bi
     return None
+
+
+def bi_qk_num(cd: ICL, bi: BI) -> Tuple[int, int]:
+    """
+    获取笔的缺口数量（分别是向上跳空，向下跳空数量）
+    """
+    up_qk_num = 0
+    down_qk_num = 0
+    klines = cd.get_klines()[bi.start.k.k_index:bi.end.k.k_index + 1]
+    for i in range(1, len(klines)):
+        pre_k = klines[i - 1]
+        now_k = klines[i]
+        if now_k.l > pre_k.h:
+            up_qk_num += 1
+        elif now_k.h < pre_k.l:
+            down_qk_num += 1
+    return up_qk_num, down_qk_num

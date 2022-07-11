@@ -98,7 +98,7 @@
                         obj.find("option[value='" + _v + "']").attr("selected", true);
                     }
                 }
-                $('.chart_setting input,select').change(function () {
+                $('.chart_setting input,.chart_setting select').change(function () {
                     let _key = $(this).attr('id');
                     let _type = $(this).attr('type');
                     let _val = $(this).val();

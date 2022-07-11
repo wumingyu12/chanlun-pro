@@ -1,4 +1,4 @@
-# platforms: windows.x86.7,windows.x86_64.7,linux.x86_64.7,centos6.x86_64.7,darwin.x86_64.7,darwin.aarch64.3,linux.aarch32.3,linux.aarch64.3
+# platforms: windows.x86.0,windows.x86_64.0,linux.x86_64.0,darwin.x86_64.0,darwin.aarch64.0,linux.aarch32.0,linux.aarch64.0
 # advanced: 0
 # suffix: 
 # license: outer
@@ -57,7 +57,7 @@ def protect_pytransform():
             else:
                 value += 1217
 
-        if value not in [138677394, 120304383, 124826064, 124825860, 146867026, 67554311, 158326618, 116343394]:
+        if value not in [70744453, 50269345, 55158837, 70393714, 47198925, 90456235, 56320210]:
             raise RuntimeError('unexpected %s' % filename)
 
     assert_builtin(sum)

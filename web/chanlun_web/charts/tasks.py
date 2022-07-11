@@ -43,7 +43,7 @@ def task_a_1():
 
     print(f'{fun.now_dt()} Run a_1 Task: Config {config}')
 
-    zx = zixuan.ZiXuan('stock')
+    zx = zixuan.ZiXuan('a')
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:
@@ -79,7 +79,7 @@ def task_a_2():
 
     print(f'{fun.now_dt()} Run a_2 Task: Config {config}')
 
-    zx = zixuan.ZiXuan('stock')
+    zx = zixuan.ZiXuan('a')
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:

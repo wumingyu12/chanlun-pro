@@ -92,6 +92,17 @@ def timeint_to_str(_t, _format='%Y-%m-%d %H:%M:%S'):
     return time.strftime(_format, time_arr)
 
 
+def timeint_to_datetime(_t, _format='%Y-%m-%d %H:%M:%S'):
+    """
+    时间戳转日期
+    :param _t:
+    :param _format:
+    :return:
+    """
+    time_arr = time.localtime(int(_t))
+    return str_to_datetime(time.strftime(_format, time_arr), _format)
+
+
 def str_to_timeint(_t, _format='%Y-%m-%d %H:%M:%S'):
     """
     字符串转时间戳

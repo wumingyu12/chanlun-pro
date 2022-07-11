@@ -54,12 +54,12 @@ class TraderCurrency(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'buy',
+                'type': 'open_long',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.currency_order_save(code, save_order)
+            rd.order_save('currency', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:
@@ -93,12 +93,12 @@ class TraderCurrency(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'sell',
+                'type': 'open_short',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.currency_order_save(code, save_order)
+            rd.order_save('currency', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:
@@ -130,12 +130,12 @@ class TraderCurrency(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'sell',
+                'type': 'close_long',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.currency_order_save(code, save_order)
+            rd.order_save('currency', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:
@@ -167,12 +167,12 @@ class TraderCurrency(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'buy',
+                'type': 'close_short',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.currency_order_save(code, save_order)
+            rd.order_save('currency', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:

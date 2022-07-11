@@ -19,7 +19,7 @@ def index_show(request):
     :param request:
     :return:
     """
-    zx = zixuan.ZiXuan(market_type='stock')
+    zx = zixuan.ZiXuan(market_type='a')
 
     return render(request, 'charts/stock/index.html', {
         'nav': 'stock',
@@ -89,7 +89,7 @@ def kline_chart(request):
     klines = ex.klines(code, frequency=frequency)
     cd = batch_cls(code, {frequency: klines}, cl_config, )[0]
     stock_info = ex.stock_info(code)
-    orders = rd.stock_order_query(code)
+    orders = rd.order_query('a', code)
     chart = kcharts.render_charts(
         stock_info['code'] + ':' + stock_info['name'] + ':' + cd.get_frequency(),
         cd, orders=orders, config=chart_config)

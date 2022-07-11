@@ -49,12 +49,12 @@ class TraderFutures(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'buy',
+                'type': 'open_long',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.futures_order_save(code, save_order)
+            rd.order_save('futures', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:
@@ -85,12 +85,12 @@ class TraderFutures(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'sell',
+                'type': 'open_short',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.futures_order_save(code, save_order)
+            rd.order_save('futures', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:
@@ -121,12 +121,12 @@ class TraderFutures(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'sell',
+                'type': 'close_long',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.futures_order_save(code, save_order)
+            rd.order_save('futures', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:
@@ -157,12 +157,12 @@ class TraderFutures(BackTestTrader):
                 'code': code,
                 'name': code,
                 'datetime': fun.datetime_to_str(datetime.datetime.now()),
-                'type': 'buy',
+                'type': 'close_short',
                 'price': res['price'],
                 'amount': res['amount'],
                 'info': opt.msg
             }
-            rd.futures_order_save(code, save_order)
+            rd.order_save('futures', code, save_order)
 
             return {'price': res['price'], 'amount': res['amount']}
         except Exception as e:

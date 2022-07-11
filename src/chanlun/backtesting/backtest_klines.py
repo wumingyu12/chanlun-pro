@@ -40,14 +40,15 @@ class BackTestKlines(MarketDatas):
 
         self.now_date = start_date
 
+        # 是否使用 cache 保存所有k线数据，True 会将代码周期时间段内所有数据读取并保存到内存，False 在每次使用的时候从数据库中获取
+        # True 在多代码时会占用太多内存，这时可以设置为 False 增加使用数据库按需获取，增加运行时间，减少占用内存空间
+        self.load_data_to_cache = True
+
         # 保存k线数据
-        self.all_klines: Dict[str, Dict[str, pd.DataFrame]] = {}
+        self.all_klines: Dict[str, pd.DataFrame] = {}
 
         # 每个周期缓存的k线数据，避免多次请求重复计算
         self.cache_klines: Dict[str, Dict[str, pd.DataFrame]] = {}
-
-        # 保存每个标的的缠论配置唯一key，如果后续在运行中进行变更，则需要重新计算
-        self.cache_cl_config_keys: Dict[str, str] = {}
 
         self.ex = ExchangeDB(self.market)
 
@@ -93,30 +94,25 @@ class BackTestKlines(MarketDatas):
             'low': float(kline.iloc[-1]['low']),
         }
 
-    def get_cl_data(self, code, frequency) -> ICL:
-        key = '%s_%s' % (code, frequency)
-        if key in self.cache_cl_datas.keys():
-            return self.cache_cl_datas[key]
-
+    def get_cl_data(self, code, frequency, cl_config: dict = None) -> ICL:
         # 根据回测配置，可自定义不同周期所使用的缠论配置项
-        if code in self.cl_config.keys():
-            cl_config = self.cl_config[code]
-        elif frequency in self.cl_config.keys():
-            cl_config = self.cl_config[frequency]
-        elif 'default' in self.cl_config.keys():
-            cl_config = self.cl_config['default']
-        else:
-            cl_config = self.cl_config
+        if cl_config is None:
+            if code in self.cl_config.keys():
+                cl_config = self.cl_config[code]
+            elif frequency in self.cl_config.keys():
+                cl_config = self.cl_config[frequency]
+            elif 'default' in self.cl_config.keys():
+                cl_config = self.cl_config['default']
+            else:
+                cl_config = self.cl_config
 
-        # 将配置项md5哈希，并对比与之前的计算是否一致，不一致则重新计算
+        # 将配置项md5哈希，并加入到 key 中，这样可以保存并获取多个缠论配置项的数据
         cl_config_key = json.dumps(cl_config)
         cl_config_key = hashlib.md5(cl_config_key.encode(encoding='UTF-8')).hexdigest()
-        if key not in self.cache_cl_config_keys.keys():
-            self.cache_cl_config_keys[key] = cl_config_key
-        elif self.cache_cl_config_keys[key] != cl_config_key:
-            # print(f'{key} 配置项变更为：{cl_config}')
-            self.cache_cl_config_keys[key] = cl_config_key
-            del (self.cl_datas[key])
+
+        key = '%s_%s_%s' % (code, frequency, cl_config_key)
+        if key in self.cache_cl_datas.keys():
+            return self.cache_cl_datas[key]
 
         if key not in self.cl_datas.keys():
             # 第一次进行计算
@@ -125,6 +121,12 @@ class BackTestKlines(MarketDatas):
         else:
             # 更新计算
             cd = self.cl_datas[key]
+
+            # TODO 节省内存，最多存 3000 k线数据，超过就清空重新计算
+            if len(cd.get_klines()) >= 3000:
+                self.cl_datas[key] = cl.CL(code, frequency, cl_config)
+                cd = self.cl_datas[key]
+
             klines = self.klines(code, frequency)
             if len(klines) > 0:
                 if len(cd.get_klines()) == 0:
@@ -138,7 +140,7 @@ class BackTestKlines(MarketDatas):
                     else:
                         self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
 
-        # 单次循环内，计算过后进行缓存，避免多次计算
+        # 回测单次循环周期内，计算过后进行缓存，避免多次计算
         self.cache_cl_datas[key] = self.cl_datas[key]
 
         return self.cache_cl_datas[key]
@@ -148,24 +150,31 @@ class BackTestKlines(MarketDatas):
             # 直接从缓存中读取
             return self.cache_klines[code][frequency]
 
-        for f in self.frequencys:
-            key = '%s-%s' % (code, f)
-            if key not in self.all_klines.keys():
-                # 从数据库获取日期区间的所有行情
-                self.all_klines[key] = self.ex.klines(
-                    code, f,
-                    start_date=self._cal_start_date_by_frequency(self.start_date, f),
-                    end_date=fun.datetime_to_str(self.end_date),
-                    args={'limit': None}
-                )
         klines = {}
-        for f in self.frequencys:
-            key = '%s-%s' % (code, f)
-            if self.market in ['currency', 'futures']:
-                kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-2000::]
-            else:
-                kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-2000::]
-            klines[f] = kline
+        if self.load_data_to_cache:
+            # 使用缓存
+            for f in self.frequencys:
+                key = '%s-%s' % (code, f)
+                if key not in self.all_klines.keys():
+                    # 从数据库获取日期区间的所有行情
+                    self.all_klines[key] = self.ex.klines(
+                        code, f,
+                        start_date=self._cal_start_date_by_frequency(self.start_date, f),
+                        end_date=fun.datetime_to_str(self.end_date),
+                        args={'limit': None}
+                    )
+            for f in self.frequencys:
+                key = '%s-%s' % (code, f)
+                if self.market in ['currency', 'futures']:
+                    kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-2000::]
+                else:
+                    kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-2000::]
+                klines[f] = kline
+        else:
+            # 使用数据库按需查询
+            for f in self.frequencys:
+                klines[f] = self.ex.klines(code, f, end_date=fun.datetime_to_str(self.now_date), args={'limit': 2000})
+
         # 转换周期k线，去除未来数据
         klines = self.convert_klines(klines)
         # print(frequency, len(klines[frequency]))

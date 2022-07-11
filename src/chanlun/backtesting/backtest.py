@@ -7,7 +7,6 @@ import traceback
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
 
-import numpy as np
 import prettytable as pt
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Grid
@@ -17,6 +16,7 @@ from chanlun.backtesting.backtest_klines import BackTestKlines
 from chanlun.backtesting.backtest_trader import BackTestTrader
 from chanlun.backtesting.base import POSITION
 from chanlun.backtesting.optimize import OptimizationSetting
+from chanlun.backtesting.klines_generator import KlinesGenerator
 from chanlun.cl_interface import *
 
 
@@ -75,6 +75,8 @@ class BackTest:
 
         # 回测循环加载下次周期，默认None 为回测最小周期
         self.next_frequency = None
+        # 回测中是否将数据批量加载到内存中，True 会占用大量内存，如果内存不足，建议设置为 False
+        self.load_data_to_cache = True
 
         # 参数优化，评价指标字段，默认为最终盈利百分比总和
         self.evaluate = 'profit_rate'
@@ -162,6 +164,8 @@ class BackTest:
             next_frequency = self.frequencys[-1]
 
         self.next_frequency = next_frequency
+
+        self.datas.load_data_to_cache = self.load_data_to_cache
         self.datas.init(self.base_code, next_frequency)
 
         _st = time.time()
@@ -175,9 +179,10 @@ class BackTest:
             for code in self.codes:
                 try:
                     self.trader.run(code)
-                except Exception:
+                except Exception as e:
                     self.log.info(f'执行 {code} 异常')
                     self.log.info(traceback.format_exc())
+                    # raise e
 
         # 清空持仓
         self.trader.end()
@@ -240,6 +245,8 @@ class BackTest:
             'cl_config': copy_cl_config,
         })
 
+        BT.load_data_to_cache = self.load_data_to_cache
+
         BT.log.info(f'执行参数优化，参数配置：{new_cl_setting}，落地文件：{new_save_file}')
         balance = 0
         try:
@@ -268,7 +275,8 @@ class BackTest:
             optimization_setting: OptimizationSetting,
             max_workers: int = None,
             next_frequency: str = None,
-            evaluate: str = 'profit_rate'
+            evaluate: str = 'profit_rate',
+            load_data_to_cache: bool = True
     ):
         """
         运行参数优化
@@ -276,6 +284,7 @@ class BackTest:
         @param max_workers: 最大运行进程数
         @param next_frequency: 回测每次循环的周期
         @param evaluate: 评价的指标 允许 profit_rate /  max_profit_rate
+        @param load_data_to_cache: 批量优化，如果使用加载数据到内存中的做法，会占用太多内存，这里可以设置为 False，直接读取数据到方式执行
         """
         cl_settings: List[Dict] = optimization_setting.generate_cl_settings()
 
@@ -283,6 +292,7 @@ class BackTest:
         self.log.info(f"参数优化空间：{len(cl_settings)}")
 
         self.next_frequency = next_frequency  # 每次循环的周期
+        self.load_data_to_cache = load_data_to_cache
         self.evaluate = evaluate
 
         start = time.perf_counter()
@@ -308,7 +318,10 @@ class BackTest:
 
         return results
 
-    def show_charts(self, code, frequency, change_cl_config=None, show_futu='macd', chart_config=None):
+    def show_charts(self, code, frequency,
+                    to_minutes: int = None, to_dt_align_type: str = 'bob',
+                    change_cl_config=None, show_futu='macd',
+                    chart_config=None):
         """
         显示指定代码指定周期的图表
         """
@@ -335,7 +348,11 @@ class BackTest:
         )
         bk.klines(code, frequency)
         klines = bk.all_klines['%s-%s' % (code, frequency)]
-        cd: ICL = cl.CL(code, frequency, show_cl_config).process_klines(klines)
+        if to_minutes is not None:
+            kg = KlinesGenerator(to_minutes, show_cl_config, to_dt_align_type)
+            cd: ICL = kg.update_klines(klines)
+        else:
+            cd: ICL = cl.CL(code, frequency, show_cl_config).process_klines(klines)
         orders = self.trader.orders[code] if code in self.trader.orders else []
         render = kcharts.render_charts('%s - %s' % (code, frequency), cd, show_futu=show_futu, orders=orders,
                                        config=chart_config)

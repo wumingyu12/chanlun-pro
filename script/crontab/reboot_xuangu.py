@@ -195,7 +195,7 @@ print('运行股票数量：', len(codes))
 直接放入自选组
 这个需要确保在 config.py 中有进行配置
 """
-zx = zixuan.ZiXuan('stock')
+zx = zixuan.ZiXuan('a')
 zx_group = '选股'
 
 # 清空选股自选

@@ -3,6 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Dict
+from chanlun import fun
 
 import pandas as pd
 
@@ -130,7 +131,7 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
     new_kline = {}
     freq_second_maps = {
         '5m': 5 * 60, '10m': 10 * 60, '15m': 15 * 60, '30m': 30 * 60, '60m': 60 * 60, '120m': 120 * 60,
-        'd': 24 * 60 * 60
+        'd': 24 * 60 * 60, 'm': 30 * 24 * 60 * 60
     }
     if to_f not in freq_second_maps.keys():
         raise Exception(f'不支持的转换周期：{to_f}')
@@ -148,6 +149,8 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
             else:
                 new_date_time = date_time - (date_time % seconds) + seconds
 
+        if to_f in ['m']:
+            new_date_time = fun.str_to_datetime(f'{dt.year}-{dt.month}-01 00:00:00').timestamp()
         if to_f in ['d']:
             new_date_time -= 8 * 60 * 60
         if to_f == '60m':
@@ -170,7 +173,7 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
             if k[1]['low'] < n_k['low']:
                 n_k['low'] = k[1]['low']
             n_k['close'] = k[1]['close']
-            n_k['volume'] += float(k[1]['volume'])
+            n_k['volume'] += float(k[1]['volume']) if k[1]['volume'] is not None else 0
             new_kline[new_date_time] = n_k
         else:
             new_kline[new_date_time] = {
@@ -180,7 +183,7 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
                 'close': k[1]['close'],
                 'high': k[1]['high'],
                 'low': k[1]['low'],
-                'volume': float(k[1]['volume']),
+                'volume': float(k[1]['volume']) if k[1]['volume'] is not None else 0,
             }
     kline_pd = pd.DataFrame(new_kline.values())
     kline_pd['date'] = pd.to_datetime(kline_pd['date'])

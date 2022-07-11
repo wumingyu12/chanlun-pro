@@ -95,6 +95,8 @@ def zx_save(market_type, name, stocks):
     """
     自选列表保存
     """
+    if market_type == 'a':
+        market_type = 'stock'
     Robj().hset(f'zixuan_{market_type}', name, json.dumps(stocks))
     return True
 
@@ -103,6 +105,8 @@ def zx_query(market_type, name):
     """
     查询自选列表
     """
+    if market_type == 'a':
+        market_type = 'stock'
     stocks = Robj().hget(f'zixuan_{market_type}', name)
     stocks = json.loads(stocks) if stocks else []
     return stocks
@@ -203,56 +207,6 @@ def jhs_save(market, code, name, jh: dict):
     return False  # False 意思表示有更新
 
 
-def futures_order_save(symbol, order):
-    """
-    记录期货的订单信息
-    :param symbol:
-    :param order:
-    :return:
-    """
-    orders = Robj().hget('futures_orders', symbol)
-    orders = [] if orders is None else json.loads(orders)
-    orders.append(order)
-    Robj().hset('futures_orders', symbol, json.dumps(orders))
-    return True
-
-
-def futures_order_query(symbol):
-    """
-    期货订单查询
-    :param symbol:
-    :return:
-    """
-    orders = Robj().hget('futures_orders', symbol)
-    orders = [] if orders is None else json.loads(orders)
-    return orders
-
-
-def currency_order_save(symbol, order):
-    """
-    记录币种订单信息
-    :param symbol:
-    :param order:
-    :return:
-    """
-    orders = Robj().hget('currency_orders', symbol)
-    orders = [] if orders is None else json.loads(orders)
-    orders.append(order)
-    Robj().hset('currency_orders', symbol, json.dumps(orders))
-    return True
-
-
-def currency_order_query(symbol):
-    """
-    数字货币订单查询
-    :param symbol:
-    :return:
-    """
-    orders = Robj().hget('currency_orders', symbol)
-    orders = [] if orders is None else json.loads(orders)
-    return orders
-
-
 def currency_opt_record_save(symbol, info):
     """
     数字货币操盘记录
@@ -331,40 +285,72 @@ def dl_gn_rank_save(ranks: Dict[str, dict]):
     return True
 
 
-def stock_order_save(code, order):
+def order_save(market, code, order):
     """
-    记录股票交易订单信息
+    记录交易订单信息
     {
-        "code": "HK.02382",
-        "name": "\u821c\u5b87\u5149\u5b66\u79d1\u6280",
+        "code": "SH.000001",
         "datetime": "2021-10-19 10:09:51",
-        "type": "buy",
+        "type": "buy", (允许的值：buy 买入 sell 卖出  open_long 开多  close_long 平多 open_short 开空 close_short 平空)
         "price": 205.8,
         "amount": 300.0,
-        "info": ""
+        "info": "涨涨涨"
     }
-    :param code:
-    :param order:
+    :param market: 市场（a/hk/us/futures/currency）
+    :param code: 标的代码
+    :param order: 订单信息
     :return:
     """
-    orders = Robj().hget('stock_orders', code)
+    market_key_maps = {
+        'a': 'stock_orders',
+        'hk': 'hk_orders',
+        'us': 'us_orders',
+        'futures': 'futures_orders',
+        'currency': 'currency_orders'
+    }
+    orders = Robj().hget(market_key_maps[market], code)
     orders = {} if orders is None else json.loads(orders)
     key = order['datetime']
     orders[key] = order
-    Robj().hset('stock_orders', code, json.dumps(orders))
+    Robj().hset(market_key_maps[market], code, json.dumps(orders))
     return True
 
 
-def stock_order_query(code):
+def order_query(market, code):
     """
     股票订单查询
-    :param code:
-    :return:
+    :param market: 市场（a/hk/us/futures/currency）
+    :param code: 标的代码
+    :return: 订单列表信息
     """
-    orders = Robj().hget('stock_orders', code)
+    market_key_maps = {
+        'a': 'stock_orders',
+        'hk': 'hk_orders',
+        'us': 'us_orders',
+        'futures': 'futures_orders',
+        'currency': 'currency_orders'
+    }
+    orders = Robj().hget(market_key_maps[market], code)
     orders = {} if orders is None else json.loads(orders)
     orders = orders.values()
     return orders
+
+
+def order_clean(market, code):
+    """
+    清除指定市场代码的订单信息
+    :param market: 市场（a/hk/us/futures/currency）
+    :param code: 标的代码
+    """
+    market_key_maps = {
+        'a': 'stock_orders',
+        'hk': 'hk_orders',
+        'us': 'us_orders',
+        'futures': 'futures_orders',
+        'currency': 'currency_orders'
+    }
+    Robj().hdel(market_key_maps[market], code)
+    return True
 
 
 def task_config_query(task_name, return_obj=True):

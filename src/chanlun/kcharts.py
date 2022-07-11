@@ -56,6 +56,10 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         'idx_boll_period': 20,
         'idx_vol_ma_fast': 5,
         'idx_vol_ma_slow': 60,
+
+        # 默认显示的中枢类型（在计算多个中枢时使用，用来切换不同中枢的效果展示）
+        'custom_bi_zs_type': None,
+        'custom_xd_zs_type': None,
     }
     for _k, _v in default_config.items():
         if _k not in config.keys():
@@ -97,8 +101,8 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     bis = cl_data.get_bis()
     xds = cl_data.get_xds()
     zsds = cl_data.get_zsds()
-    bi_zss = cl_data.get_bi_zss()
-    xd_zss = cl_data.get_xd_zss()
+    bi_zss = cl_data.get_bi_zss(config['custom_bi_zs_type'])
+    xd_zss = cl_data.get_xd_zss(config['custom_xd_zs_type'])
     zsd_zss = cl_data.get_zsd_zss()
     last_bi_zs = cl_data.get_last_bi_zs()
     last_xd_zs = cl_data.get_last_xd_zs()
@@ -311,12 +315,12 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         _fx = _bi.end
         if _fx.index not in fx_bcs_mmds.keys():
             fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
-        for _bc in _bi.bcs:
+        for _bc in _bi.get_bcs(config['custom_bi_zs_type']):
             if config['show_bi_bc'] is False:
                 break
             if _bc.bc:
                 fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
-        for _mmd in _bi.mmds:
+        for _mmd in _bi.get_mmds(config['custom_bi_zs_type']):
             if config['show_bi_mmd'] is False:
                 break
             fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
@@ -324,12 +328,12 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         _fx = _xd.end
         if _fx.index not in fx_bcs_mmds.keys():
             fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
-        for _bc in _xd.bcs:
+        for _bc in _xd.get_bcs(config['custom_xd_zs_type']):
             if config['show_xd_bc'] is False:
                 break
             if _bc.bc:
                 fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
-        for _mmd in _xd.mmds:
+        for _mmd in _xd.get_mmds(config['custom_xd_zs_type']):
             if config['show_xd_mmd'] is False:
                 break
             fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
@@ -395,6 +399,11 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     # 画订单记录
     scatter_buy_orders = {'i': [], 'val': []}
     scatter_sell_orders = {'i': [], 'val': []}
+    # 　order type 允许的值：buy 买入 sell 卖出  open_long 开多  close_long 平多 open_short 开空 close_short 平空
+    order_type_maps = {
+        'buy': '买入', 'sell': '卖出',
+        'open_long': '买入开多', 'open_short': '买入开空', 'close_long': '卖出平多', 'close_short': '买入平空'
+    }
     if orders:
         # 处理订单时间坐标
         dts = pd.Series(klines_xaxis)
@@ -406,14 +415,14 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             k_dt = dts[dts <= odt]
             if len(k_dt) == 0:
                 continue
-            if o['type'] == 'buy':
+            if o['type'] in ['buy', 'open_long', 'open_short']:
                 scatter_buy_orders['i'].append(k_dt.iloc[-1])
-                scatter_buy_orders['val'].append(
-                    [o['price'], str(o['price']) + ' - 买入:' + ('' if 'info' not in o else o['info'])])
-            elif o['type'] == 'sell':
+                scatter_buy_orders['val'].append([o['price'],
+                                                  f"{order_type_maps[o['type']]}[{o['price']}/{o['amount']}]:{'' if 'info' not in o else o['info']}"])
+            elif o['type'] in ['sell', 'close_long', 'close_short']:
                 scatter_sell_orders['i'].append(k_dt.iloc[-1])
-                scatter_sell_orders['val'].append(
-                    [o['price'], str(o['price']) + ' - 卖出:' + ('' if 'info' not in o else o['info'])])
+                scatter_sell_orders['val'].append([o['price'],
+                                                   f"{order_type_maps[o['type']]}[{o['price']}/{o['amount']}]:{'' if 'info' not in o else o['info']}"])
 
     klines_chart = (cKline().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
         series_name="",

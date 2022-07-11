@@ -79,7 +79,7 @@ def xuangu_sz(context: Context):
     subscribe(symbols=symbols, frequency='1d', count=2000, unsubscribe_previous=True)
 
     # 初始化缠论数据
-    market_data.init_cl_datas(symbols, '1d')
+    market_data.init_cl_datas(symbols, ['1d'])
 
     return symbols
 
@@ -146,7 +146,7 @@ def xuangu_zf(context: Context):
     subscribe(symbols=symbols, frequency='1d', count=2000, unsubscribe_previous=True)
 
     # 初始化缠论数据
-    market_data.init_cl_datas(symbols, '1d')
+    market_data.init_cl_datas(symbols, ['1d'])
 
     return symbols
 

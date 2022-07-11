@@ -3,7 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from django.shortcuts import render, redirect
 
 from chanlun.exchange import get_exchange, Market
-from chanlun import zixuan, config
+from chanlun import zixuan, config, rd
 from . import tasks
 from . import utils
 from .apps import login_required
@@ -99,6 +99,40 @@ def search_code_json(request):
         if search.lower() in stock['code'].lower() or search.lower() in stock['name'].lower()
     ]
 
-    js = [{'value': f"{r['code']} - {r['name']}", 'data': r['code'], 'name': r['name']} for r in res]
+    res_json = [{'code': r['code'], 'name': r['name']} for r in res]
 
-    return utils.response_as_json({'query': search, 'suggestions': js})
+    return utils.response_as_json(res_json)
+
+
+# 增加订单记录
+@login_required
+def add_order_json(request):
+    market = request.POST.get('market')
+    code = request.POST.get('code')
+    dt = request.POST.get('dt')
+    _type = request.POST.get('type')
+    price = request.POST.get('price')
+    amount = request.POST.get('amount')
+    info = request.POST.get('info')
+
+    rd.order_save(market, code, {
+        "code": code,
+        "datetime": dt,
+        "type": _type,
+        "price": price,
+        "amount": amount,
+        "info": info
+    })
+
+    return utils.json_response('OK')
+
+
+# 增加订单记录
+@login_required
+def clean_order_json(request):
+    market = request.POST.get('market')
+    code = request.POST.get('code')
+
+    rd.order_clean(market, code)
+
+    return utils.json_response('OK')

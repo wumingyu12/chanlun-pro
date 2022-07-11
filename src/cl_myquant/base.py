@@ -40,20 +40,21 @@ class MyQuantData(MarketDatas):
             'low': float(kline.iloc[-1]['low']),
         }
 
-    def init_cl_datas(self, codes, frequency):
+    def init_cl_datas(self, codes, frequencys):
         """
         重新初始化指定的标的列表的缠论数据
         """
         old_key_list = self.cache_cl_datas.keys()
         key_list = []
-        for code in codes:
-            key = f'{code}_{frequency}'
-            key_list.append(key)
-            klines = self.klines(code, frequency)
-            if key not in self.cache_cl_datas.keys():
-                self.cache_cl_datas[key] = cl.CL(code, frequency, self.cl_config).process_klines(klines)
-            else:
-                self.cache_cl_datas[key].process_klines(klines)
+        for frequency in frequencys:
+            for code in codes:
+                key = f'{code}_{frequency}'
+                key_list.append(key)
+                klines = self.klines(code, frequency)
+                if key not in self.cache_cl_datas.keys():
+                    self.cache_cl_datas[key] = cl.CL(code, frequency, self.cl_config).process_klines(klines)
+                else:
+                    self.cache_cl_datas[key].process_klines(klines)
 
         # 删除不在计划数据，节省内存
         del_key_list = list(set(old_key_list).difference(set(key_list)))

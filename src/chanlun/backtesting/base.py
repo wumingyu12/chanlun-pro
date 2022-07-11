@@ -3,29 +3,37 @@ from abc import ABC
 import talib
 
 from chanlun.cl_interface import *
+from chanlun.cl_utils import cal_zs_macd_infos
 
 
-@dataclass
 class POSITION:
     """
     持仓对象
     """
-    code: str
-    mmd: str
-    type: str = None
-    balance: float = 0
-    price: float = 0
-    amount: float = 0
-    loss_price: float = None
-    open_date: str = None
-    open_datetime: str = None
-    close_datetime: str = None
-    profit_rate: float = 0
-    max_profit_rate: float = 0  # 仅供参考，不太精确
-    max_loss_rate: float = 0  # 仅供参考，不太精确
-    open_msg: str = ''
-    close_msg: str = ''
-    info: Dict = None
+
+    def __init__(self, code: str, mmd: str, type: str = None, balance: float = 0, price: float = 0, amount: float = 0,
+                 loss_price: float = None, open_date: str = None, open_datetime: str = None, close_datetime: str = None,
+                 profit_rate: float = 0, max_profit_rate: float = 0, max_loss_rate: float = 0, open_msg: str = '',
+                 close_msg: str = '', info: Dict = None):
+        self.code: str = code
+        self.mmd: str = mmd
+        self.type: str = type
+        self.balance: float = balance
+        self.price: float = price
+        self.amount: float = amount
+        self.loss_price: float = loss_price
+        self.open_date: str = open_date
+        self.open_datetime: str = open_datetime
+        self.close_datetime: str = close_datetime
+        self.profit_rate: float = profit_rate
+        self.max_profit_rate: float = max_profit_rate  # 仅供参考，不太精确
+        self.max_loss_rate: float = max_loss_rate  # 仅供参考，不太精确
+        self.open_msg: str = open_msg
+        self.close_msg: str = close_msg
+        self.info: Dict = info
+
+    # def __str__(self):
+    #     return f'code : {self.code} mmd : {self.mmd} type : {self.type}'
 
 
 class Operation:
@@ -80,9 +88,13 @@ class MarketDatas(ABC):
         """
 
     @abstractmethod
-    def get_cl_data(self, code, frequency) -> ICL:
+    def get_cl_data(self, code, frequency, cl_config: dict = None) -> ICL:
         """
         获取标的周期的缠论数据
+        @param code: 获取缠论数据的标的代码
+        @param frequency: 获取的周期
+        @param cl_config: 使用的缠论配置，如果是 None，则使用回测中默认的配置项
+        @return : 缠论数据对象
         """
 
 
@@ -373,3 +385,17 @@ class Strategy(ABC):
             if fx.ld() >= 5:
                 infos[f'qiang_{fx.type}_fx'] += 1
         return infos
+
+    @staticmethod
+    def judge_macd_back_zero(cd: ICL, zs: ZS, line: Union[LINE, XD, BI]):
+        """
+        判断中枢的 macd 是否有回拉零轴
+        """
+        zs_macd_info = cal_zs_macd_infos(zs, cd)
+        if (
+                line.type == 'up' and zs_macd_info.dea_down_cross_num == zs_macd_info.dif_down_cross_num == 0
+        ) or (
+                line.type == 'down' and zs_macd_info.dea_up_cross_num == zs_macd_info.dif_up_cross_num == 0
+        ):
+            return False
+        return True

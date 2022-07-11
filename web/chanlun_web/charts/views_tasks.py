@@ -11,8 +11,8 @@ def index_show(request):
     定时任务配置
     """
     task_names = [
-        {'task_name': 'a_1', 'market_type': 'stock'},
-        {'task_name': 'a_2', 'market_type': 'stock'},
+        {'task_name': 'a_1', 'market_type': 'a'},
+        {'task_name': 'a_2', 'market_type': 'a'},
         {'task_name': 'hk', 'market_type': 'hk'},
         {'task_name': 'us', 'market_type': 'us'},
         {'task_name': 'futures', 'market_type': 'futures'},

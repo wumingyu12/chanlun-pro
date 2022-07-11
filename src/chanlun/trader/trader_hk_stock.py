@@ -61,7 +61,7 @@ class TraderHKStock(BackTestTrader):
             'amount': order['dealt_amount'],
             'info': opt.msg
         }
-        rd.stock_order_save(code, save_order)
+        rd.order_save('hk', code, save_order)
 
         return {'price': order['dealt_avg_price'], 'amount': order['dealt_amount']}
 
@@ -100,7 +100,7 @@ class TraderHKStock(BackTestTrader):
             'amount': order['dealt_amount'],
             'info': opt.msg
         }
-        rd.stock_order_save(code, save_order)
+        rd.order_save('hk', code, save_order)
 
         return {'price': order['dealt_avg_price'], 'amount': order['dealt_amount']}
 
@@ -136,7 +136,7 @@ class TraderHKStock(BackTestTrader):
             'amount': order['dealt_amount'],
             'info': opt.msg
         }
-        rd.stock_order_save(code, save_order)
+        rd.order_save('hk', code, save_order)
 
         return {'price': order['dealt_avg_price'], 'amount': order['dealt_amount']}
 
@@ -172,6 +172,6 @@ class TraderHKStock(BackTestTrader):
             'amount': order['dealt_amount'],
             'info': opt.msg
         }
-        rd.stock_order_save(code, save_order)
+        rd.order_save('hk', code, save_order)
 
         return {'price': order['dealt_avg_price'], 'amount': order['dealt_amount']}
