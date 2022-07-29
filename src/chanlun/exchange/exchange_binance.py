@@ -173,7 +173,14 @@ class ExchangeBinance(Exchange):
         return balances
 
     def positions(self, code: str = ''):
-        position = self.exchange.fetch_positions(symbols=[code] if code != '' else None)
+        try:
+            position = self.exchange.fetch_positions(symbols=[code] if code != '' else None)
+        except Exception as e:
+            if 'precision' in str(e):
+                self.__init__()
+                position = self.exchange.fetch_positions(symbols=[code] if code != '' else None)
+            else:
+                raise e
         """
         symbol 标的
         entryPrice 价格

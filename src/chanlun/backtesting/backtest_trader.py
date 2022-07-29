@@ -65,6 +65,8 @@ class BackTestTrader(object):
             'l2buy': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             '3buy': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             'l3buy': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
+            'down_bi_bc_buy': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
+            'down_xd_bc_buy': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             'down_pz_bc_buy': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             'down_qs_bc_buy': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             '1sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
@@ -72,6 +74,8 @@ class BackTestTrader(object):
             'l2sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             '3sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             'l3sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
+            'up_bi_bc_sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
+            'up_xd_bc_sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             'up_pz_bc_sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
             'up_qs_bc_sell': {'win_num': 0, 'loss_num': 0, 'win_balance': 0, 'loss_balance': 0},
         }
@@ -207,6 +211,20 @@ class BackTestTrader(object):
 
                     pos.profit_rate = round((pos.price - price_info['close']) / pos.price * 100, 4)
                     now_profit += pos.profit_rate / 100 * pos.balance
+
+                # 当前盈亏，需要加上锁仓的盈亏金额
+                for lock_pos in pos.lock_positions.values():
+                    if lock_pos.balance == 0:
+                        now_profit += (lock_pos.amount * lock_pos.price) * (lock_pos.profit_rate / 100)
+                    else:
+                        if lock_pos.balance != 0 and lock_pos.type == '做多':
+                            now_profit += ((price_info['close'] - lock_pos.price) / pos.price) * (
+                                    lock_pos.amount * lock_pos.price)
+                        elif lock_pos.balance != 0 and lock_pos.type == '做空':
+                            now_profit += ((lock_pos.price - price_info['close']) / pos.price) * (
+                                    lock_pos.amount * lock_pos.price)
+                        hold_balance += lock_pos.balance
+
                 hold_balance += pos.balance
         self.hold_profit_history[code][price_info['date'].strftime('%Y-%m-%d %H:%M:%S')] = now_profit
         return now_profit, hold_balance
@@ -277,7 +295,7 @@ class BackTestTrader(object):
         return
 
     # 做多买入
-    def open_buy(self, code, opt: Operation):
+    def open_buy(self, code, opt: Operation, amount: float = None):
         if self.mode == 'signal':
             use_balance = 100000
             price = self.get_price(code)['close']
@@ -288,8 +306,12 @@ class BackTestTrader(object):
                 return False
             price = self.get_price(code)['close']
 
-            use_balance = (self.balance / (self.max_pos - len(self.hold_positions()))) * 0.99
-            amount = use_balance / price
+            if amount is None:
+                use_balance = (self.balance / (self.max_pos - len(self.hold_positions()))) * 0.99
+                amount = use_balance / price
+            else:
+                use_balance = price * amount
+
             if amount < 0:
                 return False
             if use_balance > self.balance:
@@ -303,7 +325,7 @@ class BackTestTrader(object):
             return {'price': price, 'amount': amount}
 
     # 做空卖出
-    def open_sell(self, code, opt: Operation):
+    def open_sell(self, code, opt: Operation, amount: float = None):
         if self.mode == 'signal':
             use_balance = 100000
             price = self.get_price(code)['close']
@@ -314,8 +336,12 @@ class BackTestTrader(object):
                 return False
             price = self.get_price(code)['close']
 
-            use_balance = (self.balance / (self.max_pos - len(self.hold_positions()))) * 0.99
-            amount = use_balance / price
+            if amount is None:
+                use_balance = (self.balance / (self.max_pos - len(self.hold_positions()))) * 0.99
+                amount = use_balance / price
+            else:
+                use_balance = price * amount
+
             if amount < 0:
                 return False
 
@@ -384,6 +410,14 @@ class BackTestTrader(object):
         pos = self.query_code_mmd_pos(code, opt_mmd)
         res = None
         order_type = None
+
+        # 期货，进行锁仓操作
+        if self.is_futures and opt.opt == 'lock':
+            return self.lock_position(code, pos, opt)
+        # 期货，进行平仓锁仓操作
+        if self.is_futures and opt.opt == 'unlock':
+            return self.unlock_position(code, pos, opt)
+
         # 买点，买入，开仓做多
         if 'buy' in opt_mmd and opt.opt == 'buy':
             if pos.balance > 0:
@@ -438,13 +472,20 @@ class BackTestTrader(object):
             if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
                 # 股票交易，当日不能卖出
                 return False
+            if len(pos.lock_positions) > 0:
+                # 有锁仓记录，先平仓锁仓记录
+                self.unlock_position(code, pos, opt)
+
             res = self.close_sell(code, pos, opt)
             if res is False:
                 return False
             sell_balance = res['price'] * res['amount']
             hold_balance = pos.balance
 
-            profit = hold_balance - sell_balance
+            # 做空收益：持仓金额 减去 卖出金额的 差价，加上锁仓的收益
+            profit = hold_balance - sell_balance + sum(
+                [(_p.amount * _p.price) * (_p.profit_rate / 100) for _p in pos.lock_positions.values()]
+            )
             if profit > 0:
                 # 盈利
                 self.results[opt_mmd]['win_num'] += 1
@@ -473,12 +514,18 @@ class BackTestTrader(object):
             if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
                 # 股票交易，当日不能卖出
                 return False
+            if len(pos.lock_positions) > 0:
+                # 有锁仓记录，先平仓锁仓记录
+                self.unlock_position(code, pos, opt)
             res = self.close_buy(code, pos, opt)
             if res is False:
                 return False
             sell_balance = res['price'] * res['amount']
             hold_balance = pos.balance
-            profit = sell_balance - hold_balance
+            # 做出收益：卖出金额 减去 持有金额的 差价，加上锁仓的收益
+            profit = sell_balance - hold_balance + sum(
+                [(_p.amount * _p.price) * (_p.profit_rate / 100) for _p in pos.lock_positions.values()]
+            )
             if profit > 0:
                 # 盈利
                 self.results[opt_mmd]['win_num'] += 1
@@ -514,3 +561,122 @@ class BackTestTrader(object):
             return True
 
         return False
+
+    def lock_position(self, code, pos: POSITION, opt: Operation):
+        """
+        进行锁仓操作
+        """
+        res = None
+        order_type = None
+        # 检查是否已经进行锁仓
+        lock_balance = 0 if len(pos.lock_positions) == 0 else max([_p.balance for _p in pos.lock_positions.values()])
+        if lock_balance != 0:
+            return False
+        if 'buy' in pos.mmd:
+            # 之前仓位买入做多，锁仓进行相反的操作
+            res = self.open_sell(
+                code, Operation(opt='buy', mmd='1sell', loss_price=0, info={}, msg='锁仓'), pos.amount
+            )
+            order_type = 'open_short'
+            if res is False:
+                self._print_log(f'{code} 进行锁仓失败')
+                return None
+            lock_position = POSITION(
+                code,
+                mmd='1sell', type='做空', balance=res['price'] * res['amount'],
+                price=res['price'], amount=res['amount'], loss_price=0,
+                open_date=self.get_now_datetime().strftime('%Y-%m-%d'),
+                open_datetime=self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S'),
+                open_msg='锁仓'
+            )
+            pos.lock_positions[lock_position.open_datetime] = lock_position
+            self._print_log(
+                f"[{code} - {self.get_now_datetime()}] // 锁仓 做空卖出（{res['price']} - {res['amount']}）"
+            )
+        elif 'sell' in pos.mmd:
+            # 之前仓位卖出做空，锁仓进行相反的操作
+            res = self.open_buy(
+                code, Operation(opt='buy', mmd='1buy', loss_price=0, info={}, msg='锁仓'), pos.amount
+            )
+            order_type = 'open_long'
+            if res is False:
+                self._print_log(f'{code} 进行锁仓失败')
+                return None
+            lock_position = POSITION(
+                code,
+                mmd='1buy', type='做多', balance=res['price'] * res['amount'],
+                price=res['price'], amount=res['amount'], loss_price=0,
+                open_date=self.get_now_datetime().strftime('%Y-%m-%d'),
+                open_datetime=self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S'),
+                open_msg='锁仓'
+            )
+            pos.lock_positions[lock_position.open_datetime] = lock_position
+            self._print_log(
+                f"[{code} - {self.get_now_datetime()}] // 锁仓 做多买入（{res['price']} - {res['amount']}）"
+            )
+
+        # 记录订单信息
+        if code not in self.orders:
+            self.orders[code] = []
+        self.orders[code].append({
+            'datetime': self.get_now_datetime(),
+            'type': order_type,
+            'price': res['price'],
+            'amount': res['amount'],
+            'info': '锁仓',
+        })
+        return True
+
+    def unlock_position(self, code, pos: POSITION, opt: Operation):
+        """
+        平仓锁仓操作
+        """
+        # 检查是否已经进行锁仓
+        res = None
+        order_type = None
+        lock_balance = 0 if len(pos.lock_positions) == 0 else max([_p.balance for _p in pos.lock_positions.values()])
+        if lock_balance == 0:
+            return False
+        lock_position = [_p for _p in pos.lock_positions.values() if _p.balance > 0]
+        lock_position = lock_position[0]
+        if 'buy' in lock_position.mmd:
+            # 锁仓的持仓是做多买入，进行平仓
+            res = self.close_buy(
+                code, lock_position, Operation(opt='sell', mmd=lock_position.mmd, loss_price=0, info={}, msg='平仓锁仓')
+            )
+            order_type = 'close_long'
+            if res is False:
+                self._print_log(f'{code} 进行平仓锁仓失败')
+                return False
+            lock_position.profit_rate = (res['price'] - lock_position.price) / lock_position.price * 100
+            lock_position.balance = 0
+            lock_position.close_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
+            self._print_log(
+                f"[{code} - {self.get_now_datetime()}] // 平仓锁仓 平仓卖出（{res['price']} - {res['amount']}）"
+            )
+        elif 'sell' in lock_position.mmd:
+            # 锁仓的持仓是做空卖出，进行平仓
+            res = self.close_sell(
+                code, lock_position, Operation(opt='sell', mmd=lock_position.mmd, loss_price=0, info={}, msg='平仓锁仓')
+            )
+            order_type = 'close_short'
+            if res is False:
+                self._print_log(f'{code} 进行平仓锁仓失败')
+                return False
+            lock_position.profit_rate = (lock_position.price - res['price']) / lock_position.price * 100
+            lock_position.balance = 0
+            lock_position.close_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
+            self._print_log(
+                f"[{code} - {self.get_now_datetime()}] // 平仓锁仓 平仓买入（{res['price']} - {res['amount']}）"
+            )
+        # 记录订单信息
+        if code not in self.orders:
+            self.orders[code] = []
+        self.orders[code].append({
+            'datetime': self.get_now_datetime(),
+            'type': order_type,
+            'price': res['price'],
+            'amount': res['amount'],
+            'info': '平仓锁仓',
+        })
+        return True

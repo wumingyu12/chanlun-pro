@@ -1,7 +1,7 @@
 import os
 
-import numpy as np
 import talib
+import MyTT
 # 画图配置
 from pyecharts import options as opts
 from pyecharts.charts import Kline as cKline, Line, Bar, Grid, Scatter
@@ -9,6 +9,7 @@ from pyecharts.commons.utils import JsCode
 
 from chanlun.cl_interface import *
 from chanlun.fun import str_to_datetime
+from chanlun.cl_utils import cl_qstd
 
 if "JPY_PARENT_PID" in os.environ:
     from pyecharts.globals import CurrentConfig, NotebookType
@@ -21,13 +22,11 @@ if "JPY_PARENT_PID" in os.environ:
     Scatter().load_javascript()
 
 
-def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=None, config=None):
+def render_charts(title, cl_data: ICL, orders=None, config=None):
     """
     缠论数据图表化展示
     :param title:
     :param cl_data:
-    :param show_futu: 显示的副图指标类型
-    :param show_num:
     :param orders:
     :param config: 画图配置
     :return:
@@ -40,37 +39,51 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
 
     default_config = {
         # 展示配置项
-        'show_bi_zs': True,
-        'show_xd_zs': True,
-        'show_zsd_zs': True,
-        'show_bi_mmd': True,
-        'show_xd_mmd': True,
-        'show_zsd_mmd': True,
-        'show_bi_bc': True,
-        'show_xd_bc': True,
-        'show_zsd_bc': True,
-        'show_ma': True,
-        'show_boll': False,
+        'chart_show_bi_zs': True,
+        'chart_show_xd_zs': True,
+        'chart_show_zsd_zs': True,
+        'chart_show_bi_mmd': True,
+        'chart_show_xd_mmd': True,
+        'chart_show_zsd_mmd': True,
+        'chart_show_bi_bc': True,
+        'chart_show_xd_bc': True,
+        'chart_show_zsd_bc': True,
+        'chart_show_ma': True,
+        'chart_show_boll': False,
+        'chart_show_futu': 'macd',
         # 指标配置项
-        'idx_ma_period': '120,250',
-        'idx_boll_period': 20,
-        'idx_vol_ma_fast': 5,
-        'idx_vol_ma_slow': 60,
-
-        # 默认显示的中枢类型（在计算多个中枢时使用，用来切换不同中枢的效果展示）
-        'custom_bi_zs_type': None,
-        'custom_xd_zs_type': None,
+        'chart_kline_nums': 1000,
+        'chart_idx_ma_period': '120,250',
+        'chart_idx_vol_ma_period': '5,60',
+        'chart_idx_boll_period': 20,
+        'chart_idx_rsi_period': 14,
+        'chart_idx_atr_period': 14,
+        'chart_idx_cci_period': 14,
+        'chart_idx_kdj_period': '9,3,3',
+        'chart_qstd': 'xd,0',
+        # 图表高度
+        'chart_high': 800,
     }
+
+    # 配置项整理
     for _k, _v in default_config.items():
         if _k not in config.keys():
             config[_k] = _v
         else:
-            if 'show_' in _k:
-                config[_k] = bool(int(config[_k]))
-            elif _k == 'idx_ma_period':
-                config[_k] = str(config[_k])
-            elif 'idx_' in _k:
-                config[_k] = int(config[_k])
+            try:
+                if _k in [
+                    'chart_idx_ma_period', 'chart_idx_vol_ma_period',
+                    'chart_idx_kdj_period', 'chart_show_futu',
+                    'chart_qstd'
+                ]:
+                    config[_k] = str(config[_k])
+                elif 'chart_show_' in _k:
+                    config[_k] = bool(int(config[_k]))
+                elif 'chart_idx_' in _k or 'chart_kline_nums' in _k:
+                    config[_k] = int(config[_k])
+            except Exception as e:
+                print(f'{_k} val error {config[_k]}')
+                config[_k] = _v
 
     # 颜色配置
     color_k_up = '#FD1050'
@@ -91,6 +104,9 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     color_last_bi_zs = 'RGB(144,238,144,0.5)'
     color_last_xd_zs = 'RGB(255,182,193,0.5)'
 
+    color_qstd_up = 'RGB(255,127,80,0.7)'
+    color_qstd_down = 'RGB(100,149,237,0.7)'
+
     brush_opts = opts.BrushOpts(tool_box=["rect", "polygon", "lineX", "lineY", "keep", "clear"],
                                 x_axis_index="all", brush_link="all",
                                 out_of_brush={"colorAlpha": 0.1}, brush_type="lineX")
@@ -101,8 +117,6 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     bis = cl_data.get_bis()
     xds = cl_data.get_xds()
     zsds = cl_data.get_zsds()
-    bi_zss = cl_data.get_bi_zss(config['custom_bi_zs_type'])
-    xd_zss = cl_data.get_xd_zss(config['custom_xd_zs_type'])
     zsd_zss = cl_data.get_zsd_zss()
     last_bi_zs = cl_data.get_last_bi_zs()
     last_xd_zs = cl_data.get_last_xd_zs()
@@ -110,8 +124,8 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     idx = cl_data.get_idx()
 
     range_start = 0
-    if len(klines) > show_num:
-        range_start = 100 - (show_num / len(klines)) * 100
+    if len(klines) > config['chart_kline_nums']:
+        range_start = 100 - (config['chart_kline_nums'] / len(klines)) * 100
 
     # 重新整理Kline数据
     klines_yaxis = []
@@ -206,62 +220,66 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         line_xu_zsds['index'].append(x.end.k.date)
         line_xu_zsds['val'].append(x.end.val)
 
-    # 画 笔 中枢
+    # 画 笔 中枢 (遍历所有计算的中枢类型)
     line_bi_zss = []
-    for zs in bi_zss:
-        if config['show_bi_zs'] is False:
-            break
-        if zs.real is False:
-            continue
-        start_index = zs.start.k.date
-        end_index = zs.end.k.date
-        l_zs = [
-            # 两竖，两横，5个点，转一圈
-            [start_index, start_index, end_index, end_index, start_index],
-            [zs.zg, zs.zd, zs.zd, zs.zg, zs.zg],
-        ]
-        if zs.type == 'up':
-            l_zs.append(color_bi_zs_up)
-        elif zs.type == 'down':
-            l_zs.append(color_bi_zs_down)
-        else:
-            l_zs.append(color_bi_zs)
+    for zs_type in cl_data.get_config()['zs_bi_type']:
+        bi_zss = cl_data.get_bi_zss(zs_type)
+        for zs in bi_zss:
+            if config['chart_show_bi_zs'] is False:
+                break
+            if zs.real is False:
+                continue
+            start_index = zs.start.k.date
+            end_index = zs.end.k.date
+            l_zs = [
+                # 两竖，两横，5个点，转一圈
+                [start_index, start_index, end_index, end_index, start_index],
+                [zs.zg, zs.zd, zs.zd, zs.zg, zs.zg],
+            ]
+            if zs.type == 'up':
+                l_zs.append(color_bi_zs_up)
+            elif zs.type == 'down':
+                l_zs.append(color_bi_zs_down)
+            else:
+                l_zs.append(color_bi_zs)
 
-        l_zs.append(zs.level + 1)
-        l_zs.append(zs.done)
+            l_zs.append(zs.level + 1)
+            l_zs.append(zs.done)
 
-        line_bi_zss.append(l_zs)
+            line_bi_zss.append(l_zs)
 
     # 画 线段 中枢
     line_zs_zss = []
-    for zs in xd_zss:
-        if config['show_xd_zs'] is False:
-            break
-        if zs.real is False:
-            continue
-        start_index = zs.start.k.date
-        end_index = zs.end.k.date
-        l_zs = [
-            # 两竖，两横，5个点，转一圈
-            [start_index, start_index, end_index, end_index, start_index],
-            [zs.zg, zs.zd, zs.zd, zs.zg, zs.zg],
-        ]
-        if zs.type == 'up':
-            l_zs.append(color_xd_zs_up)
-        elif zs.type == 'down':
-            l_zs.append(color_xd_zs_down)
-        else:
-            l_zs.append(color_xd_zs)
+    for zs_type in cl_data.get_config()['zs_xd_type']:
+        xd_zss = cl_data.get_xd_zss(zs_type)
+        for zs in xd_zss:
+            if config['chart_show_xd_zs'] is False:
+                break
+            if zs.real is False:
+                continue
+            start_index = zs.start.k.date
+            end_index = zs.end.k.date
+            l_zs = [
+                # 两竖，两横，5个点，转一圈
+                [start_index, start_index, end_index, end_index, start_index],
+                [zs.zg, zs.zd, zs.zd, zs.zg, zs.zg],
+            ]
+            if zs.type == 'up':
+                l_zs.append(color_xd_zs_up)
+            elif zs.type == 'down':
+                l_zs.append(color_xd_zs_down)
+            else:
+                l_zs.append(color_xd_zs)
 
-        l_zs.append(zs.level + 1)
-        l_zs.append(zs.done)
+            l_zs.append(zs.level + 1)
+            l_zs.append(zs.done)
 
-        line_zs_zss.append(l_zs)
+            line_zs_zss.append(l_zs)
 
     # 画 走势段 中枢
     line_zsd_zss = []
     for zs in zsd_zss:
-        if config['show_zsd_zs'] is False:
+        if config['chart_show_zsd_zs'] is False:
             break
         if zs.real is False:
             continue
@@ -315,39 +333,41 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         _fx = _bi.end
         if _fx.index not in fx_bcs_mmds.keys():
             fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
-        for _bc in _bi.get_bcs(config['custom_bi_zs_type']):
-            if config['show_bi_bc'] is False:
-                break
-            if _bc.bc:
-                fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
-        for _mmd in _bi.get_mmds(config['custom_bi_zs_type']):
-            if config['show_bi_mmd'] is False:
-                break
-            fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
+        for zs_type in cl_data.get_config()['zs_bi_type']:
+            for _bc in _bi.get_bcs(zs_type):
+                if config['chart_show_bi_bc'] is False:
+                    break
+                if _bc.bc:
+                    fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
+            for _mmd in _bi.get_mmds(zs_type):
+                if config['chart_show_bi_mmd'] is False:
+                    break
+                fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
     for _xd in xds:
         _fx = _xd.end
         if _fx.index not in fx_bcs_mmds.keys():
             fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
-        for _bc in _xd.get_bcs(config['custom_xd_zs_type']):
-            if config['show_xd_bc'] is False:
-                break
-            if _bc.bc:
-                fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
-        for _mmd in _xd.get_mmds(config['custom_xd_zs_type']):
-            if config['show_xd_mmd'] is False:
-                break
-            fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
+        for zs_type in cl_data.get_config()['zs_xd_type']:
+            for _bc in _xd.get_bcs(zs_type):
+                if config['chart_show_xd_bc'] is False:
+                    break
+                if _bc.bc:
+                    fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
+            for _mmd in _xd.get_mmds(zs_type):
+                if config['chart_show_xd_mmd'] is False:
+                    break
+                fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
     for _zsd in zsds:
         _fx = _zsd.end
         if _fx.index not in fx_bcs_mmds.keys():
             fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
         for _bc in _zsd.bcs:
-            if config['show_zsd_bc'] is False:
+            if config['chart_show_zsd_bc'] is False:
                 break
             if _bc.bc:
                 fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
         for _mmd in _zsd.mmds:
-            if config['show_zsd_mmd'] is False:
+            if config['chart_show_zsd_mmd'] is False:
                 break
             fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
 
@@ -424,6 +444,25 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                 scatter_sell_orders['val'].append([o['price'],
                                                    f"{order_type_maps[o['type']]}[{o['price']}/{o['amount']}]:{'' if 'info' not in o else o['info']}"])
 
+    # 滑动区块设置
+    datazoom_opts = [
+        opts.DataZoomOpts(
+            is_show=False, type_="inside", xaxis_index=[0, 0], range_start=range_start, range_end=100
+        ),
+        opts.DataZoomOpts(
+            is_show=True, xaxis_index=[0, 1], pos_top="97%", range_start=range_start, range_end=100
+        ),
+        opts.DataZoomOpts(
+            is_show=False, xaxis_index=[0, 2], range_start=range_start, range_end=100
+        ),
+    ]
+    if config['chart_show_futu'] != 'macd':
+        datazoom_opts.append(
+            opts.DataZoomOpts(
+                is_show=False, xaxis_index=[0, 3], range_start=range_start, range_end=100
+            ),
+        )
+
     klines_chart = (cKline().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
         series_name="",
         y_axis=klines_yaxis,
@@ -433,6 +472,7 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             border_color=color_k_up,
             border_color0=color_k_down,
         ),
+
     ).set_global_opts(
         title_opts=opts.TitleOpts(title=title, pos_left="0"),
         xaxis_opts=opts.AxisOpts(
@@ -453,15 +493,8 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             axisline_opts=opts.AxisLineOpts(is_show=False),
             axistick_opts=opts.AxisTickOpts(is_show=False),
         ),
-        tooltip_opts=opts.TooltipOpts(
-            trigger="axis", axis_pointer_type="cross"),
-        datazoom_opts=[
-            opts.DataZoomOpts(is_show=False, type_="inside", xaxis_index=[0, 0], range_start=range_start,
-                              range_end=100),
-            opts.DataZoomOpts(is_show=True, xaxis_index=[0, 1], pos_top="97%", range_start=range_start,
-                              range_end=100),
-            opts.DataZoomOpts(is_show=False, xaxis_index=[0, 2], range_start=range_start, range_end=100),
-        ],
+        tooltip_opts=opts.TooltipOpts(trigger="axis", axis_pointer_type="cross"),
+        datazoom_opts=datazoom_opts,
         brush_opts=brush_opts
     )
     )
@@ -561,10 +594,34 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     )
     overlap_kline = overlap_kline.overlap(line_xu_qs)
 
-    if config['show_boll']:
+    # 画趋势通道线
+    idx_qstd = cl_qstd(cl_data, config['chart_qstd'].split(',')[0], int(config['chart_qstd'].split(',')[1]))
+    if idx_qstd is not None:
+        qstd_up_line = (
+            Line().add_xaxis(idx_qstd['up']['chart']['x']).add_yaxis(
+                "趋势通道线",
+                idx_qstd['up']['chart']['y'],
+                is_connect_nones=True,
+                is_clip=False,
+                label_opts=opts.LabelOpts(is_show=False),
+                linestyle_opts=opts.LineStyleOpts(width=3, color=color_qstd_up),
+            )
+        )
+        qstd_down_line = (
+            Line().add_xaxis(idx_qstd['down']['chart']['x']).add_yaxis(
+                "趋势通道线",
+                idx_qstd['down']['chart']['y'],
+                label_opts=opts.LabelOpts(is_show=False),
+                linestyle_opts=opts.LineStyleOpts(width=3, color=color_qstd_down),
+            )
+        )
+        overlap_kline = overlap_kline.overlap(qstd_up_line)
+        overlap_kline = overlap_kline.overlap(qstd_down_line)
+
+    if config['chart_show_boll']:
         # 计算boll线
         boll_up, boll_mid, boll_low = talib.BBANDS(np.array([k.c for k in klines]),
-                                                   timeperiod=config['idx_boll_period'])
+                                                   timeperiod=config['chart_idx_boll_period'])
         # 画 指标线
         line_idx_boll = (
             Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
@@ -588,10 +645,10 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             ).set_global_opts()
         )
         overlap_kline = overlap_kline.overlap(line_idx_boll)
-    if config['show_ma']:
+    if config['chart_show_ma']:
         # 计算ma线
         ma_colors = ['rgb(255,141,30)', 'rgb(12,174,230)', 'rgb(233,112,220)', 'rgb(0,128,250)', 'rgb(34,197,126)']
-        ma_periods = config['idx_ma_period'].split(',')[0:5]
+        ma_periods = config['chart_idx_ma_period'].split(',')[0:5]
         for i in range(len(ma_periods)):
             ma_period = ma_periods[i]
             ma = talib.MA(np.array([k.c for k in klines]), timeperiod=int(ma_period))
@@ -754,10 +811,10 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             Scatter().add_xaxis(xaxis_data=scatter_buy_orders['i']).add_yaxis(
                 series_name="订单",
                 y_axis=scatter_buy_orders['val'],
-                symbol_size=25,
-                symbol='diamond',
+                symbol_size=15,
+                symbol='arrow',
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,215,0,0.8)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,215,0,0.7)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(
@@ -771,10 +828,11 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
             Scatter().add_xaxis(xaxis_data=scatter_sell_orders['i']).add_yaxis(
                 series_name="订单",
                 y_axis=scatter_sell_orders['val'],
-                symbol_size=20,
-                symbol='diamond',
+                symbol_size=15,
+                symbol='arrow',
+                symbol_rotate=180,
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(127,255,212,0.8)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(127,255,212,0.7)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(
@@ -804,24 +862,10 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
         )
     )
     # 成交量均线
-    vols_ma5 = talib.MA(np.array(klines_vols), timeperiod=config['idx_vol_ma_fast'])
-    vols_ma60 = talib.MA(np.array(klines_vols), timeperiod=config['idx_vol_ma_slow'])
+    vols_periods = config['chart_idx_vol_ma_period'].split(',')[0:2]
+    vols_line_color = ['white', 'yellow']
     line_vols_ma = (
-        Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
-            series_name=f"MA{config['idx_vol_ma_fast']}",
-            y_axis=vols_ma5,
-            is_symbol_show=False,
-            label_opts=opts.LabelOpts(is_show=False),
-            itemstyle_opts=opts.ItemStyleOpts(color='white'),
-            linestyle_opts=opts.LineStyleOpts(width=2),
-        ).add_yaxis(
-            series_name=f"MA{config['idx_vol_ma_slow']}",
-            y_axis=vols_ma60,
-            is_symbol_show=False,
-            label_opts=opts.LabelOpts(is_show=False),
-            itemstyle_opts=opts.ItemStyleOpts(color='yellow'),
-            linestyle_opts=opts.LineStyleOpts(width=2),
-        ).set_global_opts(
+        Line().add_xaxis(xaxis_data=klines_xaxis).set_global_opts(
             legend_opts=opts.LegendOpts(is_show=True),
             xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
             yaxis_opts=opts.AxisOpts(position="right",
@@ -830,6 +874,17 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                                      axistick_opts=opts.AxisTickOpts(is_show=False)),
         )
     )
+    for i in range(len(vols_periods)):
+        vol_ma = talib.MA(np.array(klines_vols), timeperiod=int(vols_periods[i]))
+        line_vols_ma.add_yaxis(
+            series_name=f"MA{vols_periods[i]}",
+            y_axis=vol_ma,
+            is_symbol_show=False,
+            label_opts=opts.LabelOpts(is_show=False),
+            itemstyle_opts=opts.ItemStyleOpts(color=vols_line_color[i]),
+            linestyle_opts=opts.LineStyleOpts(width=2),
+
+        )
 
     # 最下面的柱状图和折线图
     vols_bar_line = bar_vols.overlap(line_vols_ma)
@@ -886,25 +941,25 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
     macd_bar_line = bar_macd.overlap(line_macd_dif)
 
     # 最后的 Grid
-    grid_chart = Grid(init_opts=opts.InitOpts(width="100%", height="800px", theme='dark'))
+    grid_chart = Grid(init_opts=opts.InitOpts(width="100%", height=f"{config['chart_high']}px", theme='dark'))
 
     grid_chart.add(
         overlap_kline,
-        grid_opts=opts.GridOpts(width="96%", height="75%", pos_left='1%', pos_right='3%'),
+        grid_opts=opts.GridOpts(width="96%", height="65%", pos_left='1%', pos_right='3%'),
     )
 
     # Volumn 柱状图
     grid_chart.add(
         vols_bar_line,
         grid_opts=opts.GridOpts(
-            pos_bottom="15%", height="10%", width="96%", pos_left='1%', pos_right='3%'
+            pos_bottom="15%", height="20%", width="96%", pos_left='1%', pos_right='3%'
         ),
     )
 
-    futu_chart = macd_bar_line
+    futu_charts = [macd_bar_line]
 
-    if show_futu == 'rsi':
-        rsi_3 = talib.RSI(np.array([_k.c for _k in klines]), timeperiod=14)
+    if config['chart_show_futu'] == 'rsi':
+        rsi_3 = talib.RSI(np.array([_k.c for _k in klines]), timeperiod=config['chart_idx_rsi_period'])
         rsi_line = (
             Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
                 series_name="RSI3",
@@ -921,13 +976,13 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                                          axistick_opts=opts.AxisTickOpts(is_show=False)),
             )
         )
-        futu_chart = rsi_line
-    elif show_futu == 'atr':
+        futu_charts.append(rsi_line)
+    elif config['chart_show_futu'] == 'atr':
         atr = talib.ATR(
             np.array([_k.h for _k in klines]),
             np.array([_k.l for _k in klines]),
             np.array([_k.c for _k in klines]),
-            timeperiod=14
+            timeperiod=config['chart_idx_atr_period']
         )
         atr_line = (
             Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
@@ -945,13 +1000,13 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                                          axistick_opts=opts.AxisTickOpts(is_show=False)),
             )
         )
-        futu_chart = atr_line
-    elif show_futu == 'cci':
+        futu_charts.append(atr_line)
+    elif config['chart_show_futu'] == 'cci':
         cci = talib.CCI(
             np.array([_k.h for _k in klines]),
             np.array([_k.l for _k in klines]),
             np.array([_k.c for _k in klines]),
-            timeperiod=14
+            timeperiod=config['chart_idx_cci_period']
         )
         cci_line = (
             Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
@@ -969,28 +1024,26 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                                          axistick_opts=opts.AxisTickOpts(is_show=False)),
             )
         )
-        futu_chart = cci_line
-    elif show_futu == 'kdj':
-        kdj_slowk, kdj_slowd = talib.STOCH(
+        futu_charts.append(cci_line)
+    elif config['chart_show_futu'] == 'kdj':
+        _K, _D, _J = MyTT.KDJ(
+            np.array([_k.c for _k in klines]),
             np.array([_k.h for _k in klines]),
             np.array([_k.l for _k in klines]),
-            np.array([_k.c for _k in klines]),
-            fastk_period=9,
-            slowk_period=3,
-            slowk_matype=0,
-            slowd_period=3,
-            slowd_matype=0
+            N=int(config['chart_idx_kdj_period'].split(',')[0]),
+            M1=int(config['chart_idx_kdj_period'].split(',')[1]),
+            M2=int(config['chart_idx_kdj_period'].split(',')[2])
         )
         kdj_line = (
             Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
-                series_name="CCI slowk",
-                y_axis=kdj_slowk,
+                series_name="CCI K",
+                y_axis=_K,
                 is_symbol_show=False,
                 label_opts=opts.LabelOpts(is_show=False),
                 itemstyle_opts=opts.ItemStyleOpts(color='rgb(12,174,210'),
             ).add_yaxis(
-                series_name="CCI slowd",
-                y_axis=kdj_slowd,
+                series_name="CCI D",
+                y_axis=_D,
                 is_symbol_show=False,
                 label_opts=opts.LabelOpts(is_show=False),
                 itemstyle_opts=opts.ItemStyleOpts(color='rgb(25,201,14'),
@@ -1003,17 +1056,20 @@ def render_charts(title, cl_data: ICL, show_futu='macd', show_num=1000, orders=N
                                          axistick_opts=opts.AxisTickOpts(is_show=False)),
             )
         )
-        futu_chart = kdj_line
-    elif show_futu == 'custom':
+        futu_charts.append(kdj_line)
+    elif config['chart_show_futu'] == 'custom':
         pass
 
     # 副图技术指标
-    grid_chart.add(
-        futu_chart,
-        grid_opts=opts.GridOpts(
-            pos_bottom="0", height="15%", width="96%", pos_left='1%', pos_right='3%'
-        ),
-    )
+    for i in range(len(futu_charts)):
+        grid_chart.add(
+            futu_charts[i],
+            grid_opts=opts.GridOpts(
+                pos_bottom=f"{int(15 / len(futu_charts)) * i}%",
+                height=f"{int(15 / len(futu_charts))}%",
+                width="96%", pos_left='1%', pos_right='3%'
+            ),
+        )
 
     if "JPY_PARENT_PID" in os.environ:
         return grid_chart.render_notebook()

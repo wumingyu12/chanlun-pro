@@ -110,6 +110,8 @@ class ExchangeTDX(Exchange):
             args = {}
         if 'fq' not in args.keys():
             args['fq'] = 'qfq'
+        if 'use_cache' not in args.keys():
+            args['use_cache'] = True
 
         frequency_map = {
             'y': 11, 'q': 10, 'm': 6, 'w': 5, 'd': 9, '120m': 3, '60m': 3, '30m': 2, '15m': 1, '5m': 0, '1m': 8
@@ -129,8 +131,9 @@ class ExchangeTDX(Exchange):
                     get_bars = client.get_security_bars
 
                 key = f'{code}_{frequency}'
-                if key not in self.cache_klines.keys():
+                if args['use_cache'] is False or key not in self.cache_klines.keys():
                     # 获取 3*800 = 2400 条数据
+                    # print('not use cache')
                     klines = pd.concat([
                         client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
                         for i in [1, 2, 3]
@@ -138,6 +141,7 @@ class ExchangeTDX(Exchange):
                     klines.loc[:, 'date'] = pd.to_datetime(klines['datetime'])
                     klines.sort_values('date', inplace=True)
                 else:
+                    # print('use cache')
                     klines = self.cache_klines[key]
                     for i in [1, 2, 3]:
                         _ks = client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
@@ -150,10 +154,11 @@ class ExchangeTDX(Exchange):
                         if old_end_dt >= new_start_dt:
                             break
 
-            # 删除重复数据
-            self.cache_klines[key] = klines.drop_duplicates(['date'], keep='last').sort_values('date')
+            if args['use_cache']:
+                # 删除重复数据
+                self.cache_klines[key] = klines.drop_duplicates(['date'], keep='last').sort_values('date')
+                klines = self.cache_klines[key].copy()
 
-            klines = self.cache_klines[key].copy()
             klines.loc[:, 'code'] = code
             klines.loc[:, 'volume'] = klines['vol']
 

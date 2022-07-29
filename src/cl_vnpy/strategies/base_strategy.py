@@ -186,7 +186,7 @@ class VNPYDatas(MarketDatas):
             'low': float(self.cache_klines[f].iloc[-1]['low']),
         }
 
-    def get_cl_data(self, code, frequency) -> ICL:
+    def get_cl_data(self, code, frequency, cl_config: dict = None) -> ICL:
         klines = self.klines(code, frequency)
         if frequency not in self.cl_datas.keys():
             self.cl_datas[frequency] = cl.CL(code, frequency, self.cl_config).process_klines(klines)

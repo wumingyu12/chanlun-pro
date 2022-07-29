@@ -46,6 +46,7 @@ urlpatterns = [
     path('currency/kline', views_currency.kline_show),
     path('currency/balances', views_currency.currency_balances),
     path('currency/positions', views_currency.currency_positions),
+    path('currency/pos_close', views_currency.pos_close),
     path('currency/opt_records', views_currency.opt_records),
     path('currency/jhs', views_currency.jhs_json),
 
@@ -66,5 +67,9 @@ urlpatterns = [
     # 添加订单记录
     path('add_order', views.add_order_json),
     path('clean_order', views.clean_order_json),
+
+    # 缠论和图表配置项
+    path('cl_chart_config', views.cl_chart_config),
+    path('cl_chart_config_save', views.cl_chart_config_save),
 
 ]

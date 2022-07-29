@@ -1,39 +1,35 @@
 import time
 import traceback
+from typing import Union
 
 from chanlun.exchange import get_exchange, Market
 from chanlun import fun, rd, zixuan, monitor
+from chanlun.cl_utils import query_cl_chart_config
 
 
-def query_task_config(task_name):
+def query_task_config(task_name) -> Union[None, dict]:
     """
     查询任务配置
     """
     now_time = int(time.time())
     config = rd.task_config_query(task_name, True)
     if config['is_run'] is False:
-        return None, None
+        return None
 
     if now_time % (config['interval_minutes'] * 60) != 0:
-        return None, None
+        return None
 
     if len(config['frequencys']) == 0:
-        return None, None
+        return None
 
-    # 缠论配置
-    cl_config_keys = [
-        'fx_qj', 'fx_bh', 'bi_type', 'bi_qj', 'bi_bzh', 'bi_fx_cgd', 'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj',
-        'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx', 'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal'
-    ]
-    cl_config = {_k: config[_k] for _k in cl_config_keys}
-    return config, cl_config
+    return config
 
 
 def task_a_1():
     """
     股票行情监控任务
     """
-    config, cl_config = query_task_config('a_1')
+    config = query_task_config('a_1')
     if config is None:
         return True
 
@@ -50,6 +46,7 @@ def task_a_1():
             time.sleep(2)
             code = stock['code']
             name = stock['name']
+            cl_config = query_cl_chart_config('a', code)
             print(f'{fun.now_dt()} : Task a_1 Run : {code} - {name}')
             monitor.monitoring_code(
                 'a', code, name, config['frequencys'], {
@@ -69,7 +66,7 @@ def task_a_2():
     """
     股票行情监控任务
     """
-    config, cl_config = query_task_config('a_2')
+    config = query_task_config('a_2')
     if config is None:
         return True
 
@@ -86,6 +83,7 @@ def task_a_2():
             time.sleep(2)
             code = stock['code']
             name = stock['name']
+            cl_config = query_cl_chart_config('a', code)
             print(f'{fun.now_dt()} : Task a_2 Run : {code} - {name}')
             monitor.monitoring_code(
                 'a', code, name, config['frequencys'], {
@@ -103,7 +101,7 @@ def task_hk():
     """
     股票行情监控任务
     """
-    config, cl_config = query_task_config('hk')
+    config = query_task_config('hk')
     if config is None:
         return True
 
@@ -120,6 +118,7 @@ def task_hk():
             time.sleep(2)
             code = stock['code']
             name = stock['name']
+            cl_config = query_cl_chart_config('hk', code)
             print(f'{fun.now_dt()} : Task hk Run : {code} - {name}')
             monitor.monitoring_code(
                 'hk', code, name, config['frequencys'], {
@@ -138,7 +137,7 @@ def task_us():
     """
     美股行情监控任务
     """
-    config, cl_config = query_task_config('us')
+    config = query_task_config('us')
     if config is None:
         return True
 
@@ -155,6 +154,7 @@ def task_us():
             time.sleep(2)
             code = stock['code']
             name = stock['name']
+            cl_config = query_cl_chart_config('us', code)
             print(f'{fun.now_dt()} : Task us Run : {code} - {name}')
             monitor.monitoring_code(
                 'us', code, name, config['frequencys'], {
@@ -173,7 +173,7 @@ def task_futures():
     """
     期货行情监控任务
     """
-    config, cl_config = query_task_config('futures')
+    config = query_task_config('futures')
     if config is None:
         return True
 
@@ -190,6 +190,7 @@ def task_futures():
             time.sleep(2)
             code = stock['code']
             name = stock['name']
+            cl_config = query_cl_chart_config('futures', code)
             print(f'{fun.now_dt()} : Task futures Run : {code} - {name}')
             monitor.monitoring_code(
                 'futures', code, name, config['frequencys'], {
@@ -208,7 +209,7 @@ def task_currency():
     """
     数字货币行情监控任务
     """
-    config, cl_config = query_task_config('currency')
+    config = query_task_config('currency')
     if config is None:
         return True
 
@@ -221,6 +222,7 @@ def task_currency():
             time.sleep(2)
             code = stock['code']
             name = stock['name']
+            cl_config = query_cl_chart_config('currency', code)
             print(f'{fun.now_dt()} : Task currency Run : {code} - {name}')
             monitor.monitoring_code(
                 'currency', code, name, config['frequencys'], {

@@ -32,6 +32,9 @@ class POSITION:
         self.close_msg: str = close_msg
         self.info: Dict = info
 
+        # 锁仓持仓记录
+        self.lock_positions: Dict[str, POSITION] = {}
+
     # def __str__(self):
     #     return f'code : {self.code} mmd : {self.mmd} type : {self.type}'
 
@@ -42,7 +45,7 @@ class Operation:
     """
 
     def __init__(self, opt: str, mmd: str, loss_price: float = 0, info=None, msg: str = ''):
-        self.opt: str = opt  # 操作指示  buy  买入  sell  卖出
+        self.opt: str = opt  # 操作指示  buy  买入  sell  卖出  lock 锁仓 unlock 解除锁仓 （只有期货支持锁仓操作）
         # 触发指示的
         # 买卖点 例如：1buy  2buy l2buy 3buy l3buy  1sell 2sell l2sell 3sell l3sell down_pz_bc_buy
         # 背驰点 例如：down_pz_bc_buy down_qs_bc_buy up_pz_bc_sell up_qs_bc_sell
@@ -162,6 +165,21 @@ class Strategy(ABC):
             if price > pos.loss_price:
                 return Operation(opt='sell', mmd=mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
         return None
+
+    @staticmethod
+    def break_even(pos: POSITION, loss_multiple: int = 2):
+        """
+        保本方法，当最大盈利超过止损 N 倍的时候，将止损设置在成本价上
+        """
+        # 如果之前已经设置过，退出
+        if pos.loss_price == pos.price:
+            return None
+        # 止损比例
+        loss_rate = abs((pos.price - pos.loss_price) / pos.price * 100)
+        if pos.max_profit_rate >= (loss_rate * loss_multiple):
+            pos.loss_price = pos.price
+
+        return True
 
     @staticmethod
     def check_back_return(mmd: str, pos: POSITION, price: float, max_back_rate: float):
@@ -387,15 +405,18 @@ class Strategy(ABC):
         return infos
 
     @staticmethod
-    def judge_macd_back_zero(cd: ICL, zs: ZS, line: Union[LINE, XD, BI]):
+    def judge_macd_back_zero(cd: ICL, zs: ZS) -> int:
         """
         判断中枢的 macd 是否有回拉零轴
+
+        @param cd:缠论数据对象
+        @param zs: 中枢
+        @return: 返回回拉零轴的最大次数
         """
         zs_macd_info = cal_zs_macd_infos(zs, cd)
-        if (
-                line.type == 'up' and zs_macd_info.dea_down_cross_num == zs_macd_info.dif_down_cross_num == 0
-        ) or (
-                line.type == 'down' and zs_macd_info.dea_up_cross_num == zs_macd_info.dif_up_cross_num == 0
-        ):
-            return False
-        return True
+        # 根据进入中枢第一笔，判断中枢方向，向下笔是向上中枢，看回调零轴次数；向上笔是向下中枢，看回拉零轴次数
+        if zs.lines[0].type == 'down':
+            return max(zs_macd_info.dea_down_cross_num, zs_macd_info.dif_down_cross_num)
+        if zs.lines[0].type == 'up':
+            return max(zs_macd_info.dea_up_cross_num, zs_macd_info.dif_up_cross_num)
+        return 0

@@ -53,7 +53,7 @@ class OnlineMarketDatas(MarketDatas):
             'low': float(klines.iloc[-1]['low']),
         }
 
-    def get_cl_data(self, code, frequency) -> ICL:
+    def get_cl_data(self, code, frequency, cl_config: dict = None) -> ICL:
         key = '%s-%s' % (code, frequency)
 
         # 根据回测配置，可自定义不同周期所使用的缠论配置项

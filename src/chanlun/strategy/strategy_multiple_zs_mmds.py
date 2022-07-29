@@ -41,7 +41,7 @@ class StrategyMultipleZsMMDS(Strategy):
         # 增加条件，买卖点对应的中枢，需要回拉零轴
         for zs_type, mmds in high_bi.zs_type_mmds.items():
             for mmd in mmds:
-                if self.judge_macd_back_zero(high_data, mmd.zs, high_bi) is False:
+                if self.judge_macd_back_zero(high_data, mmd.zs) == 0:
                     return opts
 
         # 止损放在笔结束分型的顶底

@@ -23,7 +23,7 @@ class MyQuantData(MarketDatas):
         """
         获取的标的必须要 subscribe 订阅过才可以
         """
-        klines = self.content.data(code, frequency, count=count,
+        klines = self.content.data(code, frequency, count=2000,
                                    fields='symbol,eob,bob,open,close,high,low,volume,frequency')
 
         klines.loc[:, 'code'] = klines['symbol']
@@ -90,7 +90,7 @@ class MyQuantData(MarketDatas):
         self.cache_cl_datas[key].process_klines(klines)
         return True
 
-    def get_cl_data(self, code, frequency) -> ICL:
+    def get_cl_data(self, code, frequency, cl_config: dict = None) -> ICL:
         key = f'{code}_{frequency}'
         return self.cache_cl_datas[key]
 
@@ -109,7 +109,7 @@ class MyQuantTrader(BackTestTrader):
         self.max_pos = 10
 
     # 做多买入
-    def open_buy(self, code, opt: Operation):
+    def open_buy(self, code, opt: Operation, amount: float = None):
 
         pos_count = len(self.context.account().positions())
         if pos_count >= self.max_pos:
@@ -124,7 +124,7 @@ class MyQuantTrader(BackTestTrader):
         return {'price': res[0]['filled_vwap'], 'amount': res[0]['filled_volume']}
 
     # 做空卖出
-    def open_sell(self, code, opt: Operation):
+    def open_sell(self, code, opt: Operation, amount: float = None):
         return False
 
     # 做多平仓

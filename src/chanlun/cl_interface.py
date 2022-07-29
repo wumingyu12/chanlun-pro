@@ -312,7 +312,7 @@ class ZS:
         """
         zgzd = self.zg - self.zd
         if zgzd == 0:
-            zgzd = 1
+            zgzd = 100
         return (zgzd / (self.gg - self.dd)) * 100
 
     def zs_mmds(self):

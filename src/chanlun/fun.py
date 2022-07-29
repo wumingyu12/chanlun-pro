@@ -39,7 +39,7 @@ def get_logger(filename=None, level=logging.INFO):
     return logger
 
 
-def send_dd_msg(market, msg):
+def send_dd_msg(market: str, msg: str):
     """
     发送钉钉消息
     :param market:

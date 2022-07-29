@@ -44,10 +44,10 @@ class StrategyCustomLevelMLA(Strategy):
 
         # 买卖点、背驰对应的中枢，要回拉零轴
         for mmd in high_bi.mmds:
-            if mmd.zs is not None and self.judge_macd_back_zero(high_data, mmd.zs, high_bi) is False:
+            if mmd.zs is not None and self.judge_macd_back_zero(high_data, mmd.zs) == 0:
                 return opts
         for bc in high_bi.bcs:
-            if bc.bc and bc.type in ['pz', 'qs'] and self.judge_macd_back_zero(high_data, bc.zs, high_bi) is False:
+            if bc.bc and bc.type in ['pz', 'qs'] and self.judge_macd_back_zero(high_data, bc.zs) == 0:
                 return opts
 
         # 多级别分析，低级别是否有盘整或趋势背驰

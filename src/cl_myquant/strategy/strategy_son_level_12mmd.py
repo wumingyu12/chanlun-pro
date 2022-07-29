@@ -1,7 +1,7 @@
 from __future__ import print_function, absolute_import
 
 from chanlun.exchange.exchange import convert_stock_kline_frequency
-from chanlun.strategy import my_strategy_a_son_level_1mmd
+from chanlun.strategy import strategy_son_level_1mmd
 from cl_myquant.base import *
 
 import time
@@ -25,7 +25,7 @@ def init(context):
     global market_data, trader, strategy
     # 初始化数据对象、策略、交易对象
     market_data = MyQuantData(context, ['1d', '1800s', '300s'], cl_config)
-    strategy = my_strategy_a_son_level_1mmd.StrategyASonLevel1MMD()
+    strategy = strategy_son_level_1mmd.StrategySonLevel1MMD()
     trader = MyQuantTrader('a', context)
     trader.set_data(market_data)
     trader.set_strategy(strategy)

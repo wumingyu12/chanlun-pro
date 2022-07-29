@@ -320,8 +320,7 @@ class BackTest:
 
     def show_charts(self, code, frequency,
                     to_minutes: int = None, to_dt_align_type: str = 'bob',
-                    change_cl_config=None, show_futu='macd',
-                    chart_config=None):
+                    change_cl_config=None, chart_config=None):
         """
         显示指定代码指定周期的图表
         """
@@ -348,14 +347,15 @@ class BackTest:
         )
         bk.klines(code, frequency)
         klines = bk.all_klines['%s-%s' % (code, frequency)]
+        title = '%s - %s' % (code, frequency)
         if to_minutes is not None:
             kg = KlinesGenerator(to_minutes, show_cl_config, to_dt_align_type)
             cd: ICL = kg.update_klines(klines)
+            title = '%s - (%s to %s)' % (code, frequency, to_minutes)
         else:
             cd: ICL = cl.CL(code, frequency, show_cl_config).process_klines(klines)
         orders = self.trader.orders[code] if code in self.trader.orders else []
-        render = kcharts.render_charts('%s - %s' % (code, frequency), cd, show_futu=show_futu, orders=orders,
-                                       config=chart_config)
+        render = kcharts.render_charts(title, cd, orders=orders, config=chart_config)
         return render
 
     def result(self, is_print=True):
@@ -468,9 +468,10 @@ class BackTest:
 
         mmds = {
             '1buy': '一类买点', '2buy': '二类买点', 'l2buy': '类二类买点', '3buy': '三类买点', 'l3buy': '类三类买点',
-            'down_pz_bc_buy': '下跌盘整背驰', 'down_qs_bc_buy': '下跌趋势背驰',
+            'down_bi_bc_buy': '下跌笔背驰', 'down_xd_bc_buy': '下跌线段背驰', 'down_pz_bc_buy': '下跌盘整背驰',
+            'down_qs_bc_buy': '下跌趋势背驰',
             '1sell': '一类卖点', '2sell': '二类卖点', 'l2sell': '类二类卖点', '3sell': '三类卖点', 'l3sell': '类三类卖点',
-            'up_pz_bc_sell': '上涨盘整背驰', 'up_qs_bc_sell': '上涨趋势背驰',
+            'up_bi_bc_sell': '上涨笔背驰', 'up_xd_bc_sell': '上涨线段背驰', 'up_pz_bc_sell': '上涨盘整背驰', 'up_qs_bc_sell': '上涨趋势背驰',
         }
         total_trade_num = 0  # 总的交易数量
         total_win_num = 0  # 总的盈利数量

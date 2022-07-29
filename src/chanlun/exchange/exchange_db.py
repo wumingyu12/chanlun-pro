@@ -208,8 +208,17 @@ class ExchangeDB(Exchange):
         kline_pd = pd.DataFrame(klines, columns=['date', 'f', 'high', 'low', 'open', 'close', 'volume'])
         kline_pd = kline_pd.iloc[::-1]
         kline_pd['code'] = code
-        kline_pd['date'] = kline_pd['date'].map(lambda d: d.to_pydatetime())
-        return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+        kline_pd['date'] = pd.to_datetime(kline_pd['date'])  # .map(lambda d: d.to_pydatetime())
+        kline_pd['open'] = kline_pd['open'].astype('float')
+        kline_pd['close'] = kline_pd['close'].astype('float')
+        kline_pd['high'] = kline_pd['high'].astype('float')
+        kline_pd['low'] = kline_pd['low'].astype('float')
+        kline_pd['volume'] = kline_pd['volume'].astype('float')
+
+        kline_pd = kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+        kline_pd = kline_pd.reset_index(drop=True)
+
+        return kline_pd
 
     def convert_kline_frequency(self, klines: pd.DataFrame, to_f: str) -> pd.DataFrame:
         """

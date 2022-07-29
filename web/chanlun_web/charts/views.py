@@ -3,6 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from django.shortcuts import render, redirect
 
 from chanlun.exchange import get_exchange, Market
+from chanlun.cl_utils import *
 from chanlun import zixuan, config, rd
 from . import tasks
 from . import utils
@@ -136,3 +137,47 @@ def clean_order_json(request):
     rd.order_clean(market, code)
 
     return utils.json_response('OK')
+
+
+@login_required
+def cl_chart_config(request):
+    """
+    读取缠论和图表配置
+    """
+    market = request.GET.get('market')
+    code = request.GET.get('code')
+    config = query_cl_chart_config(market, code)
+    return render(request, 'charts/options.html', config)
+
+
+@login_required
+def cl_chart_config_save(request):
+    """
+    设置缠论和图表设置
+    """
+    market = request.POST.get('market')
+    code = request.POST.get('code')
+    is_del = request.POST.get('is_del')
+    keys = ['config_use_type', 'fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_qj', 'bi_fx_cgd', 'xd_bzh', 'xd_qj',
+            'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx',
+            'chart_show_bi_zs', 'chart_show_xd_zs',
+            'chart_show_bi_mmd', 'chart_show_xd_mmd',
+            'chart_show_bi_bc', 'chart_show_xd_bc',
+            'chart_show_ma', 'chart_show_boll',
+            'chart_show_futu', 'chart_kline_nums',
+            'chart_idx_ma_period', 'chart_idx_vol_ma_period', 'chart_idx_boll_period', 'chart_idx_rsi_period',
+            'chart_idx_atr_period', 'chart_idx_cci_period', 'chart_idx_kdj_period', 'chart_qstd']
+    config = {}
+    for _k in keys:
+        if _k in ['zs_bi_type', 'zs_xd_type']:
+            config[_k] = request.POST.getlist(_k)
+            print(f'List value: {request.POST.getlist(_k)}')
+        else:
+            config[_k] = request.POST.get(_k)
+        print(f'{_k} : {config[_k]}')
+
+    if is_del == 'true':
+        res = del_cl_chart_config(market, code)
+    else:
+        res = set_cl_chart_config(market, code, config)
+    return utils.json_response(res) if res else utils.json_error()

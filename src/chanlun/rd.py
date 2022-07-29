@@ -363,7 +363,7 @@ def task_config_query(task_name, return_obj=True):
         return task_config
 
     # 检查并设置默认值
-    keys = ['is_run', 'is_send_msg', 'no_bi', 'no_xd', 'fx_baohan']
+    keys = ['is_run', 'is_send_msg']
     for key in keys:
         if key in task_config and task_config[key] == '' or key not in task_config.keys():
             task_config[key] = False
@@ -372,40 +372,11 @@ def task_config_query(task_name, return_obj=True):
     # 默认的整形参数
     default_int_keys = {
         'interval_minutes': 5,
-        'idx_macd_fast': 12,
-        'idx_macd_slow': 26,
-        'idx_macd_signal': 9
     }
     for _k, _v in default_int_keys.items():
         task_config[_k] = int(task_config[_k]) if _k in task_config else _v
     if 'zixuan' not in task_config.keys():
         task_config['zixuan'] = None
-
-    default_cl_keys = {
-        # 分型默认配置
-        'fx_qj': Config.FX_QJ_K.value,
-        'fx_bh': Config.FX_BH_DINGDI.value,
-        # 笔默认配置
-        'bi_type': Config.BI_TYPE_NEW.value,
-        'bi_qj': Config.BI_QJ_CK.value,
-        'bi_bzh': Config.BI_BZH_YES.value,
-        'bi_fx_cgd': Config.BI_FX_CHD_NO,
-        # 线段默认配置
-        'xd_bzh': Config.XD_BZH_YES.value,
-        'xd_qj': Config.XD_QJ_DD.value,
-        # 'xd_split': Config.XD_SPLIT_YES,
-        # 走势段默认配置
-        'zsd_bzh': Config.ZSD_BZH_YES.value,
-        'zsd_qj': Config.ZSD_QJ_DD.value,
-        # 中枢默认配置
-        'zs_bi_type': Config.ZS_TYPE_DN.value,  # 笔中枢类型
-        'zs_xd_type': Config.ZS_TYPE_DN.value,  # 走势中枢类型
-        'zs_qj': Config.ZS_QJ_DD.value,
-        'zs_wzgx': Config.ZS_WZGX_ZGD.value,
-    }
-    for _k in default_int_keys:
-        if _k not in task_config.keys():
-            task_config[_k] = default_cl_keys[_k]
 
     arr_keys = ['frequencys', 'check_beichi', 'check_mmd', 'check_beichi_xd', 'check_mmd_xd']
     for ak in arr_keys:

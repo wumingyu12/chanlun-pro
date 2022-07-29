@@ -43,6 +43,6 @@
 
 .ace-settings-box.open {
     max-width: 600px;
-    max-height: 1300px;
+    max-height: 800px;
     overflow: auto;
 }

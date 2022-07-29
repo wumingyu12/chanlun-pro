@@ -34,7 +34,7 @@ class KlinesGenerator:
 
     def update_klines(self, from_klines: pd.DataFrame) -> ICL:
         convert_klines = from_klines \
-            if self.to_klines is None else \
+            if self.to_klines is None or len(self.to_klines) < 10 else \
             from_klines[from_klines['date'] >= self.to_klines['date'].iloc[-2]]
 
         new_klines = {}

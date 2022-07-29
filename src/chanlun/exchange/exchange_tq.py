@@ -87,8 +87,6 @@ class ExchangeTq(Exchange):
         for c in ['FUTURE', 'CONT']:
             codes += self.get_api().query_quotes(ins_class=c)
         infos = self.get_api().query_symbol_info(codes)
-        # 等数据更新
-        self.get_api().wait_update(time.time() + 1)
 
         for code in codes:
             g_all_stocks.append(
@@ -111,16 +109,18 @@ class ExchangeTq(Exchange):
         """
         if args is None:
             args = {}
+        if 'limit' not in args.keys():
+            args['limit'] = 2000
         global g_look, g_klines
         try:
-            return self._extracted_from_klines_9(start_date, end_date, code, frequency)
+            return self._extracted_from_klines_9(start_date, end_date, code, frequency, args['limit'])
         except Exception as e:
             print(f'TQ 获取 {code} - {frequency} 行情异常： {e}')
             return None
         finally:
             g_look.release()
 
-    def _extracted_from_klines_9(self, start_date, end_date, code, frequency):
+    def _extracted_from_klines_9(self, start_date, end_date, code, frequency, limit=2000):
         g_look.acquire()
         frequency_maps = {'w': 7 * 24 * 60 * 60, 'd': 24 * 60 * 60, '60m': 60 * 60, '30m': 30 * 60, '15m': 15 * 60,
                           '6m': 6 * 60, '5m': 5 * 60, '1m': 1 * 60, '30s': 30, '10s': 10}
@@ -140,13 +140,13 @@ class ExchangeTq(Exchange):
                 try:
                     g_klines[key] = self.get_api().get_kline_serial(symbol=code,
                                                                     duration_seconds=frequency_maps[frequency],
-                                                                    data_length=1000)
+                                                                    data_length=limit)
                 except Exception:
                     # 异常重新关闭后进行重试
                     self.close_api()
                     g_klines[key] = self.get_api().get_kline_serial(symbol=code,
                                                                     duration_seconds=frequency_maps[frequency],
-                                                                    data_length=1000)
+                                                                    data_length=limit)
             # 等数据更新
             self.get_api().wait_update(time.time() + 1)
             klines = g_klines[key].dropna()
@@ -330,7 +330,7 @@ class ExchangeTq(Exchange):
             raise Exception('账户链接失败，暂时不可用，请稍后尝试')
 
         orders = api.get_order()
-        api.wait_update(time.time() + 2)
+        api.wait_update(time.time() + 5)
 
         res_orders = []
         for _id in orders:
