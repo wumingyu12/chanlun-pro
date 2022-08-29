@@ -29,7 +29,7 @@ run_codes = [
     'DCE.JM', 'DCE.L', 'DCE.LH', 'DCE.M', 'DCE.P', 'DCE.PG', 'DCE.PP', 'DCE.RR', 'DCE.V', 'DCE.Y',
     'INE.BC', 'INE.LU', 'INE.NR', 'INE.SC',
     'SHFE.AG', 'SHFE.AL', 'SHFE.AU', 'SHFE.BU', 'SHFE.CU', 'SHFE.FU', 'SHFE.HC', 'SHFE.NI',
-    'SHFE.PB', 'SHFE.RB', 'SHFE.RU', 'SHFE.SN', 'SHFE.SP', 'SHFE.SS', 'SHFE.WR', 'SHFE.ZN'
+    'SHFE.PB', 'SHFE.RB', 'SHFE.RU', 'SHFE.SN', 'SHFE.SP', 'SHFE.SS', 'SHFE.WR', 'SHFE.ZN',
 ]
 
 print(len(run_codes))
@@ -46,12 +46,13 @@ sync_frequencys = {
     '60m': {'start': '2005-01-01 00:00:00'},
     '30m': {'start': '2005-01-01 00:00:00'},
     '15m': {'start': '2005-01-01 00:00:00'},
+    '10m': {'start': '2005-01-01 00:00:00'},
     '5m': {'start': '2016-01-01 00:00:00'},
     '1m': {'start': '2016-01-01 00:00:00'},
 }
 # 本地周期与掘金周期对应关系
 fre_maps = {
-    '1m': '60s', '5m': '300s', '15m': '900s', '30m': '1800s', '60m': '3200s', 'd': '1d'
+    '1m': '60s', '5m': '300s', '10m': '600s', '15m': '900s', '30m': '1800s', '60m': '3600s', 'd': '1d'
 }
 
 for code in run_codes:

@@ -1,21 +1,24 @@
 import hashlib
 import json
 
-from chanlun import cl
-from chanlun.cl_interface import *
 from chanlun import rd
+from chanlun.cl_interface import *
+from chanlun import cl
 
 # 缓存计算好的缠论数据，第二次则不用重新计算了，减少计算消耗的时间
 _global_cache_day = datetime.datetime.now().strftime('%Y%m%d')
 _global_caches: Dict[str, ICL] = {}
 
 
-def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> List[ICL]:
+def batch_cls(
+        code, klines: Dict[str, pd.DataFrame],
+        config: dict = None, start_datetime: datetime.datetime = None) -> List[ICL]:
     """
     批量计算并获取 缠论 数据
     :param code: 计算的标的
     :param klines: 计算的 k线 数据，每个周期对应一个 k线DataFrame，例如 ：{'30m': klines_30m, '5m': klines_5m}
     :param config: 缠论配置
+    :param start_datetime: 开始分析的时间
     :return: 返回计算好的缠论数据对象，List 列表格式，按照传入的 klines.keys 顺序返回 如上调用：[0] 返回 30m 周期数据 [1] 返回 5m 数据
     """
     global _global_cache_day, _global_caches
@@ -27,13 +30,13 @@ def batch_cls(code, klines: Dict[str, pd.DataFrame], config: dict = None) -> Lis
     cls = []
     # _time_s = time.time()
     for f, k in klines.items():
-        key = hashlib.md5(f'{code}_{f}_{config}'.encode('UTF-8')).hexdigest()
+        key = hashlib.md5(f'{code}_{f}_{config}_{start_datetime}'.encode('UTF-8')).hexdigest()
         if key in _global_caches.keys():
             # print('使用缓存')
             cls.append(_global_caches[key].process_klines(k))
         else:
             # print('重新计算')
-            _global_caches[key] = cl.CL(code, f, config)
+            _global_caches[key] = cl.CL(code, f, config, start_datetime)
             cls.append(_global_caches[key].process_klines(k))
     # print('计算缠论数据用时:' + str(time.time() - _time_s))
     return cls
@@ -342,3 +345,32 @@ def cl_qstd(cd: ICL, line_type='xd', line_num: int = 5):
     qstd['down']['now'] = 'up' if xl(chart_down_start, now_point) > qstd['down']['xl'] else 'down'
 
     return qstd
+
+
+def prices_jiaodu(prices):
+    """
+    技术价格序列中，起始与终点的角度（正为上，负为下）
+
+    弧度 = dy / dx
+        dy = 终点与起点的差值
+        dx = 固定位 100000
+        dy 如果不足六位数，进行补位
+    不同品种的标的价格有差异，这时计算的角度会有很大的不同，不利于量化，将 dy 固定，变相的将所有标的放在一个尺度进行对比
+    """
+    if prices[-1] == prices[0]:
+        return 0
+    dy = max(prices[-1], prices[0]) - min(prices[-1], prices[0])
+    dx = 100000
+    while True:
+        dy_len = len(str(int(dy)))
+        if dy_len < 6:
+            dy = dy * (10 ** (6 - dy_len))
+        elif dy_len > 6:
+            dy = dy / (10 ** (dy_len - 6))
+        else:
+            break
+    # 弧度
+    k = math.atan2(dy, dx)
+    # 弧度转角度
+    j = math.degrees(k)
+    return j if prices[-1] > prices[0] else -j

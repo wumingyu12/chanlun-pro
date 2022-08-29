@@ -14,9 +14,15 @@ line_exchange = ExchangeBinance()
 # 创建表
 stocks = line_exchange.all_stocks()
 codes = [s['code'] for s in stocks]
-# codes = ['BTC/USDT', 'ETH/USDT', 'BCH/USDT', 'ADA/USDT', 'XRP/USDT', 'EOS/USDT', 'LTC/USDT', 'LINK/USDT',
-#          'TRX/USDT', 'XLM/USDT']
-sync_frequencys = ['w', 'd', '4h', '60m', '30m', '15m', '5m', '1m']
+# codes = ['BTC/USDT']
+# codes = [
+#     'BTC/USDT', 'ETH/USDT', 'ETC/USDT', 'GMT/USDT', 'SOL/USDT', 'BNB/USDT', 'AVAX/USDT', 'OP/USDT', 'TRB/USDT',
+#     'FIL/USDT', 'NEAR/USDT', 'LINK/USDT', 'MATIC/USDT', 'DOGE/USDT', 'ADA/USDT', 'APE/USDT', 'DOT/USDT',
+#     '1000SHIB/USDT', 'ZEC/USDT', 'REN/USDT', 'FLOW/USDT', 'SAND/USDT', 'ROSE/USDT', 'XRP/USDT', 'RSR/USDT',
+#     'CRV/USDT', 'FTM/USDT', 'ATOM/USDT', 'MANA/USDT', 'GALA/USDT', 'UNFI/USDT', 'DYDX/USDT', 'WAVES/USDT',
+#     'LTC/USDT', 'AXS/USDT', 'THETA/USDT', 'EOS/USDT', 'BCH/USDT', 'GRT/USDT', 'RUNE/USDT'
+# ]
+sync_frequencys = ['w', 'd', '4h', '60m', '30m', '15m', '10m', '5m', '1m']
 exchange.create_tables(codes)
 
 # TODO 同步各个周期的起始时间
@@ -27,6 +33,7 @@ f_start_time_maps = {
     '60m': '2000-01-01 00:00:00',
     '30m': '2000-01-01 00:00:00',
     '15m': '2000-01-01 00:00:00',
+    '10m': '2000-01-01 00:00:00',
     '5m': '2000-01-01 00:00:00',
     '1m': '2000-01-01 00:00:00',
 }
@@ -38,11 +45,15 @@ for code in tqdm(codes):
                 try:
                     last_dt = exchange.query_last_datetime(code, f)
                     if last_dt is None:
-                        klines = line_exchange.klines(code, f, end_date=f_start_time_maps[f])
+                        klines = line_exchange.klines(
+                            code, f, end_date=f_start_time_maps[f], args={'use_online': True}
+                        )
                         if len(klines) == 0:
-                            klines = line_exchange.klines(code, f, start_date=f_start_time_maps[f])
+                            klines = line_exchange.klines(
+                                code, f, start_date=f_start_time_maps[f], args={'use_online': True}
+                            )
                     else:
-                        klines = line_exchange.klines(code, f, start_date=last_dt)
+                        klines = line_exchange.klines(code, f, start_date=last_dt, args={'use_online': True})
 
                     tqdm.write('Run code %s frequency %s klines len %s' % (code, f, len(klines)))
                     exchange.insert_klines(code, f, klines)

@@ -23,7 +23,7 @@ class StrategyASingleAllMmd(Strategy):
 
         self._max_loss_rate = None
 
-    def open(self, code, market_data: MarketDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         opts = []
 
         # 增加基准（上证指数）的走势过滤

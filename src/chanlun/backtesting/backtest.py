@@ -154,6 +154,7 @@ class BackTest:
         self.log.info(f'Frequencys : {self.frequencys}')
         self.log.info(f'Start time : {self.start_datetime} End time : {self.end_datetime}')
         self.log.info(f'CL Config : {self.cl_config}')
+        self.log.info(f'Fee Total : {self.trader.fee_total}')
         return True
 
     def run(self, next_frequency: str = None):
@@ -334,6 +335,11 @@ class BackTest:
         else:
             cl_config = self.cl_config
 
+        if change_cl_config is None:
+            change_cl_config = {}
+        if chart_config is None:
+            chart_config = {}
+
         # 根据传递的参数，暂时修改其缠论配置
         if change_cl_config is None:
             change_cl_config = {}
@@ -355,6 +361,9 @@ class BackTest:
         else:
             cd: ICL = cl.CL(code, frequency, show_cl_config).process_klines(klines)
         orders = self.trader.orders[code] if code in self.trader.orders else []
+        # 是否屏蔽锁仓订单
+        if 'not_show_lock_order' in chart_config and chart_config['not_show_lock_order'] == True:
+            orders = [o for o in orders if '锁仓' not in o['info']]
         render = kcharts.render_charts(title, cd, orders=orders, config=chart_config)
         return render
 
@@ -464,14 +473,17 @@ class BackTest:
             res['return_drawdown_ratio'] = 0
 
         tb = pt.PrettyTable()
-        tb.field_names = ["买卖点", "成功", "失败", '胜率', "盈利", '亏损', '净利润', '回吐比例', '平均盈利', '平均亏损', '盈亏比']
+        tb.field_names = ["买卖点", "成功", "失败", '胜率', "盈利", '亏损', '净利润', '回吐比例', '平均盈利',
+                          '平均亏损', '盈亏比']
 
         mmds = {
             '1buy': '一类买点', '2buy': '二类买点', 'l2buy': '类二类买点', '3buy': '三类买点', 'l3buy': '类三类买点',
             'down_bi_bc_buy': '下跌笔背驰', 'down_xd_bc_buy': '下跌线段背驰', 'down_pz_bc_buy': '下跌盘整背驰',
             'down_qs_bc_buy': '下跌趋势背驰',
-            '1sell': '一类卖点', '2sell': '二类卖点', 'l2sell': '类二类卖点', '3sell': '三类卖点', 'l3sell': '类三类卖点',
-            'up_bi_bc_sell': '上涨笔背驰', 'up_xd_bc_sell': '上涨线段背驰', 'up_pz_bc_sell': '上涨盘整背驰', 'up_qs_bc_sell': '上涨趋势背驰',
+            '1sell': '一类卖点', '2sell': '二类卖点', 'l2sell': '类二类卖点', '3sell': '三类卖点',
+            'l3sell': '类三类卖点',
+            'up_bi_bc_sell': '上涨笔背驰', 'up_xd_bc_sell': '上涨线段背驰', 'up_pz_bc_sell': '上涨盘整背驰',
+            'up_qs_bc_sell': '上涨趋势背驰',
         }
         total_trade_num = 0  # 总的交易数量
         total_win_num = 0  # 总的盈利数量
@@ -611,6 +623,9 @@ class BackTest:
                 hold_num_history['val'].append(_hold_num_sums[_dt])
             else:
                 hold_num_history['val'].append(0)
+
+        # 平均持仓量
+        print('平均持仓数量：', np.mean(hold_num_history['val']))
 
         return self.__create_backtest_charts(
             base_prices, balance_history, hold_profit_history, hold_num_history

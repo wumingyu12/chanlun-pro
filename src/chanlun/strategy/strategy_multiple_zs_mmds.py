@@ -15,7 +15,7 @@ class StrategyMultipleZsMMDS(Strategy):
     def __init__(self):
         super().__init__()
 
-    def open(self, code, market_data: MarketDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         """
         开仓监控，返回开仓配置
         """

@@ -1,6 +1,7 @@
 from abc import ABC
 
 import talib
+import MyTT
 
 from chanlun.cl_interface import *
 from chanlun.cl_utils import cal_zs_macd_infos
@@ -25,12 +26,17 @@ class POSITION:
         self.open_date: str = open_date
         self.open_datetime: str = open_datetime
         self.close_datetime: str = close_datetime
-        self.profit_rate: float = profit_rate
+        self.profit: float = 0  # 收益金额
+        self.profit_rate: float = profit_rate  # 收益率
         self.max_profit_rate: float = max_profit_rate  # 仅供参考，不太精确
         self.max_loss_rate: float = max_loss_rate  # 仅供参考，不太精确
         self.open_msg: str = open_msg
         self.close_msg: str = close_msg
         self.info: Dict = info
+        # 仓位控制相关
+        self.now_pos_rate: float = 0  # 记录当前开仓所占比例
+        self.open_keys: Dict[str, float] = {}  # 记录开仓的唯一key记录，避免多次重复开仓
+        self.close_keys: Dict[str, float] = {}  # 记录平仓的唯一key记录，避免多次重复平仓
 
         # 锁仓持仓记录
         self.lock_positions: Dict[str, POSITION] = {}
@@ -44,15 +50,18 @@ class Operation:
     策略返回的操作指示对象
     """
 
-    def __init__(self, opt: str, mmd: str, loss_price: float = 0, info=None, msg: str = ''):
+    def __init__(self, opt: str, mmd: str, loss_price: float = 0, info=None, msg: str = '',
+                 pos_rate: float = 1, key: str = 'id'):
         self.opt: str = opt  # 操作指示  buy  买入  sell  卖出  lock 锁仓 unlock 解除锁仓 （只有期货支持锁仓操作）
         # 触发指示的
-        # 买卖点 例如：1buy  2buy l2buy 3buy l3buy  1sell 2sell l2sell 3sell l3sell down_pz_bc_buy
+        # 买卖点 例如：1buy 2buy l2buy 3buy l3buy  1sell 2sell l2sell 3sell l3sell down_pz_bc_buy
         # 背驰点 例如：down_pz_bc_buy down_qs_bc_buy up_pz_bc_sell up_qs_bc_sell
-        self.mmd: str = mmd
+        self.mmd: str = mmd  # 触发买卖点
         self.loss_price: float = loss_price  # 止损价格
         self.info: Dict[str, object] = info  # 自定义保存的一些信息
         self.msg: str = msg
+        self.pos_rate: float = pos_rate  # 开仓 or 平仓 所占的比例
+        self.key: str = key  # 避免同一位置多次开平仓，需要在该位置设置一个独立的 key 值，例如当前笔结束的日期等
 
     def __str__(self):
         return f'mmd {self.mmd} opt {self.opt} loss_price {self.loss_price} msg: {self.msg}'
@@ -110,16 +119,17 @@ class Strategy(ABC):
         pass
 
     @abstractmethod
-    def open(self, code, market_data: MarketDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         """
         观察行情数据，给出开仓操作建议
         :param code:
         :param market_data:
+        :param poss: 当前代码的持仓列表
         :return:
         """
 
     @abstractmethod
-    def close(self, code, mmd: str, pos: POSITION, market_data: MarketDatas) -> [Operation, None]:
+    def close(self, code, mmd: str, pos: POSITION, market_data: MarketDatas) -> [Operation, None, List[Operation]]:
         """
         盯当前持仓，给出平仓当下建议
         :param code:
@@ -134,7 +144,7 @@ class Strategy(ABC):
         """
         返回 boll 指标
         """
-        prices = np.array([k.c for k in cd.get_klines()[-(period + 10):]])
+        prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
         ma = talib.MA(prices, timeperiod=period)
         return ma
 
@@ -143,11 +153,95 @@ class Strategy(ABC):
         """
         返回 boll 指标
         """
-        prices = np.array([k.c for k in cd.get_klines()[-(period + 10):]])
+        prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
         boll_up, boll_mid, boll_low = talib.BBANDS(prices, timeperiod=period)
         return {
             'up': boll_up, 'mid': boll_mid, 'low': boll_low
         }
+
+    @staticmethod
+    def idx_rsi(cd: ICL, period=14):
+        # 指标说明：
+        # RSI的基本原理是在一个正常的股市中，多空买卖双方的力道必须得到均衡，股价才能稳定；而RSI是对于固定期间内，股价上涨总幅度平均值占总幅度平均值的比例。
+        # 1. RSI值于0 - 100 之间呈常态分配，当6日RSI值为80‰以上时，股市呈超买现象，若出现M头，市场风险较大；当6日RSI值在20‰以下时，股市呈超卖现象，若出现W头，市场机会增大。
+        # 2. RSI一般选用6日、12日、24日作为参考基期，基期越长越有趋势性(慢速RSI)，基期越短越有敏感性(快速RSI)。当快速RSI由下往上突破慢速RSI时，机会增大；当快速RSI由上而下跌破慢速RSI时，风险增大。
+        prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
+        rsi = talib.RSI(prices, timeperiod=period)
+        return rsi
+
+    @staticmethod
+    def idx_atr(cd: ICL, period=14):
+        # 原理：
+        # （1）
+        #     A=最高价-最低价
+        #     B=（前一收盘价-最高价）的绝对值
+        #     C=A与B两者较大者
+        #     D=（前一收盘价-最低价）的绝对值
+        #     TR=C与D两者较大者
+        # （2）
+        #     ATR=TR在N个周期的简单移动平均
+        # 用法：
+        #     在上升通道中，ATR真实波幅向上时，且TR黄线上穿ATR蓝线，此时K线收阴者可买入。下降通道中不买。
+
+        close_prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
+        high_prices = np.array([k.h for k in cd.get_klines()[-(period + 120):]])
+        low_prices = np.array([k.l for k in cd.get_klines()[-(period + 120):]])
+        atr = talib.ATR(high_prices, low_prices, close_prices, timeperiod=period)
+        return atr
+
+    @staticmethod
+    def idx_cci(cd: ICL, period=14):
+        # 指标说明：
+        # 按市场的通行的标准，CCI指标的运行区间可分为三大类：大于﹢100、小于 - 100 和﹢100——-100 之间。　　
+        # 1. 当CCI＞﹢100 时，表明股价已经进入非常态区间——超买区间，股价的异动现象应多加关注。　　
+        # 2. 当CCI＜-100 时，表明股价已经进入另一个非常态区间——超卖区间，投资者可以逢低吸纳股票。　　
+        # 3. 当CCI介于﹢100——-100 之间时表明股价处于窄幅振荡整理的区间——常态区间，投资者应以观望为主。
+        close_prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
+        high_prices = np.array([k.h for k in cd.get_klines()[-(period + 120):]])
+        low_prices = np.array([k.l for k in cd.get_klines()[-(period + 120):]])
+        cci = talib.CCI(high_prices, low_prices, close_prices, timeperiod=period)
+        return cci
+
+    @staticmethod
+    def idx_kdj(cd: ICL, period=9, M1=3, M2=3):
+        # 指标说明：
+        # KDJ，其综合动量观念、强弱指标及移动平均线的优点，早年应用在期货投资方面，功能颇为显著，目前为股市中最常被使用的指标之一。买卖原则：
+        # 1. K线由右边向下交叉D值做卖，K线由右边向上交叉D值做买。
+        # 2. 高档连续二次向下交叉确认跌势，低挡连续二次向上交叉确认涨势。
+        # 3. D值 < 20 % 超卖，D值 > 80 % 超买，J > 100 % 超买，J < 10 % 超卖。
+        # 4. KD值于50 % 左右徘徊或交叉时，无意义。
+        # 5. 投机性太强的个股不适用。
+        # 6. 可观察KD值同股价的背离，以确认高低点。
+        close_prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
+        high_prices = np.array([k.h for k in cd.get_klines()[-(period + 120):]])
+        low_prices = np.array([k.l for k in cd.get_klines()[-(period + 120):]])
+        k, d, j = MyTT.KDJ(close_prices, high_prices, low_prices, N=period, M1=M1, M2=M2)
+        return {'k': k, 'd': d, 'j': j}
+
+    @staticmethod
+    def idx_mtm(cd: ICL, N=12, M=6):
+        # 参数：N 间隔天数，也是求移动平均的天数，一般为6
+        # MTM向上突破零，买入信号
+        # MTM向下突破零，卖出信号
+        close_prices = np.array([k.c for k in cd.get_klines()[-(N + 120):]])
+        mtm, mtma = MyTT.MTM(close_prices, N, M)
+        return {'mtm': mtm, 'mtma': mtma}
+
+    @staticmethod
+    def idx_psy(cd: ICL, N=12, M=6):
+        # 原理：
+        #     心理线是一种建立在研究投资人心理趋向基础上，将某段时间内投资者倾向买方还是卖方的心理与事实转化为数值，形成人气指标，做为买卖的参考。
+        #     PSY＝N日内的上涨天数/N×100
+        #     N一般设定为12日，最大不超过24，周线的最长不超过26。
+        #
+        # 用法：
+        #     1.PSY>75为超买，如形成M头时为卖出信号；
+        #     2.PSY<25为超卖，如形成W底时为卖出信号；
+        #     3.心理线主要反映市场心理的超买或超卖，因此，当百分比值在常态区域上下移动时，一般应持观望态度；
+        #     4.PSY一般不可单独使用，需配合VR指标和逆时针曲线同时使用，可提高准确度。
+        close_prices = np.array([k.c for k in cd.get_klines()[-(N + 120):]])
+        psy, psya = MyTT.PSY(close_prices, N, M)
+        return {'psy': psy, 'psya': psya}
 
     @staticmethod
     def check_loss(mmd: str, pos: POSITION, price: float):
@@ -160,10 +254,12 @@ class Strategy(ABC):
 
         if 'buy' in mmd:
             if price < pos.loss_price:
-                return Operation(opt='sell', mmd=mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
+                return Operation(opt='sell', mmd=mmd,
+                                 msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
         elif 'sell' in mmd:
             if price > pos.loss_price:
-                return Operation(opt='sell', mmd=mmd, msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
+                return Operation(opt='sell', mmd=mmd,
+                                 msg='%s 止损 （止损价格 %s 当前价格 %s）' % (mmd, pos.loss_price, price))
         return None
 
     @staticmethod

@@ -7,7 +7,7 @@ from tqsdk.objs import Account, Position
 from chanlun import config, fun
 from chanlun.exchange.exchange import *
 
-# 整全局的变量
+# 全局的变量
 g_api: tqsdk.TqApi = None
 g_account: tqsdk.TqAccount = None
 g_account_enable: bool = False
@@ -122,8 +122,10 @@ class ExchangeTq(Exchange):
 
     def _extracted_from_klines_9(self, start_date, end_date, code, frequency, limit=2000):
         g_look.acquire()
-        frequency_maps = {'w': 7 * 24 * 60 * 60, 'd': 24 * 60 * 60, '60m': 60 * 60, '30m': 30 * 60, '15m': 15 * 60,
-                          '6m': 6 * 60, '5m': 5 * 60, '1m': 1 * 60, '30s': 30, '10s': 10}
+        frequency_maps = {
+            'w': 7 * 24 * 60 * 60, 'd': 24 * 60 * 60, '60m': 60 * 60, '30m': 30 * 60, '15m': 15 * 60,
+            '10m': 10 * 60, '6m': 6 * 60, '5m': 5 * 60, '1m': 1 * 60, '30s': 30, '10s': 10
+        }
 
         if start_date is not None and end_date is not None:
             # 有专业版权限才可以调用此方法
@@ -223,9 +225,15 @@ class ExchangeTq(Exchange):
         positions = api.get_position(symbol=code)
         api.wait_update(time.time() + 2)
         if isinstance(positions, Position):
-            return {code: positions}
+            if positions['pos_long'] != 0 or positions['pos_short'] != 0:
+                return {code: positions}
+            else:
+                return {}
         else:
-            return {_code: positions[_code] for _code in positions.keys()}
+            return {
+                _code: positions[_code] for _code in positions.keys()
+                if positions[_code]['pos_long'] != 0 or positions[_code]['pos_short'] != 0
+            }
 
     def order(self, code: str, o_type: str, amount: float, args=None):
         """

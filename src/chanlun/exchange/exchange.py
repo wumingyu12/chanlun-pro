@@ -196,7 +196,8 @@ def convert_currency_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.Data
     """
     new_kline = {}
     f_maps = {
-        '5m': 5 * 60, '15m': 15 * 60, '30m': 30 * 60, '60m': 60 * 60, '120m': 120 * 60, '4h': 4 * 60 * 60,
+        '5m': 5 * 60, '10m': 10 * 60, '15m': 15 * 60, '30m': 30 * 60, '60m': 60 * 60,
+        '120m': 120 * 60, '4h': 4 * 60 * 60,
         'd': 24 * 60 * 60, 'w': 7 * 24 * 60 * 60
     }
     seconds = f_maps[to_f]

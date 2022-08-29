@@ -17,7 +17,7 @@ class StrategyZsdXdBi1MMD(Strategy):
 
         self._max_loss_rate = None  # 最大亏损比例设置
 
-    def open(self, code, market_data: MarketDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         """
         开仓监控，返回开仓配置
         """

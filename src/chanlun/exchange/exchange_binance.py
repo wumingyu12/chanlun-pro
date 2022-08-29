@@ -1,3 +1,5 @@
+import traceback
+
 import ccxt
 import pymysql.err
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
@@ -71,13 +73,17 @@ class ExchangeBinance(Exchange):
         """
         if args is None:
             args = {}
+
+        if 'use_online' in args.keys() and args['use_online']:
+            # 个别情况需要直接调用交易所结果，不需要通过数据库
+            return self.online_klines(code, frequency, start_date, end_date, args)
         try:
             if start_date is not None or end_date is not None:
                 online_klines = self.online_klines(code, frequency, start_date, end_date, args)
                 self.db_exchange.insert_klines(code, frequency, online_klines)
                 return online_klines
 
-            db_klines = self.db_exchange.klines(code, frequency)
+            db_klines = self.db_exchange.klines(code, frequency, args={'limit': 10000})
             if len(db_klines) == 0:
                 online_klines = self.online_klines(code, frequency, start_date, end_date, args)
                 self.db_exchange.insert_klines(code, frequency, online_klines)
@@ -93,12 +99,12 @@ class ExchangeBinance(Exchange):
 
             klines = db_klines.append(online_klines)
             klines.drop_duplicates(subset=['date'], keep='last', inplace=True)
-            return klines[-2500::]
+            return klines[-10000::]
         except pymysql.err.ProgrammingError:
             self.db_exchange.create_tables([code])
             return self.klines(code, frequency, start_date, end_date, args)
         except Exception as e:
-            print(e)
+            print(traceback.format_exc())
 
         return None
 
@@ -112,7 +118,7 @@ class ExchangeBinance(Exchange):
         if args is None:
             args = {}
         frequency_map = {'w': '1w', 'd': '1d', '4h': '4h', '60m': '1h',
-                         '30m': '30m', '15m': '15m', '5m': '5m', '1m': '1m'}
+                         '30m': '30m', '15m': '15m', '10m': '5m', '5m': '5m', '1m': '1m'}
         if frequency not in frequency_map.keys():
             raise Exception(f'不支持的周期: {frequency}')
 
@@ -126,11 +132,17 @@ class ExchangeBinance(Exchange):
         kline = self.exchange.fetchOHLCV(symbol=code, timeframe=frequency_map[frequency], limit=1500,
                                          params={'startTime': start_date, 'endTime': end_date})
         kline_pd = pd.DataFrame(kline, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
-        kline_pd.loc[:, 'code'] = code
-        kline_pd.loc[:, 'date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))
+        # kline_pd.loc[:, 'code'] = code
+        # kline_pd.loc[:, 'date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))
+        kline_pd['code'] = code
+        kline_pd['date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))
         # kline_pd['date'] = pd.to_datetime(kline_pd['date'].values / 1000, unit='s', utc=True).tz_convert(
         # 'Asia/Shanghai')
-        return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+        kline_pd = kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+        # 自定义级别，需要进行转换
+        if frequency in ['10m'] and len(kline_pd) > 0:
+            kline_pd = convert_currency_kline_frequency(kline_pd, frequency)
+        return kline_pd
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         res_ticks = {}

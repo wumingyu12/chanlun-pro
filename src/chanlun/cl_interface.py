@@ -18,7 +18,7 @@ CL_*** 配置项，可以在调用缠论计算时，通过传递 config 变量�
 False : 不严格处理，允许顶的最低点低于底分型最低点，允许底分型的最高点高于顶分型的最高点
 True：严格处理，不允许顶的最低点低于底分型最低点，不允许底分型的最高点高于顶分型的最高点
 """
-CL_BI_FX_STRICT = False
+CL_BI_FX_STRICT = True
 
 
 class Config(Enum):
@@ -264,14 +264,32 @@ class LINE:
     def jiaodu(self) -> float:
         """
         计算线段与坐标轴呈现的角度（正为上，负为下）
+
+        弧度 = dy / dx
+            dy = 终点与起点的差值
+            dx = 固定位 100000
+            dy 如果不足六位数，进行补位
+        不同品种的标的价格有差异，这时计算的角度会有很大的不同，不利于量化，将 dy 固定，变相的将所有标的放在一个尺度进行对比
         """
-        # 计算斜率
-        k = (self.start.val - self.end.val) / (self.start.k.k_index - self.end.k.k_index)
-        # 斜率转弧度
-        k = math.atan(k)
+        if self.end.val == self.start.val:
+            return 0
+
+        dy = max(self.end.val, self.start.val) - min(self.end.val, self.start.val)
+        dx = 100000
+        # 对 dy 进行补位
+        while True:
+            dy_len = len(str(int(dy)))
+            if dy_len < 6:
+                dy = dy * (10 ** (6 - dy_len))
+            elif dy_len > 6:
+                dy = dy / (10 ** (dy_len - 6))
+            else:
+                break
+        # 弧度
+        k = math.atan2(dy, dx)
         # 弧度转角度
         j = math.degrees(k)
-        return j
+        return j if self.end.val > self.start.val else -j
 
 
 class ZS:
@@ -508,7 +526,10 @@ class TZXL:
     特征序列
     """
 
-    def __init__(self, line: Union[LINE, None], pre_line: LINE, _max: float, _min: float, line_bad: bool, done: bool):
+    def __init__(self, bh_direction: str, line: Union[LINE, None], pre_line: LINE,
+                 _max: float, _min: float, line_bad: bool, done: bool):
+
+        self.bh_direction: str = bh_direction  # 特征序列包含的方向 up 向上包含，取高高，down 向下包含，取低低
         self.line: Union[LINE, None] = line
         self.max: float = _max
         self.min: float = _min
@@ -520,6 +541,20 @@ class TZXL:
 
     def __str__(self):
         return f'done {self.done} max {self.max} min {self.min} line_bad {self.line_bad} line {self.line} pre_line {self.pre_line} num {len(self.lines)}'
+
+    def get_start_fx(self):
+        if self.bh_direction == 'up':
+            sort_lines = sorted(self.lines, key=lambda l: l.high, reverse=True)
+        else:
+            sort_lines = sorted(self.lines, key=lambda l: l.low, reverse=False)
+        return sort_lines[0].start
+
+    def get_end_fx(self):
+        if self.bh_direction == 'up':
+            sort_lines = sorted(self.lines, key=lambda l: l.low, reverse=True)
+        else:
+            sort_lines = sorted(self.lines, key=lambda l: l.high, reverse=False)
+        return sort_lines[0].end
 
 
 class XLFX:
@@ -534,20 +569,14 @@ class XLFX:
         self.xl: TZXL = xl
         self.xls: List[TZXL] = xls
 
-        if self.type == 'ding' and self.xls[0].max < self.xls[1].min:
-            self.qk = True  # 分型是否有缺口
-        elif self.type == 'di' and self.xls[0].min > self.xls[1].max:
-            self.qk = True
-        else:
-            self.qk = False
-        self.line_bad = xl.line_bad  # 标记是否线破坏
-        self.fx_high = max(_xl.max for _xl in self.xls)
-        self.fx_low = min(_xl.min for _xl in self.xls)
+        self.qk = False  # 分型是否有缺口
+        self.fx_high = max(_xl.max for _xl in self.xls if _xl is not None)
+        self.fx_low = min(_xl.min for _xl in self.xls if _xl is not None)
 
         self.done = done  # 序列分型是否完成
 
     def __str__(self):
-        return f"XLFX type : {self.type} done : {self.done} qk : {self.qk} line_bad : {self.line_bad} high : {self.high} low : {self.low} xl : {self.xl}"
+        return f"XLFX type : {self.type} done : {self.done} qk : {self.qk} high : {self.high} low : {self.low} xl : {self.xl}"
 
 
 class XD(LINE):
@@ -566,6 +595,7 @@ class XD(LINE):
         self.bcs: List[BC] = []  # 背驰信息
         self.ding_fx: XLFX = ding_fx
         self.di_fx: XLFX = di_fx
+        self.done: bool = False  # 标记线段是否完成
 
         self.default_zs_type: str = default_zs_type
         # 记录不同中枢下的背驰和买卖点
@@ -578,11 +608,8 @@ class XD(LINE):
         """
         return self.ding_fx.qk if self.type == 'up' else self.di_fx.qk
 
-    def is_line_bad(self) -> bool:
-        """
-        成线段的分数，是否背笔破坏（被笔破坏不等于线段结束，但是有大概率是结束了）
-        """
-        return self.ding_fx.line_bad if self.type == 'up' else self.di_fx.line_bad
+    def is_done(self) -> bool:
+        return self.done
 
     def get_mmds(self, zs_type: str = None) -> List[MMD]:
         if zs_type is None:
@@ -691,12 +718,6 @@ class XD(LINE):
         bcs = self.line_bcs(zs_type)
         return len(set(bc_types) & set(bcs)) > 0
 
-    def is_done(self) -> bool:
-        """
-        线段是否完成
-        """
-        return self.ding_fx.done if self.type == 'up' else self.di_fx.done
-
     def __str__(self):
         return f'XD index: {self.index} type: {self.type} start: {self.start_line.start.k.date} end: {self.end_line.end.k.date} high: {self.high} low: {self.low} done: {self.is_done()}'
 
@@ -738,12 +759,14 @@ class ICL(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def __init__(self, code: str, frequency: str, config: Union[dict, None] = None):
+    def __init__(self, code: str, frequency: str, config: Union[dict, None] = None,
+                 start_datetime: datetime.datetime = None):
         """
         缠论计算
         :param code: 代码
         :param frequency: 周期
         :param config: 计算缠论依赖的配置项
+        :param start_datetime: 开始分析的时间，不设置则分析计算所有
         """
 
     @abstractmethod
@@ -922,7 +945,8 @@ def query_macd_ld(cd: ICL, start_fx: FX, end_fx: FX):
     """
     if start_fx.index > end_fx.index:
         raise Exception(
-            '%s - %s - %s 计算力度，开始分型不可以大于结束分型' % (cd.get_code(), cd.get_frequency(), cd.get_klines()[-1].date))
+            '%s - %s - %s 计算力度，开始分型不可以大于结束分型' % (
+                cd.get_code(), cd.get_frequency(), cd.get_klines()[-1].date))
 
     dea = np.array(cd.get_idx()['macd']['dea'][start_fx.k.k_index:end_fx.k.k_index + 1])
     dif = np.array(cd.get_idx()['macd']['dif'][start_fx.k.k_index:end_fx.k.k_index + 1])

@@ -30,7 +30,7 @@ class ExchangeDB(Exchange):
         self.exchange = None
         self.online_ex = None
 
-    def __table(self, code):
+    def table(self, code):
         """
         根据 code  获取对应的数据表名称
         :param code:
@@ -86,7 +86,7 @@ class ExchangeDB(Exchange):
         db = g_pool_db.connection()
         cursor = db.cursor()
         for code in codes:
-            table = self.__table(code)
+            table = self.table(code)
             with contextlib.suppress(Exception):
                 # 删除并重新创建
                 # cursor.execute(f'drop table {table}')
@@ -107,7 +107,7 @@ class ExchangeDB(Exchange):
 
         db = g_pool_db.connection()
         cursor = db.cursor()
-        table = self.__table(code)
+        table = self.table(code)
         if self.market in ['a', 'us']:
             cursor.execute("select dt from %s where code = '%s' and f = '%s' order by dt desc limit 1"
                            % (table, code, frequency))
@@ -137,7 +137,7 @@ class ExchangeDB(Exchange):
 
         db = g_pool_db.connection()
         cursor = db.cursor()
-        table = self.__table(code)
+        table = self.table(code)
         for kline in klines.iterrows():
             k = kline[1]
             if self.market in ['a', 'us']:
@@ -162,7 +162,7 @@ class ExchangeDB(Exchange):
 
         db = g_pool_db.connection()
         cursor = db.cursor()
-        table = self.__table(code)
+        table = self.table(code)
         if self.market in ['a', 'us']:
             sql = "delete from %s where code='%s' and f = '%s' and dt='%s'" % (
                 table, code, frequency, _datetime.strftime('%Y-%m-%d %H:%M:%S'))
@@ -186,7 +186,7 @@ class ExchangeDB(Exchange):
         if 'limit' not in args:
             args['limit'] = 2000
 
-        table = self.__table(code)
+        table = self.table(code)
         if self.market in ['a', 'us']:
             sql = "select dt, f, h, l, o, c, v from %s where code='%s' and f='%s'" % (table, code, frequency)
         else:

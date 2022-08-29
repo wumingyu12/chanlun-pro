@@ -12,7 +12,7 @@ class StrategyXDMMD(Strategy):
 
         self._max_loss_rate = 10
 
-    def open(self, code, market_data: MarketDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         opts = []
 
         data = market_data.get_cl_data(code, market_data.frequencys[0])

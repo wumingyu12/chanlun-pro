@@ -18,7 +18,7 @@ class StrategyCustomLevelMLA(Strategy):
 
         self.kg = KlinesGenerator(high_minutes, None, dt_align_type='bob')
 
-    def open(self, code, market_data: MarketDatas) -> List[Operation]:
+    def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         """
         开仓监控，返回开仓配置
         """

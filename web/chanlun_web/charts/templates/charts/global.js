@@ -34,8 +34,8 @@ $('#shuaxin').click(function () {
         $(this).text('关闭自动更新');
         intervalId = setInterval(function () {
             fetchKlinesData(chart_high, market, code, frequency_high, true);
-            fetchKlinesData(chart_log, market, code, frequency_low, true);
-        }, 30000);
+            fetchKlinesData(chart_low, market, code, frequency_low, true);
+        }, 15000);
     }
     if (val === '1') {
         // 关闭自动更新

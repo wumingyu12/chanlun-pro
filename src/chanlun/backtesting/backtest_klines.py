@@ -122,8 +122,8 @@ class BackTestKlines(MarketDatas):
             # 更新计算
             cd = self.cl_datas[key]
 
-            # TODO 节省内存，最多存 3000 k线数据，超过就清空重新计算
-            if len(cd.get_klines()) >= 3000:
+            # TODO 节省内存，最多存 10000 k线数据，超过就清空重新计算
+            if len(cd.get_klines()) >= 10000:
                 self.cl_datas[key] = cl.CL(code, frequency, cl_config)
                 cd = self.cl_datas[key]
 
@@ -166,14 +166,14 @@ class BackTestKlines(MarketDatas):
             for f in self.frequencys:
                 key = '%s-%s' % (code, f)
                 if self.market in ['currency', 'futures']:
-                    kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-2000::]
+                    kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-5000::]
                 else:
-                    kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-2000::]
+                    kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-5000::]
                 klines[f] = kline
         else:
             # 使用数据库按需查询
             for f in self.frequencys:
-                klines[f] = self.ex.klines(code, f, end_date=fun.datetime_to_str(self.now_date), args={'limit': 2000})
+                klines[f] = self.ex.klines(code, f, end_date=fun.datetime_to_str(self.now_date), args={'limit': 5000})
 
         # 转换周期k线，去除未来数据
         klines = self.convert_klines(klines)
@@ -187,6 +187,15 @@ class BackTestKlines(MarketDatas):
         转换 kline，去除未来的 kline数据
         :return:
         """
+        # 合成周期对应的低级别k线数量（也要兼顾不同市场的时间周期）
+        # frequency_num_maps = {
+        #     'd': {'4h': 7, '60m': 25, '30m': 50, '15m': 100, '5m': 300},
+        #     '4h': {'60m': 5, '30m': 10, '15m': 20, '5m': 60, '1m': 300},
+        #     '60m': {'30m': 3, '15m': 6, '5m': 20, '1m': 70},
+        #     '30m': {'15m': 3, '5m': 10, '1m': 35},
+        #     '15m': {'5m': 5, '1m': 20},
+        #     '5m': {'1m': 10},
+        # }
         for i in range(len(self.frequencys), 1, -1):
             min_f = self.frequencys[i - 1]
             max_f = self.frequencys[i - 2]
@@ -214,10 +223,12 @@ class BackTestKlines(MarketDatas):
                   '1m': 5},
             'hk': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
             'us': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
-            'currency': {'d': 300, '120m': 200, '4h': 100, '60m': 50, '30m': 50, '15m': 25, '5m': 5, '1m': 1},
-            'futures': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
+            'currency': {'d': 300, '120m': 200, '4h': 100, '60m': 50, '30m': 50, '15m': 25, '10m': 25, '5m': 5,
+                         '1m': 1},
+            'futures': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '10m': 50, '5m': 25,
+                        '1m': 10},
         }
-        for _freq in ['w', 'd', '120m', '4h', '60m', '30m', '15m', '5m', '1m']:
+        for _freq in ['w', 'd', '120m', '4h', '60m', '30m', '15m', '10m', '5m', '1m']:
             if _freq == frequency:
                 return (start_date - datetime.timedelta(days=market_days_freq_maps[self.market][_freq])).strftime(
                     self.time_fmt)
