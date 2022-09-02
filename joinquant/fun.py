@@ -35,6 +35,11 @@ def get_cl_datas(code, frequencys, cl_config):
 
 # 格式化代码与富途的统一
 def reformat_code(code):
+    if isinstance(code, list):
+        res = []
+        for c in code:
+            res.append(reformat_code(c))
+        return res
     symbol = code[0:6]
     exchange = code[-5:]
     if exchange == '.XSHG':
