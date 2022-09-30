@@ -244,6 +244,47 @@ class Strategy(ABC):
         return {'psy': psy, 'psya': psya}
 
     @staticmethod
+    def idx_atr_by_sma(CLOSE, HIGH, LOW, N: int = 20):
+        TR = MyTT.MAX(MyTT.MAX((HIGH - LOW), MyTT.ABS(MyTT.REF(CLOSE, 1) - HIGH)),
+                      MyTT.ABS(MyTT.REF(CLOSE, 1) - LOW))
+        return MyTT.SMA(TR, N)
+
+    def get_atr_stop_loss_price(self, cd: ICL, mmd_type: str, atr_period: int = 14, atr_m: float = 1.5):
+        """
+        获取ATR波动率的止损价格
+        """
+        close_prices = np.array([k.c for k in cd.get_klines()[-(atr_period + 200):]])
+        high_prices = np.array([k.h for k in cd.get_klines()[-(atr_period + 200):]])
+        low_prices = np.array([k.l for k in cd.get_klines()[-(atr_period + 200):]])
+        atr_vals = self.idx_atr_by_sma(close_prices, high_prices, low_prices, atr_period)
+        high_stop_loss_price = high_prices[-1] + atr_vals[-1] * atr_m
+        low_stop_loss_price = low_prices[-1] - atr_vals[-1] * atr_m
+        if mmd_type == 'buy':
+            return low_stop_loss_price
+        else:
+            return high_stop_loss_price
+
+    def check_atr_stop_loss(self, cd: ICL, pos: POSITION, atr_period: int = 14, atr_m: float = 1.5):
+        """
+        检查是否触发 ATR 移动止损
+        收盘价 大于 or 小于 前一个 atr 止损价格
+        """
+        close_prices = np.array([k.c for k in cd.get_klines()[-(atr_period + 200):]])
+        high_prices = np.array([k.h for k in cd.get_klines()[-(atr_period + 200):]])
+        low_prices = np.array([k.l for k in cd.get_klines()[-(atr_period + 200):]])
+        atr_vals = self.idx_atr_by_sma(close_prices, high_prices, low_prices, atr_period)
+        price = cd.get_klines()[-1].c
+        high_stop_loss_price = high_prices[-2] + atr_vals[-2] * atr_m
+        low_stop_loss_price = low_prices[-2] - atr_vals[-2] * atr_m
+        if 'buy' in pos.mmd and price <= low_stop_loss_price:
+            return Operation(opt='sell', mmd=pos.mmd,
+                             msg='%s ATR止损 （止损价格 %s 当前价格 %s）' % (pos.mmd, low_stop_loss_price, price))
+        elif 'sell' in pos.mmd and price >= high_stop_loss_price:
+            return Operation(opt='sell', mmd=pos.mmd,
+                             msg='%s ATR止损 （止损价格 %s 当前价格 %s）' % (pos.mmd, high_stop_loss_price, price))
+        return None
+
+    @staticmethod
     def check_loss(mmd: str, pos: POSITION, price: float):
         """
         检查是否触发止损，止损返回操作对象，不出发返回 None
@@ -317,10 +358,10 @@ class Strategy(ABC):
         """
         if bi.is_done() is False:
             return False
-        last_price = cd.get_klines()[-1].c
-        if bi.type == 'up' and last_price < bi.end.klines[-1].l:
+        last_k = cd.get_klines()[-1]
+        if bi.type == 'up' and last_k.c < last_k.o and last_k.c < bi.end.klines[-1].l:
             return True
-        elif bi.type == 'down' and last_price > bi.end.klines[-1].h:
+        elif bi.type == 'down' and last_k.c > last_k.o and last_k.c > bi.end.klines[-1].h:
             return True
 
         return False

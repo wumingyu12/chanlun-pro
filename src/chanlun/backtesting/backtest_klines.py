@@ -1,6 +1,7 @@
 # 回放行情所需
 import hashlib
 import json
+import time
 
 from chanlun import fun
 from chanlun.backtesting.base import MarketDatas
@@ -53,31 +54,38 @@ class BackTestKlines(MarketDatas):
         self.ex = ExchangeDB(self.market)
 
         # 用于循环的日期列表
-        self.loop_datetime_list: list = []
+        self.loop_datetime_list: Dict[str, list] = {}
 
         # 进度条
         self.bar: Union[tqdm, None] = None
 
         self.time_fmt = '%Y-%m-%d %H:%M:%S'
 
-    def init(self, base_code: str, frequency: str):
+    def init(self, base_code: str, frequency: Union[str, list]):
         # 初始化，获取循环的日期列表
         self.base_code = base_code
         if frequency is None:
+            frequency = [self.frequencys[-1]]
+        if isinstance(frequency, str):
+            frequency = [frequency]
+        for f in frequency:
+            klines = self.ex.klines(
+                base_code, f,
+                start_date=fun.datetime_to_str(self.start_date), end_date=fun.datetime_to_str(self.end_date),
+                args={'limit': None}
+            )
+            self.loop_datetime_list[f] = list(klines['date'].to_list())
+
+        self.bar = tqdm(total=len(list(self.loop_datetime_list.values())[-1]))
+
+    def next(self, frequency: str = ''):
+        if frequency == '' or frequency is None:
             frequency = self.frequencys[-1]
-        klines = self.ex.klines(
-            base_code, frequency,
-            start_date=fun.datetime_to_str(self.start_date), end_date=fun.datetime_to_str(self.end_date),
-            args={'limit': None}
-        )
-        self.loop_datetime_list = list(klines['date'].to_list())
-
-        self.bar = tqdm(total=len(self.loop_datetime_list))
-
-    def next(self):
-        if len(self.loop_datetime_list) == 0:
+        if len(self.loop_datetime_list[frequency]) == 0:
             return False
-        self.now_date = self.loop_datetime_list.pop(0)
+        self.now_date = self.loop_datetime_list[frequency].pop(0)
+        for f, loop_dt_list in self.loop_datetime_list.items():
+            self.loop_datetime_list[f] = [d for d in loop_dt_list if d >= self.now_date]
         # 清除之前的 cl_datas 、klines 缓存，重新计算
         self.cache_cl_datas = {}
         self.cache_klines = {}
@@ -123,11 +131,12 @@ class BackTestKlines(MarketDatas):
             cd = self.cl_datas[key]
 
             # TODO 节省内存，最多存 10000 k线数据，超过就清空重新计算
-            if len(cd.get_klines()) >= 10000:
-                self.cl_datas[key] = cl.CL(code, frequency, cl_config)
-                cd = self.cl_datas[key]
+            # if len(cd.get_klines()) >= 10000:
+            #     self.cl_datas[key] = cl.CL(code, frequency, cl_config)
+            #     cd = self.cl_datas[key]
 
             klines = self.klines(code, frequency)
+
             if len(klines) > 0:
                 if len(cd.get_klines()) == 0:
                     self.cl_datas[key].process_klines(klines)
@@ -163,21 +172,22 @@ class BackTestKlines(MarketDatas):
                         end_date=fun.datetime_to_str(self.end_date),
                         args={'limit': None}
                     )
+
             for f in self.frequencys:
                 key = '%s-%s' % (code, f)
                 if self.market in ['currency', 'futures']:
-                    kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-5000::]
+                    kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-10000::]
                 else:
-                    kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-5000::]
+                    kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-10000::]
                 klines[f] = kline
         else:
             # 使用数据库按需查询
             for f in self.frequencys:
-                klines[f] = self.ex.klines(code, f, end_date=fun.datetime_to_str(self.now_date), args={'limit': 5000})
+                klines[f] = self.ex.klines(code, f, end_date=fun.datetime_to_str(self.now_date), args={'limit': 10000})
+
 
         # 转换周期k线，去除未来数据
         klines = self.convert_klines(klines)
-        # print(frequency, len(klines[frequency]))
         # 将结果保存到 缓存中，避免重复读取
         self.cache_klines[code] = klines
         return klines[frequency]
@@ -219,14 +229,14 @@ class BackTestKlines(MarketDatas):
         :return:
         """
         market_days_freq_maps = {
-            'a': {'w': 10000, 'd': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25,
+            'a': {'w': 10000, 'd': 10000, '120m': 500, '4h': 500, '60m': 100, '30m': 2000, '15m': 50, '5m': 50,
                   '1m': 5},
             'hk': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
             'us': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
-            'currency': {'d': 300, '120m': 200, '4h': 100, '60m': 50, '30m': 50, '15m': 25, '10m': 25, '5m': 5,
-                         '1m': 1},
-            'futures': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '10m': 50, '5m': 25,
-                        '1m': 10},
+            'currency': {'w': 2000, 'd': 2000, '120m': 2000, '4h': 1680, '60m': 420, '30m': 200, '15m': 100, '10m': 70,
+                         '5m': 30, '1m': 7},
+            'futures': {'d': 5000, '120m': 500, '4h': 500, '60m': 500, '30m': 500, '15m': 480, '10m': 240, '5m': 1200,
+                        '1m': 60},
         }
         for _freq in ['w', 'd', '120m', '4h', '60m', '30m', '15m', '10m', '5m', '1m']:
             if _freq == frequency:

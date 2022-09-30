@@ -4,6 +4,8 @@ from django.shortcuts import render
 from chanlun.backtesting.backtest_klines import BackTestKlines
 from chanlun import kcharts
 from .apps import login_required
+from chanlun.cl_utils import query_cl_chart_config
+import time
 
 bk_hq: BackTestKlines
 
@@ -34,25 +36,24 @@ def kline_show(request):
     start = request.POST.get('start')
     end = request.POST.get('end')
     frequencys: str = request.POST.get('frequencys')
+    frequencys: list = frequencys.split(',')
+    f = request.POST.get('frequency')
 
     # 缠论配置设置
-    cl_config_key = ['fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_fx_cgd', 'bi_qj', 'xd_bzh', 'xd_qj', 'zsd_bzh',
-                     'zsd_qj', 'zs_bi_type',
-                     'zs_xd_type', 'zs_qj', 'zs_wzgx']
-    cl_config = {_k: request.POST.get(_k) for _k in cl_config_key}
+    cl_config = query_cl_chart_config(market, code)
     if bk_hq is None:
-        bk_hq = BackTestKlines(market, start, end, frequencys.split(','), cl_config=cl_config)
-        bk_hq.init(code, frequencys[0])
+        bk_hq = BackTestKlines(market, start, end, frequencys, cl_config=cl_config)
+        bk_hq.init(code, frequencys)
 
-    is_next = bk_hq.next()
+    is_next = bk_hq.next(f)
     if not is_next:
         return HttpResponse('')
 
-    charts = '{'
-    for f in bk_hq.frequencys:
-        cd = bk_hq.get_cl_data(code, f)
-        c = kcharts.render_charts(f'{code}:{f}', cd)
-        charts += '"' + cd.get_frequency() + '" : ' + c + ','
-    charts += '}'
+    _s_time = time.time()
+    cd = bk_hq.get_cl_data(code, f)
+    print('cd use time: ', time.time() - _s_time)
+    _s_time = time.time()
+    chart = kcharts.render_charts(f'{code}:{f}', cd)
+    print('chart use time: ', time.time() - _s_time)
 
-    return HttpResponse(charts)
+    return HttpResponse(chart)

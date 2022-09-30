@@ -249,7 +249,13 @@ def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataF
         '15m': 15 * 60,
         '30m': 30 * 60,
         '60m': 60 * 60,
-        '120m': 60 * 60,
+        '120m': 2 * 60 * 60,
+        'd': 24 * 60 * 60
+    }
+    # TODO 由于 期货上午 10点15 休息 15 分钟，所以需要特殊处理
+    freq_special_maps = {
+        '10m': [{'h': [10], 'm': [{'min': 10, 'max': 15, 'to': 10}]}],
+        '30m': [{'h': [10], 'm': [{'min': 10, 'max': 15, 'to': 10}]}],
     }
     if to_f not in freq_second_maps.keys():
         raise Exception(f'不支持的转换周期：{to_f}')
@@ -263,6 +269,7 @@ def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataF
             new_date_time = date_time
         else:
             new_date_time = date_time - (date_time % seconds)
+        # 30m 10
 
         new_date_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(new_date_time))
         if new_date_time in new_kline:

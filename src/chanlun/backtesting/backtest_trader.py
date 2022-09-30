@@ -378,7 +378,8 @@ class BackTestTrader(object):
     def close_buy(self, code, pos: POSITION, opt: Operation):
         # 如果是止损的话，按照止损价格
         if '止损' in opt.msg:
-            price = pos.loss_price
+            # price = pos.loss_price
+            price = self.get_price(code)['close']
         else:
             price = self.get_price(code)['close']
 
@@ -399,7 +400,8 @@ class BackTestTrader(object):
     def close_sell(self, code, pos: POSITION, opt: Operation):
         # 如果是止损的话，按照止损价格
         if '止损' in opt.msg:
-            price = pos.loss_price
+            # price = pos.loss_price
+            price = self.get_price(code)['close']
         else:
             price = self.get_price(code)['close']
 

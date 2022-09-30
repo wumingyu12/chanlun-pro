@@ -1,7 +1,7 @@
 import hashlib
 import json
 
-from chanlun import rd
+from chanlun import rd, fun
 from chanlun.cl_interface import *
 from chanlun import cl
 
@@ -186,24 +186,27 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
     default_config = {
         'config_use_type': 'common',
         # 缠论默认配置项
+        'kline_type': Config.KLINE_TYPE_DEFAULT.value,
         'fx_qj': Config.FX_QJ_K.value,
         'fx_bh': Config.FX_BH_YES.value,
-        'bi_type': Config.BI_TYPE_NEW.value,
+        'bi_type': Config.BI_TYPE_OLD.value,
         'bi_bzh': Config.BI_BZH_YES.value,
-        'bi_qj': Config.BI_QJ_CK.value,
-        'bi_fx_cgd': Config.BI_FX_CHD_NO.value,
-        'xd_bzh': Config.XD_BZH_YES.value,
+        'bi_qj': Config.BI_QJ_DD.value,
+        'bi_fx_cgd': Config.BI_FX_CHD_YES.value,
+        'xd_bzh': Config.XD_BZH_NO.value,
         'xd_qj': Config.XD_QJ_DD.value,
-        'zsd_bzh': Config.ZSD_BZH_YES.value,
+        'zsd_bzh': Config.ZSD_BZH_NO.value,
         'zsd_qj': Config.ZSD_QJ_DD.value,
-        'zs_bi_type': [Config.ZS_TYPE_DN.value],
-        'zs_xd_type': [Config.ZS_TYPE_DN.value],
+        'zs_bi_type': [Config.ZS_TYPE_BZ.value],
+        'zs_xd_type': [Config.ZS_TYPE_BZ.value],
         'zs_qj': Config.ZS_QJ_DD.value,
         'zs_wzgx': Config.ZS_WZGX_ZGGDD.value,
         'idx_macd_fast': 12,
         'idx_macd_slow': 26,
         'idx_macd_signal': 9,
         # 画图默认配置
+        'chart_show_infos': '1',
+        'chart_show_fx': '1',
         'chart_show_bi_zs': '1',
         'chart_show_xd_zs': '1',
         'chart_show_bi_mmd': '1',
@@ -213,12 +216,15 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'chart_show_ma': '1',
         'chart_show_boll': '1',
         'chart_show_futu': 'macd',
+        'chart_show_atr_stop_loss': False,
+        'chart_show_ld': 'none',
         'chart_kline_nums': 1000,
         'chart_idx_ma_period': '120,250',
         'chart_idx_vol_ma_period': '5,60',
         'chart_idx_boll_period': 20,
         'chart_idx_rsi_period': 14,
         'chart_idx_atr_period': 14,
+        'chart_idx_atr_multiplier': 1.5,
         'chart_idx_cci_period': 14,
         'chart_idx_kdj_period': '9,3,3',
         'chart_qstd': 'xd,0',
@@ -374,3 +380,133 @@ def prices_jiaodu(prices):
     # 弧度转角度
     j = math.degrees(k)
     return j if prices[-1] > prices[0] else -j
+
+
+def cl_date_to_tv_chart(cd: ICL, config):
+    """
+    将缠论数据，转换成 tv 画图的坐标数据
+    """
+    bi_chart_data = []
+    for bi in cd.get_bis():
+        bi_chart_data.append({
+            'points': [
+                {'time': fun.datetime_to_int(bi.start.k.date), 'price': bi.start.val},
+                {'time': fun.datetime_to_int(bi.end.k.date), 'price': bi.end.val},
+            ],
+            'linestyle': '0' if bi.is_done() else '1',
+        })
+
+    xd_chart_data = []
+    for xd in cd.get_xds():
+        xd_chart_data.append({
+            'points': [
+                {'time': fun.datetime_to_int(xd.start.k.date), 'price': xd.start.val},
+                {'time': fun.datetime_to_int(xd.end.k.date), 'price': xd.end.val},
+            ],
+            'linestyle': '0' if xd.is_done() else '1',
+        })
+    zsd_chart_data = []
+    for zsd in cd.get_zsds():
+        zsd_chart_data.append({
+            'points': [
+                {'time': fun.datetime_to_int(zsd.start.k.date), 'price': zsd.start.val},
+                {'time': fun.datetime_to_int(zsd.end.k.date), 'price': zsd.end.val},
+            ],
+            'linestyle': '0' if zsd.is_done() else '1',
+        })
+    bi_zs_chart_data = []
+    for zs_type in config['zs_bi_type']:
+        for zs in cd.get_bi_zss(zs_type):
+            bi_zs_chart_data.append({
+                'points': [
+                    {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.start.val},
+                    {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.end.val},
+                ],
+                'linestyle': '0' if zs.done else '1',
+            })
+    xd_zs_chart_data = []
+    for zs_type in config['zs_xd_type']:
+        for zs in cd.get_xd_zss(zs_type):
+            xd_zs_chart_data.append({
+                'points': [
+                    {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.start.val},
+                    {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.end.val},
+                ],
+                'linestyle': '0' if zs.done else '1',
+            })
+    zsd_zs_chart_data = []
+    for zs in cd.get_zsd_zss():
+        zsd_zs_chart_data.append({
+            'points': [
+                {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.start.val},
+                {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.end.val},
+            ],
+            'linestyle': '0' if zs.done else '1',
+        })
+
+    # 背驰信息
+    bc_infos = {}
+    # 买卖点信息
+    mmd_infos = {}
+
+    lines = {
+        'bi': cd.get_bis(),
+        'xd': cd.get_xds(),
+        'zsd': cd.get_zsds(),
+    }
+    line_type_map = {'bi': '笔', 'xd': '线段', 'zsd': '走势段'}
+    bc_type_map = {'bi': '笔背驰', 'xd': '线段背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
+    mmd_type_map = {
+        '1buy': '一买', '2buy': '二买', 'l2buy': '类二买', '3buy': '三买', 'l3buy': '类三买',
+        '1sell': '一卖', '2sell': '二卖', 'l2sell': '类二卖', '3sell': '三卖', 'l3sell': '类三卖'
+    }
+    for line_type, ls in lines.items():
+        for l in ls:
+            bcs = l.line_bcs('|')
+            if len(bcs) != 0 and l.end.k.date not in bc_infos.keys():
+                bc_infos[l.end.k.date] = {
+                    'price': l.end.val,
+                    'bc_types': [],
+                    'bc_texts': []
+                }
+            for bc in bcs:
+                if bc not in bc_infos[l.end.k.date]['bc_types']:
+                    bc_infos[l.end.k.date]['bc_types'].append(bc)
+                    bc_infos[l.end.k.date]['bc_texts'].append(f"{line_type_map[line_type]} {bc_type_map[bc]}")
+
+            pass
+            mmds = l.line_mmds('|')
+            if len(mmds) != 0 and l.end.k.date not in mmd_infos.keys():
+                mmd_infos[l.end.k.date] = {
+                    'price': l.end.val,
+                    'mmd_types': [],
+                    'mmd_texts': []
+                }
+            for mmd in mmds:
+                if f'{line_type}_{mmd}' not in mmd_infos[l.end.k.date]['mmd_types']:
+                    mmd_infos[l.end.k.date]['mmd_types'].append(f'{line_type}_{mmd}')
+                    mmd_infos[l.end.k.date]['mmd_texts'].append(f"{line_type_map[line_type]} {mmd_type_map[mmd]}")
+
+    bc_chart_data = []
+    for dt, bc in bc_infos.items():
+        bc_chart_data.append({
+            'points': {'time': fun.datetime_to_int(dt), 'price': bc['price']},
+            'text': ('/'.join(bc['bc_texts'])).strip('/')
+        })
+    mmd_chart_data = []
+    for dt, mmd in mmd_infos.items():
+        mmd_chart_data.append({
+            'points': {'time': fun.datetime_to_int(dt), 'price': mmd['price']},
+            'text': ('/'.join(mmd['mmd_texts'])).strip('/')
+        })
+
+    return {
+        'bis': bi_chart_data,
+        'xds': xd_chart_data,
+        'zsds': zsd_chart_data,
+        'bi_zss': bi_zs_chart_data,
+        'xd_zss': xd_zs_chart_data,
+        'zsd_zss': zsd_zs_chart_data,
+        'bcs': bc_chart_data,
+        'mmds': mmd_chart_data,
+    }

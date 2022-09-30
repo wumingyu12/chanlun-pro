@@ -57,7 +57,7 @@ class ExchangeDB(Exchange):
         # 沪深 A 股的建表语句，增加 code，避免创建太多表
         code_sql = """
         create table %s (
-                        code VARCHAR(9) not null,
+                        code VARCHAR(12) not null,
                         dt DATETIME not null,
                         f VARCHAR(5) not null,
                         h decimal(20,8) not null,
@@ -184,7 +184,7 @@ class ExchangeDB(Exchange):
         if start_date is not None and end_date is not None and 'limit' not in args:
             args['limit'] = None
         if 'limit' not in args:
-            args['limit'] = 2000
+            args['limit'] = 5000
 
         table = self.table(code)
         if self.market in ['a', 'us']:
@@ -198,6 +198,8 @@ class ExchangeDB(Exchange):
         sql += ' order by dt desc'
         if args['limit'] is not None:
             sql += f" limit {args['limit']}"
+
+        # print(sql)
 
         db = g_pool_db.connection()
         cursor = db.cursor()

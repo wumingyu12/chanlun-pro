@@ -18,13 +18,16 @@ CL_*** 配置项，可以在调用缠论计算时，通过传递 config 变量�
 False : 不严格处理，允许顶的最低点低于底分型最低点，允许底分型的最高点高于顶分型的最高点
 True：严格处理，不允许顶的最低点低于底分型最低点，不允许底分型的最高点高于顶分型的最高点
 """
-CL_BI_FX_STRICT = True
+CL_BI_FX_STRICT = False
 
 
 class Config(Enum):
     """
     缠论配置项
     """
+    # K 线类型
+    KLINE_TYPE_DEFAULT = 'kline_default'  # 默认K线
+    KLINE_TYPE_HEIKIN_ASHI = 'kline_heikin_ashi'  # 平均K线
     # 分型配置项
     FX_QJ_CK = 'fx_qj_ck'  # 用顶底的缠论K线，获取分型区间
     FX_QJ_K = 'fx_qj_k'  # 用顶底的原始k线，获取分型区间
@@ -531,8 +534,6 @@ class TZXL:
 
         self.bh_direction: str = bh_direction  # 特征序列包含的方向 up 向上包含，取高高，down 向下包含，取低低
         self.line: Union[LINE, None] = line
-        self.max: float = _max
-        self.min: float = _min
         self.pre_line: LINE = pre_line
         self.line_bad: bool = line_bad
         self.is_up_line: bool = False
@@ -541,6 +542,20 @@ class TZXL:
 
     def __str__(self):
         return f'done {self.done} max {self.max} min {self.min} line_bad {self.line_bad} line {self.line} pre_line {self.pre_line} num {len(self.lines)}'
+
+    @property
+    def max(self):
+        if self.bh_direction == 'up':
+            return max([_l.high for _l in self.lines])
+        else:
+            return min([_l.high for _l in self.lines])
+
+    @property
+    def min(self):
+        if self.bh_direction == 'up':
+            return max([_l.low for _l in self.lines])
+        else:
+            return min([_l.low for _l in self.lines])
 
     def get_start_fx(self):
         if self.bh_direction == 'up':
@@ -564,8 +579,6 @@ class XLFX:
 
     def __init__(self, _type: str, xl: TZXL, xls: List[TZXL], done: bool = True):
         self.type: str = _type
-        self.high: float = xl.max
-        self.low: float = xl.min
         self.xl: TZXL = xl
         self.xls: List[TZXL] = xls
 
@@ -574,6 +587,16 @@ class XLFX:
         self.fx_low = min(_xl.min for _xl in self.xls if _xl is not None)
 
         self.done = done  # 序列分型是否完成
+
+        self.bh_type = None
+
+    @property
+    def high(self):
+        return self.xl.max
+
+    @property
+    def low(self):
+        return self.xl.min
 
     def __str__(self):
         return f"XLFX type : {self.type} done : {self.done} qk : {self.qk} high : {self.high} low : {self.low} xl : {self.xl}"
@@ -595,6 +618,7 @@ class XD(LINE):
         self.bcs: List[BC] = []  # 背驰信息
         self.ding_fx: XLFX = ding_fx
         self.di_fx: XLFX = di_fx
+        self.tzxls: List[TZXL] = []  # 特征序列列表
         self.done: bool = False  # 标记线段是否完成
 
         self.default_zs_type: str = default_zs_type
@@ -607,6 +631,12 @@ class XD(LINE):
         成线段的分型是否有缺口
         """
         return self.ding_fx.qk if self.type == 'up' else self.di_fx.qk
+
+    def fx_is_done(self) -> bool:
+        """
+        返回构成线段的结束特征序列分型是否完成
+        """
+        return self.ding_fx.done if self.type == 'up' else self.di_fx.done
 
     def is_done(self) -> bool:
         return self.done
@@ -753,6 +783,41 @@ class MACD_INFOS:
     last_dea = 0
 
 
+@dataclass
+class LINE_FORM_INFOS:
+    # 组成形态的线列表
+    lines: List[Union[LINE, BI, XD]]
+    # 方向
+    direction: str
+    # 线的数量
+    line_num: int
+    # 线的形态描述
+    form_type: str
+    # 线组成的中枢信息
+    zss: Union[None, List[ZS]] = None
+    # 最后线是否背驰段
+    is_bc_line: bool = False
+    # 形态级别
+    form_level: float = 0
+    # 形态趋势
+    form_qs: str = ''
+    # 其他信息
+    infos: dict = None
+
+    def __str__(self):
+        msg = f'{"向上" if self.direction == "up" else "向下"} {self.form_type} ({self.form_level}) {"进入背驰段" if self.is_bc_line else "无背驰"}'
+        if self.infos is not None:
+            if 'zs_pre_line_num' in self.infos.keys():
+                msg += f'  中枢前 {self.infos["zs_pre_line_num"]} 段 / '
+            if 'zs_next_line_num' in self.infos.keys():
+                msg += f'  中枢后 {self.infos["zs_next_line_num"]} 段 / '
+            if 'zs_pre_level' in self.infos.keys():
+                msg += f'  前中枢 {self.infos["zs_pre_level"]} 级别 / '
+            if 'zs_next_level' in self.infos.keys():
+                msg += f'  后中枢 {self.infos["zs_next_level"]} 级别 / '
+        return msg.strip(' / ')
+
+
 class ICL(metaclass=ABCMeta):
     """
     缠论数据分析接口定义
@@ -812,9 +877,18 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_src_klines(self) -> List[Kline]:
+        """
+        返回原始K线列表
+        """
+        pass
+
+    @abstractmethod
     def get_klines(self) -> List[Kline]:
         """
         返回原始K线列表
+        如果 kline_type == kline_default 则返回原始 K 线数据
+        如果 kline_type == kline_heikin_ashi 则返回经过处理后的平均K线数据，如需获取原始K线数据，使用 get_src_klines 方法
         """
         pass
 
@@ -857,6 +931,15 @@ class ICL(metaclass=ABCMeta):
     def get_zsds(self) -> List[XD]:
         """
         返回计算缠论走势段列表
+        """
+        pass
+
+    @abstractmethod
+    def get_level_lines(self) -> List[List[XD]]:
+        """
+        返回比走势段更高级别的线段，下标从 0 开始，级别依次增大
+        下标 0 ：使用 zsd 走势段进行特征序列划分高级别线段
+        下标 1 ：使用 下标0 的线段，进行特征序列划分高级别线段
         """
         pass
 
@@ -923,13 +1006,6 @@ class ICL(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def compare_ld_beichi(self, one_ld: dict, two_ld: dict, hist_type: str):
-        """
-        比较两个力度，后者小于前者，返回 True
-        hist_type：[up, down] up 统计 macd 的红柱子之和，down 统计 macd 绿柱子之和
-        """
-
-    @abstractmethod
     def zss_is_qs(self, one_zs: ZS, two_zs: ZS) -> bool:
         """
         判断两个中枢是否形成趋势（根据设置的位置关系配置，来判断两个中枢是否有重叠）
@@ -961,6 +1037,8 @@ def query_macd_ld(cd: ICL, start_fx: FX, end_fx: FX):
     hist_abs = abs(hist)
     hist_up = np.array([_i for _i in hist if _i > 0])
     hist_down = np.array([_i for _i in hist if _i < 0])
+    hist_max = np.max(hist)
+    hist_min = np.min(hist)
     hist_sum = hist_abs.sum()
     hist_up_sum = hist_up.sum()
     hist_down_sum = abs(hist_down.sum())
@@ -970,5 +1048,27 @@ def query_macd_ld(cd: ICL, start_fx: FX, end_fx: FX):
     return {
         'dea': {'end': end_dea, 'max': np.max(dea), 'min': np.min(dea)},
         'dif': {'end': end_dif, 'max': np.max(dif), 'min': np.min(dif)},
-        'hist': {'sum': hist_sum, 'up_sum': hist_up_sum, 'down_sum': hist_down_sum, 'end': end_hist},
+        'hist': {'sum': hist_sum, 'up_sum': hist_up_sum, 'down_sum': hist_down_sum, 'max': hist_max, 'min': hist_min,
+                 'end': end_hist},
     }
+
+
+def compare_ld_beichi(one_ld: dict, two_ld: dict, line_direction: str):
+    """
+    比较两个力度，后者小于前者，返回 True
+    :param one_ld:
+    :param two_ld:
+    :param line_direction: [up down] 比较线的方向，向上看macd红柱子之和，向下看macd绿柱子之和
+    :return:
+    """
+    hist_key = 'sum'
+    if line_direction == 'up':
+        hist_key = 'up_sum'
+    elif line_direction == 'down':
+        hist_key = 'down_sum'
+    if 'macd' not in two_ld.keys() or 'macd' not in one_ld.keys():
+        return False
+    if two_ld['macd']['hist'][hist_key] < one_ld['macd']['hist'][hist_key]:
+        return True
+    else:
+        return False

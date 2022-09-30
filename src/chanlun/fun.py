@@ -4,6 +4,7 @@ import hmac
 import logging
 import time
 import urllib.parse
+from datetime import timezone
 
 import requests
 
@@ -131,6 +132,15 @@ def datetime_to_str(_dt: datetime.datetime, _format='%Y-%m-%d %H:%M:%S'):
     :return:
     """
     return _dt.strftime(_format)
+
+
+def datetime_to_int(_dt: datetime.datetime):
+    """
+    datetime转时间戳
+    :param _dt:
+    :return:
+    """
+    return int(time.mktime(_dt.replace(tzinfo=timezone.utc).timetuple()))
 
 
 def str_add_seconds_to_str(_s, _seconds, _format='%Y-%m-%d %H:%M:%S'):

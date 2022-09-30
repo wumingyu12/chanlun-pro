@@ -11,7 +11,8 @@ import prettytable as pt
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Grid
 
-from chanlun import cl, kcharts, fun
+from chanlun import cl
+from chanlun import kcharts, fun
 from chanlun.backtesting.backtest_klines import BackTestKlines
 from chanlun.backtesting.backtest_trader import BackTestTrader
 from chanlun.backtesting.base import POSITION
@@ -172,7 +173,7 @@ class BackTest:
         _st = time.time()
 
         while True:
-            is_ok = self.datas.next()
+            is_ok = self.datas.next(next_frequency)
             if is_ok is False:
                 break
             # 更新持仓盈亏与资金变化

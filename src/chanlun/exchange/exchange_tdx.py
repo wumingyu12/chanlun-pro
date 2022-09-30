@@ -132,18 +132,18 @@ class ExchangeTDX(Exchange):
 
                 key = f'{code}_{frequency}'
                 if args['use_cache'] is False or key not in self.cache_klines.keys():
-                    # 获取 3*800 = 2400 条数据
+                    # 获取 5*800 = 4000 条数据
                     # print('not use cache')
                     klines = pd.concat([
                         client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
-                        for i in [1, 2, 3]
+                        for i in [1, 2, 3, 4, 5]
                     ], axis=0, sort=False)
                     klines.loc[:, 'date'] = pd.to_datetime(klines['datetime'])
                     klines.sort_values('date', inplace=True)
                 else:
                     # print('use cache')
                     klines = self.cache_klines[key]
-                    for i in [1, 2, 3]:
+                    for i in [1, 2, 3, 4, 5]:
                         _ks = client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
                         _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime'])
                         _ks.sort_values('date', inplace=True)

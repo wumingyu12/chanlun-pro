@@ -1,15 +1,16 @@
 import os
 
-import talib
 import MyTT
+import talib
 # 画图配置
 from pyecharts import options as opts
 from pyecharts.charts import Kline as cKline, Line, Bar, Grid, Scatter
 from pyecharts.commons.utils import JsCode
 
+from chanlun.cl_analyse import LinesFormAnalyse
 from chanlun.cl_interface import *
-from chanlun.fun import str_to_datetime
 from chanlun.cl_utils import cl_qstd
+from chanlun.fun import str_to_datetime
 
 if "JPY_PARENT_PID" in os.environ:
     from pyecharts.globals import CurrentConfig, NotebookType
@@ -39,6 +40,8 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
 
     default_config = {
         # 展示配置项
+        'chart_show_infos': True,
+        'chart_show_fx': True,
         'chart_show_bi_zs': True,
         'chart_show_xd_zs': True,
         'chart_show_zsd_zs': True,
@@ -51,6 +54,8 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
         'chart_show_ma': True,
         'chart_show_boll': False,
         'chart_show_futu': 'macd',
+        'chart_show_ld': 'none',
+        'chart_show_atr_stop_loss': False,
         # 指标配置项
         'chart_kline_nums': 1000,
         'chart_idx_ma_period': '120,250',
@@ -58,6 +63,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
         'chart_idx_boll_period': 20,
         'chart_idx_rsi_period': 14,
         'chart_idx_atr_period': 14,
+        'chart_idx_atr_multiplier': 1.5,
         'chart_idx_cci_period': 14,
         'chart_idx_kdj_period': '9,3,3',
         'chart_qstd': 'xd,0',
@@ -74,9 +80,11 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
                 if _k in [
                     'chart_idx_ma_period', 'chart_idx_vol_ma_period',
                     'chart_idx_kdj_period', 'chart_show_futu',
-                    'chart_qstd'
+                    'chart_qstd', 'chart_show_ld',
                 ]:
                     config[_k] = str(config[_k])
+                elif _k in ['chart_idx_atr_multiplier']:
+                    config[_k] = float(config[_k])
                 elif 'chart_show_' in _k:
                     config[_k] = bool(int(config[_k]))
                 elif 'chart_idx_' in _k or 'chart_kline_nums' in _k:
@@ -93,13 +101,13 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
     color_bi_zs_up = '#FFFFFF'  # '#993333'
     color_bi_zs_down = '#FFFFFF'  # '#99CC99'
 
-    color_xd = '#FFA710'
-    color_xd_zs = '#e9967a'
-    color_xd_zs_up = '#e9967a'  # '#CC0033'
-    color_xd_zs_down = '#e9967a'  # '#66CC99'
+    color_xd = '#00BFFF'
+    color_xd_zs = '#A1C0FC'
+    color_xd_zs_up = '#A1C0FC'  # '#CC0033'
+    color_xd_zs_down = '#A1C0FC'  # '#66CC99'
 
-    color_zsd = '#A1C0FC'
-    color_zsd_zs = '#00BFFF'
+    color_zsd = '#FFA710'
+    color_zsd_zs = '#e9967a'
 
     color_last_bi_zs = 'RGB(144,238,144,0.5)'
     color_last_xd_zs = 'RGB(255,182,193,0.5)'
@@ -134,6 +142,18 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
 
     cl_klines_yaxis = []
     cl_klines_xaxis = []
+
+    subtitle = ''
+    if config['chart_show_infos']:
+        lineFormAnalyse = LinesFormAnalyse(cl_data)
+        for i in range(3, 15, 2):
+            bi_form = lineFormAnalyse.lines_analyse(i, bis[-i:])
+            if bi_form is not None:
+                subtitle += f'{i} 笔形态：' + str(bi_form) + '\n'
+        for i in range(3, 15, 2):
+            xd_form = lineFormAnalyse.lines_analyse(i, xds[-i:])
+            if xd_form is not None:
+                subtitle += f'{i} 段形态：' + str(xd_form) + '\n'
 
     for k in klines:
         klines_xaxis.append(k.date)
@@ -471,7 +491,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
         )
 
     klines_chart = (cKline().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
-        series_name="",
+        series_name="K线",
         y_axis=klines_yaxis,
         itemstyle_opts=opts.ItemStyleOpts(
             color=color_k_up,
@@ -479,9 +499,12 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
             border_color=color_k_up,
             border_color0=color_k_down,
         ),
-
     ).set_global_opts(
-        title_opts=opts.TitleOpts(title=title, pos_left="0"),
+        title_opts=opts.TitleOpts(
+            title=title, pos_left="0",
+            subtitle=subtitle,
+            subtitle_textstyle_opts=opts.TextStyleOpts(color='yellow', font_size=18)
+        ),
         xaxis_opts=opts.AxisOpts(
             type_="category",
             is_scale=True,
@@ -528,37 +551,38 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
     )
     overlap_kline = overlap_kline.overlap(line_xu_bi)
 
-    # 画顶底分型
-    fenxing_ding = (
-        Scatter().add_xaxis(point_ding['index']).add_yaxis(
-            "分型",
-            point_ding['val'],
-            itemstyle_opts=opts.ItemStyleOpts(color='red'),
-            symbol_size=2,
-            label_opts=opts.LabelOpts(is_show=False)
-        ).set_series_opts(
-            label_opts=opts.LabelOpts(
-                color='rgb(255,200,44,0.3)', position='top', font_weight='bold',
-                formatter=JsCode('function (params) {return params.value[2];}'),
+    if config['chart_show_fx']:
+        # 画顶底分型
+        fenxing_ding = (
+            Scatter().add_xaxis(point_ding['index']).add_yaxis(
+                "分型",
+                point_ding['val'],
+                itemstyle_opts=opts.ItemStyleOpts(color='red'),
+                symbol_size=2,
+                label_opts=opts.LabelOpts(is_show=False)
+            ).set_series_opts(
+                label_opts=opts.LabelOpts(
+                    color='rgb(255,200,44,0.3)', position='top', font_weight='bold',
+                    formatter=JsCode('function (params) {return params.value[2];}'),
+                )
             )
         )
-    )
-    fenxing_di = (
-        Scatter().add_xaxis(point_di['index']).add_yaxis(
-            "分型",
-            point_di['val'],
-            itemstyle_opts=opts.ItemStyleOpts(color='green'),
-            symbol_size=2,
-            label_opts=opts.LabelOpts(is_show=False)
-        ).set_series_opts(
-            label_opts=opts.LabelOpts(
-                color='rgb(255,200,44,0.3)', position='bottom', font_weight='bold',
-                formatter=JsCode('function (params) {return params.value[2];}'),
+        fenxing_di = (
+            Scatter().add_xaxis(point_di['index']).add_yaxis(
+                "分型",
+                point_di['val'],
+                itemstyle_opts=opts.ItemStyleOpts(color='green'),
+                symbol_size=2,
+                label_opts=opts.LabelOpts(is_show=False)
+            ).set_series_opts(
+                label_opts=opts.LabelOpts(
+                    color='rgb(255,200,44,0.3)', position='bottom', font_weight='bold',
+                    formatter=JsCode('function (params) {return params.value[2];}'),
+                )
             )
         )
-    )
-    overlap_kline = overlap_kline.overlap(fenxing_ding)
-    overlap_kline = overlap_kline.overlap(fenxing_di)
+        overlap_kline = overlap_kline.overlap(fenxing_ding)
+        overlap_kline = overlap_kline.overlap(fenxing_di)
 
     # 画 完成线段
     line_xd = (
@@ -705,6 +729,39 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
                 ).set_global_opts()
             )
             overlap_kline = overlap_kline.overlap(line_idx_ma)
+    if config['chart_show_atr_stop_loss']:
+        # 计算 atr stop loss
+        #  'chart_idx_atr_period': 14,
+        #  'chart_idx_atr_multiplier': 1.5,
+        def ATR(CLOSE, HIGH, LOW, N=20):  # 真实波动N日平均值
+            TR = MyTT.MAX(MyTT.MAX((HIGH - LOW), MyTT.ABS(MyTT.REF(CLOSE, 1) - HIGH)),
+                          MyTT.ABS(MyTT.REF(CLOSE, 1) - LOW))
+            return MyTT.SMA(TR, N)
+
+        atr_length = config['chart_idx_atr_period']
+        atr_multiplier = config['chart_idx_atr_multiplier']
+        src_close = np.array([k.c for k in klines])
+        src_high = np.array([k.h for k in klines])
+        src_low = np.array([k.l for k in klines])
+        tr_vals = ATR(src_close, src_high, src_low, atr_length)
+        up_stop_loss_vals = src_high + (tr_vals * atr_multiplier)
+        down_stop_loss_vals = src_low - (tr_vals * atr_multiplier)
+        line_idx_atr_stop_loss = (
+            Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
+                series_name=f"Atr Stop Loss",
+                is_symbol_show=False,
+                y_axis=up_stop_loss_vals,
+                linestyle_opts=opts.LineStyleOpts(width=1, color='rgb(255,82,82)'),
+                label_opts=opts.LabelOpts(is_show=False),
+            ).add_yaxis(
+                series_name=f"Atr Stop Loss",
+                is_symbol_show=False,
+                y_axis=down_stop_loss_vals,
+                linestyle_opts=opts.LineStyleOpts(width=1, color='rgb(0,137,123)'),
+                label_opts=opts.LabelOpts(is_show=False),
+            ).set_global_opts()
+        )
+        overlap_kline = overlap_kline.overlap(line_idx_atr_stop_loss)
 
     # 画 笔中枢
     for zs in line_bi_zss:
@@ -765,23 +822,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
                 )
             )
         )
-    # if len(line_last_xd_zs) > 0:
-    #     overlap_kline = overlap_kline.overlap(
-    #         (
-    #             Line().add_xaxis(line_last_xd_zs[0]).add_yaxis(
-    #                 "线段中枢",
-    #                 line_last_xd_zs[1],
-    #                 symbol=None,
-    #                 label_opts=opts.LabelOpts(is_show=False),
-    #                 linestyle_opts=opts.LineStyleOpts(width=line_last_xd_zs[3], color=line_last_xd_zs[2],
-    #                                                   type_='solid' if line_last_xd_zs[4] else 'dashed'),
-    #                 # areastyle_opts=opts.AreaStyleOpts(opacity=0.2, color=line_last_xd_zs[2]),
-    #                 tooltip_opts=opts.TooltipOpts(is_show=False),
-    #             )
-    #         )
-    #     )
 
-    # 画背驰
     scatter_bc_tu = (
         Scatter().add_xaxis(xaxis_data=scatter_bc['i']).add_yaxis(
             series_name="背驰",
@@ -982,6 +1023,58 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
 
     # 最下面的柱状图和折线图
     macd_bar_line = bar_macd.overlap(line_macd_dif)
+
+    # 显示笔 or 线段的力度
+    if config['chart_show_ld'] in ['bi', 'xd']:
+        line_macd_lds = []
+        point_macd_lds = {'y': [], 'x': []}
+        lines = bis if config['chart_show_ld'] == 'bi' else xds
+        for _l in lines:
+            ld = _l.get_ld(cl_data)
+            val = ld['macd']['hist']['up_sum'] if _l.type == 'up' else ld['macd']['hist']['down_sum']
+            val_x = ld['macd']['hist']['max'] if _l.type == 'up' else ld['macd']['hist']['min']
+            line_macd_lds.append({
+                'y': [_l.start.k.date, _l.end.k.date],
+                'x': [val_x, val_x],
+                'color': 'red' if _l.type == 'up' else 'green',
+                'ld': val
+            })
+            point_macd_lds['y'].append(_l.end.k.date)
+            point_macd_lds['x'].append([val_x, round(val, 6)])
+
+        for line in line_macd_lds:
+            macd_bar_line = macd_bar_line.overlap((
+                Line().add_xaxis(xaxis_data=line['y']).add_yaxis(
+                    series_name="力度",
+                    y_axis=line['x'],
+                    is_symbol_show=False,
+                    label_opts=opts.LabelOpts(is_show=False),
+                    itemstyle_opts=opts.ItemStyleOpts(color=line['color'], border_width=2),
+                ).set_global_opts(
+                    legend_opts=opts.LegendOpts(is_show=True),
+                    xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
+                    yaxis_opts=opts.AxisOpts(position="right",
+                                             axislabel_opts=opts.LabelOpts(is_show=False),
+                                             axisline_opts=opts.AxisLineOpts(is_show=False),
+                                             axistick_opts=opts.AxisTickOpts(is_show=False)),
+                )
+            ))
+        # 文字显示
+        macd_bar_line = macd_bar_line.overlap(
+            Scatter().add_xaxis(xaxis_data=point_macd_lds['y']).add_yaxis(
+                series_name="力度",
+                y_axis=point_macd_lds['x'],
+                symbol_size=1,
+                symbol='circle',
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(30,144,255,0.8)'),
+            ).set_series_opts(
+                label_opts=opts.LabelOpts(
+                    color='white', position='insideRight',
+                    font_weight='bold',
+                    formatter=JsCode('function (params) {return params.value[2];}'),
+                )
+            )
+        )
 
     # 最后的 Grid
     grid_chart = Grid(init_opts=opts.InitOpts(width="100%", height=f"{config['chart_high']}px", theme='dark'))

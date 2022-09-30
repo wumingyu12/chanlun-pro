@@ -1,3 +1,5 @@
+import datetime
+
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 from django.shortcuts import render, redirect
@@ -8,12 +10,13 @@ from chanlun import zixuan, config, rd
 from . import tasks
 from . import utils
 from .apps import login_required
+from . import task_gm
 
 """
 异步执行后台定时任务
 """
 scheduler = BackgroundScheduler()
-scheduler.add_executor(ThreadPoolExecutor(5))
+scheduler.add_executor(ThreadPoolExecutor(10))
 
 scheduler.add_job(tasks.task_a_1, 'cron', hour='9-12,13-15', minute='*', second='0')
 scheduler.add_job(tasks.task_a_2, 'cron', hour='9-12,13-15', minute='*', second='0')
@@ -21,6 +24,7 @@ scheduler.add_job(tasks.task_hk, 'cron', hour='9-12,13-16', minute='*', second='
 scheduler.add_job(tasks.task_us, 'cron', hour='00-04,21-23', minute='*', second='0')
 scheduler.add_job(tasks.task_futures, 'cron', second='0')
 scheduler.add_job(tasks.task_currency, 'cron', second='0')
+# scheduler.add_job(task_gm.task_gm_sync, 'date', next_run_time=datetime.datetime.now())
 scheduler.start()
 
 
@@ -158,13 +162,17 @@ def cl_chart_config_save(request):
     market = request.POST.get('market')
     code = request.POST.get('code')
     is_del = request.POST.get('is_del')
-    keys = ['config_use_type', 'fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_qj', 'bi_fx_cgd', 'xd_bzh', 'xd_qj',
-            'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx',
+    keys = ['config_use_type',
+            'kline_type',
+            'fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_qj', 'bi_fx_cgd',
+            'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx',
+            'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
+            'chart_show_infos', 'chart_show_fx',
             'chart_show_bi_zs', 'chart_show_xd_zs',
             'chart_show_bi_mmd', 'chart_show_xd_mmd',
             'chart_show_bi_bc', 'chart_show_xd_bc',
             'chart_show_ma', 'chart_show_boll',
-            'chart_show_futu', 'chart_kline_nums',
+            'chart_show_futu', 'chart_kline_nums', 'chart_show_ld',
             'chart_idx_ma_period', 'chart_idx_vol_ma_period', 'chart_idx_boll_period', 'chart_idx_rsi_period',
             'chart_idx_atr_period', 'chart_idx_cci_period', 'chart_idx_kdj_period', 'chart_qstd']
     config = {}
@@ -174,7 +182,7 @@ def cl_chart_config_save(request):
             print(f'List value: {request.POST.getlist(_k)}')
         else:
             config[_k] = request.POST.get(_k)
-        print(f'{_k} : {config[_k]}')
+        # print(f'{_k} : {config[_k]}')
 
     if is_del == 'true':
         res = del_cl_chart_config(market, code)

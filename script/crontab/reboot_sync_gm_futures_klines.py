@@ -6,6 +6,7 @@ import traceback
 import time
 import pandas as pd
 from gm.api import *
+from chanlun import config
 
 """
 同步期货到数据库中
@@ -14,8 +15,11 @@ from gm.api import *
 """
 
 # 可以直接提取数据，掘金终端需要打开，接口取数是通过网络请求的方式，效率一般，行情数据可通过subscribe订阅方式
+
+# 如在远程执行，需要制定掘金终端地址  https://www.myquant.cn/docs/gm3_faq/154#b244aeed0032526e
+set_serv_addr(config.GM_SERVER_ADDR)
 # 设置token， 查看已有token ID,在用户-秘钥管理里获取
-set_token('7eb4ebc68c8aaa69261b9e9d01541a6067cc7453')
+set_token(config.GM_TOKEN)
 
 db_ex = ExchangeDB('futures')
 

@@ -8,6 +8,7 @@ from . import views_futures
 from . import views_currency
 from . import views_tasks
 from . import views_back
+from . import views_tv
 
 urlpatterns = [
 
@@ -72,4 +73,12 @@ urlpatterns = [
     path('cl_chart_config', views.cl_chart_config),
     path('cl_chart_config_save', views.cl_chart_config_save),
 
+    # TradingView 行情图表
+    path('tv_chart', views_tv.index_show),
+    path('tv/config', views_tv.config),
+    path('tv/symbol_info', views_tv.symbol_info),
+    path('tv/symbols', views_tv.symbols),
+    path('tv/search', views_tv.search),
+    path('tv/history', views_tv.history),
+    path('tv/time', views_tv.time),
 ]

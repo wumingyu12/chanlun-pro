@@ -1,0 +1,174 @@
+{% load static %}
+<!DOCTYPE HTML>
+<html>
+<head>
+
+    <title>TradingView Charting Library demo</title>
+
+    <!-- Fix for iOS Safari zooming bug -->
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
+
+    <script type="text/javascript" src="{% static 'charting_library/charting_library.standalone.js' %}"></script>
+    <script type="text/javascript" src="{% static 'datafeeds/udf/dist/bundle.js' %}"></script>
+
+    <script type="text/javascript">
+
+        var widget, udf_datafeed;
+
+        function getParameterByName(name) {
+            name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+            var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+                results = regex.exec(location.search);
+            return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+        }
+
+        function initOnReady() {
+            var datafeedUrl = "/tv";
+            var customDataUrl = getParameterByName('dataUrl');
+            if (customDataUrl !== "") {
+                datafeedUrl = customDataUrl.startsWith('https://') ? customDataUrl : `https://${customDataUrl}`;
+            }
+
+            udf_datafeed = new Datafeeds.UDFCompatibleDatafeed(datafeedUrl, 99999 * 1000)
+
+            widget = window.tvWidget = new TradingView.widget({
+                // debug: true, // uncomment this line to see Library errors and warnings in the console
+                fullscreen: true,
+                autosize: true,
+
+                symbol: 'a:SH.000001',
+                interval: '1D',
+                container: "tv_chart_container",
+                debug: false,
+
+                //	BEWARE: no trailing slash is expected in feed URL
+                datafeed: udf_datafeed,
+                library_path: "static/charting_library/",
+                locale: getParameterByName('lang') || "zh",
+
+                {#disabled_features: ["use_localstorage_for_settings"],#}
+                {#enabled_features: ["study_templates"],#}
+                {#charts_storage_url: 'https://saveload.tradingview.com',#}
+                charts_storage_api_version: "1.1",
+                client_id: 'tradingview.com',
+                user_id: 'public_user_id',
+                theme: getParameterByName('theme'),
+                numeric_formatting: {decimal_sign: "."},
+                time_frames: [],
+                timezone: 'Asia/Shanghai',
+
+                symbol_search_request_delay: 1000,
+
+            });
+
+
+            widget.onChartReady(function () {
+                let chart = widget.activeChart();
+                let is_draw_chart = false;
+                chart.onSymbolChanged().subscribe(null, () => is_draw_chart = false);
+                chart.onIntervalChanged().subscribe(null, () => is_draw_chart = false);
+                chart.onDataLoaded().subscribe(
+                    null,
+                    function (d) {
+                        // 过滤，避免重新画图
+                        if (is_draw_chart === true) {
+                            return;
+                        }
+                        // return;
+                        // 背驰 note 买点 arrow_up  卖点 arrow_down
+                        is_draw_chart = true;
+                        console.log('删除图表，重新画图');
+                        chart.removeAllShapes();
+                        // 画笔
+                        udf_datafeed.bars_result.bis.forEach(function (bi) {
+                            chart.createMultipointShape(bi['points'], {
+                                shape: 'trend_line',
+                                // lock: true,
+                                overrides: {
+                                    'linestyle': parseInt(bi['linestyle']),
+                                    'linewidth': 1,
+                                    'linecolor': '#708090',
+                                },
+                            });
+                        });
+                        // 画线段
+                        udf_datafeed.bars_result.xds.forEach(function (xd) {
+                            chart.createMultipointShape(xd['points'], {
+                                shape: 'trend_line',
+                                // lock: true,
+                                overrides: {
+                                    'linestyle': parseInt(xd['linestyle']),
+                                    'linewidth': 2,
+                                    'linecolor': '#4169E1',
+                                },
+                            });
+                        });
+                        // 画走势段
+                        udf_datafeed.bars_result.zsds.forEach(function (zsd) {
+                            chart.createMultipointShape(zsd['points'], {
+                                shape: 'trend_line',
+                                // lock: true,
+                                overrides: {
+                                    'linestyle': parseInt(zsd['linestyle']),
+                                    'linewidth': 3,
+                                    'linecolor': '#FF8C00',
+                                },
+                            });
+                        });
+                        // 画笔中枢
+                        udf_datafeed.bars_result.bi_zss.forEach(function (bi_zss) {
+                            chart.createMultipointShape(bi_zss['points'], {
+                                shape: 'rectangle',
+                                // lock: true,
+                                overrides: {
+                                    'linestyle': parseInt(bi_zss['linestyle']),
+                                    'linewidth': 1,
+                                    'linecolor': '#708090',
+                                    'backgroundColor': '#708090',
+                                    'transparency': 70
+                                },
+                            });
+                        });
+                        // 画线段中枢
+                        udf_datafeed.bars_result.xd_zss.forEach(function (xd_zss) {
+                            chart.createMultipointShape(xd_zss['points'], {
+                                shape: 'rectangle',
+                                // lock: true,
+                                overrides: {
+                                    'linestyle': parseInt(xd_zss['linestyle']),
+                                    'linewidth': 1,
+                                    'linecolor': '#4169E1',
+                                    'backgroundColor': '#4169E1',
+                                    'transparency': 80,
+                                },
+                            });
+                        });
+                        // 画走势段中枢
+                        udf_datafeed.bars_result.zsd_zss.forEach(function (zsd_zss) {
+                            chart.createMultipointShape(zsd_zss['points'], {
+                                shape: 'rectangle',
+                                // lock: true,
+                                overrides: {
+                                    'linestyle': parseInt(zsd_zss['linestyle']),
+                                    'linewidth': 1,
+                                    'linecolor': '#FF8C00',
+                                    'backgroundColor': '#FF8C00',
+                                    'transparency': 90,
+                                },
+                            });
+                        });
+                    }
+                )
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', initOnReady, false);
+    </script>
+
+</head>
+
+<body style="margin:0;">
+<div id="tv_chart_container"></div>
+</body>
+
+</html>
