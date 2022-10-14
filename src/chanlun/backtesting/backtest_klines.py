@@ -130,10 +130,10 @@ class BackTestKlines(MarketDatas):
             # 更新计算
             cd = self.cl_datas[key]
 
-            # TODO 节省内存，最多存 10000 k线数据，超过就清空重新计算
-            # if len(cd.get_klines()) >= 10000:
-            #     self.cl_datas[key] = cl.CL(code, frequency, cl_config)
-            #     cd = self.cl_datas[key]
+            # TODO 节省内存，最多存 20000 k线数据，超过就清空重新计算，必须要大于每次K线获取的数量
+            if len(cd.get_klines()) >= 20000:
+                self.cl_datas[key] = cl.CL(code, frequency, cl_config)
+                cd = self.cl_datas[key]
 
             klines = self.klines(code, frequency)
 
@@ -184,7 +184,6 @@ class BackTestKlines(MarketDatas):
             # 使用数据库按需查询
             for f in self.frequencys:
                 klines[f] = self.ex.klines(code, f, end_date=fun.datetime_to_str(self.now_date), args={'limit': 10000})
-
 
         # 转换周期k线，去除未来数据
         klines = self.convert_klines(klines)

@@ -32,7 +32,7 @@ class StrategyDemo(Strategy):
             return opts
 
         # 笔没有停顿，退出
-        if bi_now.td is False:
+        if self.bi_td(bi_now, data_now) is False:
             return opts
 
         # 保证唯一
@@ -110,7 +110,7 @@ class StrategyDemo(Strategy):
 
         if 'buy' in mmd:
             # 买入做多，检查卖点，笔向上，出现停顿，并且出现 卖点或背驰
-            if next_bi_now.type == 'up' and next_bi_now.td and \
+            if next_bi_now.type == 'up' and self.bi_td(next_bi_now, data_now) and \
                     (next_bi_now.mmd_exists(['1sell', '2sell', 'l2sell', '3sell', 'l3sell']) or
                      next_bi_now.bc_exists(['bi', 'pz', 'qs'])):
                 return Operation(
@@ -123,7 +123,7 @@ class StrategyDemo(Strategy):
 
         if 'sell' in mmd:
             # 买入做空，检查买点，笔向下，出现停顿，并且出现 买点或背驰
-            if next_bi_now.type == 'down' and next_bi_now.td and \
+            if next_bi_now.type == 'down' and self.bi_td(next_bi_now, data_now) and \
                     (next_bi_now.mmd_exists(['1buy', '2buy', 'l2buy', '3buy', 'l3buy']) or
                      next_bi_now.bc_exists(['bi', 'pz', 'qs'])):
                 return Operation(

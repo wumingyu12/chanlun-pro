@@ -102,18 +102,18 @@
             </select>
         </div>
     </div>
-    <div class="form-group">
-        <label class="col-sm-3 control-label no-padding-right">线段标准化</label>
-        <div class="col-sm-9 show-tooltips"
-             title="影响线段的起始端点，标准化会导致一笔成段的出现">
-            <select type="select" class="form-control" id="xd_bzh">
-                <option value="xd_bzh_no" {% if xd_bzh == 'xd_bzh_no' %} selected {% endif %}>严格按照特征序列顶底端点
-                </option>
-                <option value="xd_bzh_yes" {% if xd_bzh == 'xd_bzh_yes' %} selected {% endif %}>标准化线段画在高低端点
-                </option>
-            </select>
-        </div>
-    </div>
+{#    <div class="form-group">#}
+{#        <label class="col-sm-3 control-label no-padding-right">线段标准化</label>#}
+{#        <div class="col-sm-9 show-tooltips"#}
+{#             title="影响线段的起始端点，标准化会导致一笔成段的出现">#}
+{#            <select type="select" class="form-control" id="xd_bzh">#}
+{#                <option value="xd_bzh_no" {% if xd_bzh == 'xd_bzh_no' %} selected {% endif %}>严格按照特征序列顶底端点#}
+{#                </option>#}
+{#                <option value="xd_bzh_yes" {% if xd_bzh == 'xd_bzh_yes' %} selected {% endif %}>标准化线段画在高低端点#}
+{#                </option>#}
+{#            </select>#}
+{#        </div>#}
+{#    </div>#}
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">线段区间</label>
         <div class="col-sm-9 show-tooltips"
@@ -125,20 +125,20 @@
             </select>
         </div>
     </div>
-    <div class="form-group">
-        <label class="col-sm-3 control-label no-padding-right">走势段标准化</label>
-        <div class="col-sm-9 show-tooltips"
-             title="影响走势段的起始端点，标准化会导致一段成走势段的出现">
-            <select type="select" class="form-control" id="zsd_bzh">
-                <option value="zsd_bzh_no" {% if zsd_bzh == 'zsd_bzh_no' %} selected {% endif %}>
-                    严格按照特征序列顶底端点
-                </option>
-                <option value="zsd_bzh_yes" {% if zsd_bzh == 'zsd_bzh_yes' %} selected {% endif %}>
-                    标准化走势画在高低端点
-                </option>
-            </select>
-        </div>
-    </div>
+{#    <div class="form-group">#}
+{#        <label class="col-sm-3 control-label no-padding-right">走势段标准化</label>#}
+{#        <div class="col-sm-9 show-tooltips"#}
+{#             title="影响走势段的起始端点，标准化会导致一段成走势段的出现">#}
+{#            <select type="select" class="form-control" id="zsd_bzh">#}
+{#                <option value="zsd_bzh_no" {% if zsd_bzh == 'zsd_bzh_no' %} selected {% endif %}>#}
+{#                    严格按照特征序列顶底端点#}
+{#                </option>#}
+{#                <option value="zsd_bzh_yes" {% if zsd_bzh == 'zsd_bzh_yes' %} selected {% endif %}>#}
+{#                    标准化走势画在高低端点#}
+{#                </option>#}
+{#            </select>#}
+{#        </div>#}
+{#    </div>#}
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">走势段区间</label>
         <div class="col-sm-9 show-tooltips"

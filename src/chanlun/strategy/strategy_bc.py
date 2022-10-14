@@ -32,7 +32,7 @@ class StrategyBc(Strategy):
         price = data.get_klines()[-1].c
 
         if xd.type == bi.type and xd.end.index == bi.end.index \
-                and xd.bc_exists(['pz', 'qs']) and bi.bc_exists(['pz', 'qs']) and bi.td:
+                and xd.bc_exists(['pz', 'qs']) and bi.bc_exists(['pz', 'qs']) and self.bi_td(bi, data):
 
             if xd.type == 'up' and xd.bc_exists(['pz']):
                 mmd = 'up_pz_bc_sell'
@@ -103,7 +103,7 @@ class StrategyBc(Strategy):
         if 'buy' in mmd and xd.type == 'up':
             # 买入做多，检查卖点
             if xd.type == bi.type and xd.end.index == bi.end.index \
-                    and (xd.bc_exists(['pz', 'xd', 'qs']) or bi.bc_exists(['pz', 'qs'])) and bi.td:
+                    and (xd.bc_exists(['pz', 'xd', 'qs']) or bi.bc_exists(['pz', 'qs'])) and self.bi_td(bi, data):
                 return Operation(
                     opt='sell',
                     mmd=mmd,
@@ -112,7 +112,7 @@ class StrategyBc(Strategy):
         if 'sell' in mmd and xd.type == 'down':
             # 卖出做空，检查买点
             if xd.type == bi.type and xd.end.index == bi.end.index \
-                    and (xd.bc_exists(['pz', 'xd', 'qs']) or bi.bc_exists(['pz', 'qs'])) and bi.td:
+                    and (xd.bc_exists(['pz', 'xd', 'qs']) or bi.bc_exists(['pz', 'qs'])) and self.bi_td(bi, data):
                 return Operation(
                     opt='sell',
                     mmd=mmd,

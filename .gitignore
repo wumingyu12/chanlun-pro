@@ -155,6 +155,7 @@ predict
 src/core/
 src/chanlun_strategy
 src/chanlun_ai
+src/chanlun_windows
 src/FinRL
 **/my
 my_**.py

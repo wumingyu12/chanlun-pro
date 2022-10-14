@@ -180,6 +180,7 @@ class BackTest:
             self.trader.update_position_record()
             for code in self.codes:
                 try:
+                    self.strategy.on_bt_loop_start(self)
                     self.trader.run(code)
                 except Exception as e:
                     self.log.info(f'执行 {code} 异常')

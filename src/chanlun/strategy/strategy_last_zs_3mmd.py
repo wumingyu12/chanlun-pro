@@ -136,17 +136,17 @@ class StrategyLastZs3mmd(Strategy):
         #     return Operation('sell', mmd, msg='高级别验证分型平仓')
 
         # 笔出现卖点
-        if 'buy' in mmd and high_bi.type == 'up' and high_bi.td and high_bi.mmd_exists(
+        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and high_bi.mmd_exists(
                 ['1sell', '2sell', '3sell', 'l3sell']):
             return Operation('sell', mmd, msg='高级别笔卖点（%s）' % high_bi.line_mmds())
-        if 'sell' in mmd and high_bi.type == 'down' and high_bi.td and high_bi.bc_exists(
+        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(
                 ['1buy', '2buy', '3buy', 'l3buy']):
             return Operation('sell', mmd, msg='高级别笔买点（%s）' % high_bi.line_mmds())
 
         # 高级别笔背驰
-        if 'buy' in mmd and high_bi.type == 'up' and high_bi.td and high_bi.bc_exists(['pz', 'qs']):
+        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
-        if 'sell' in mmd and high_bi.type == 'down' and high_bi.td and high_bi.bc_exists(['pz', 'qs']):
+        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
 
         # # 低级别笔出现一二类买卖点

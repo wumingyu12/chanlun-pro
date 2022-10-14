@@ -2,7 +2,7 @@
 
 ---
 
-!> Python 版本必须是 3.7，不然运行会报 RuntimeError 错误
+!> Python 版本支持 3.7、3.8、3.9、3.10，不然运行会报 RuntimeError 错误
 
 > 前置条件
 > 已经安装 git、Anaconda、MySQL、Redis
@@ -13,8 +13,8 @@
         cd chanlun-pro
 2. pip 安装项目依赖包
 
-         # 一定要创建 3.7 版本，不然在运行会包 RuntimeError 错误
-         conda create -y -n chanlun python=3.7
+         # 创建项目运行 Python 环境
+         conda create -y -n chanlun python=3.10
          # 切换到新创建的 chanlun 环境  
          conda activate chanlun
              

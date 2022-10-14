@@ -1,4 +1,3 @@
-from chanlun import cl
 from chanlun.backtesting.base import *
 from chanlun.cl_analyse import MultiLevelAnalyse
 from chanlun.cl_utils import cal_zs_macd_infos
@@ -102,7 +101,7 @@ class StrategyA3mmd(Strategy):
             for mmd in high_bi.line_mmds():
                 btd = self.bi_qiang_td(high_bi, high_data)
                 yzfx = self.bi_yanzhen_fx(high_bi, high_data)
-                low_bc = (low_qs.pz_bc or low_qs.qs_bc) and high_bi.td
+                low_bc = (low_qs.pz_bc or low_qs.qs_bc) and self.bi_td(high_bi, high_data)
                 if btd or yzfx or low_bc:
                     opts.append(Operation(
                         opt='buy', mmd=mmd, loss_price=loss_price, info={
@@ -190,10 +189,10 @@ class StrategyA3mmd(Strategy):
         # 避免被小级别骗出去，在加一个高级别的笔停顿条件
         mla = MultiLevelAnalyse(high_data, low_data)
         low_qs = mla.low_level_qs(high_bi, 'bi')
-        if 'buy' in mmd and high_bi.type == 'up' and high_bi.td and (low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
+        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and (low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
             return Operation(opt='sell', mmd=mmd, msg='次级别背驰 %s' % ([low_qs.pz_bc, low_qs.qs_bc]))
 
-        if 'sell' in mmd and high_bi.type == 'down' and high_bi.td and (low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
+        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and (low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
             return Operation(opt='sell', mmd=mmd, msg='次级别背驰 %s' % ([low_qs.pz_bc, low_qs.qs_bc]))
 
         # 卖出条件：根据趋势背驰延伸出来的不标准走势之小转大
@@ -208,9 +207,9 @@ class StrategyA3mmd(Strategy):
 
         # TODO 个人回看图表，考虑新增的平仓条件
         # 高级别笔背驰
-        if 'buy' in mmd and high_bi.type == 'up' and high_bi.td and high_bi.bc_exists(['bi', 'pz', 'qs']):
+        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['bi', 'pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
-        if 'sell' in mmd and high_bi.type == 'down' and high_bi.td and high_bi.bc_exists(['bi', 'pz', 'qs']):
+        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['bi', 'pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
 
         # 低级别笔出现一二类买卖点

@@ -2,7 +2,7 @@
 监控相关代码
 """
 from chanlun import rd
-from chanlun.cl_utils import batch_cls
+from chanlun.cl_utils import batch_cls, bi_td
 from chanlun.exchange import get_exchange, Market
 from chanlun.fun import *
 
@@ -60,11 +60,13 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
         end_xd = cd.get_xds()[-1] if len(cd.get_xds()) > 0 else None
         # 检查背驰和买卖点
         jh_msgs.extend(
-            {'type': f'笔 {end_bi.type} {bc_maps[bc_type]}', 'frequency': frequency, 'bi': end_bi} for bc_type in
+            {'type': f'笔 {end_bi.type} {bc_maps[bc_type]}', 'frequency': frequency, 'bi': end_bi,
+             'bi_td': bi_td(end_bi, cd)} for bc_type in
             check_types['beichi'] if end_bi.bc_exists([bc_type], '|'))
 
         jh_msgs.extend(
-            {'type': f'笔 {mmd_maps[mmd]}', 'frequency': frequency, 'bi': end_bi} for mmd in check_types['mmd'] if
+            {'type': f'笔 {mmd_maps[mmd]}', 'frequency': frequency, 'bi': end_bi, 'bi_td': bi_td(end_bi, cd)} for mmd in
+            check_types['mmd'] if
             end_bi.mmd_exists([mmd], '|'))
 
         if end_xd:
@@ -81,7 +83,7 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
     for jh in jh_msgs:
         if 'bi' in jh.keys():
             is_done = '笔完成' if jh['bi'].is_done() else '笔未完成'
-            is_td = '停顿:' + ('Yes' if jh['bi'].td else 'No')
+            is_td = '停顿:' + ('Yes' if jh['bi_td'] else 'No')
         else:
             is_done = '线段完成' if jh['xd'].is_done() else '线段未完成'
             is_td = ''

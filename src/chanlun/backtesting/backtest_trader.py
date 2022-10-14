@@ -144,6 +144,8 @@ class BackTestTrader(object):
         if code in self.positions:
             for mmd in self.positions[code]:
                 pos = self.positions[code][mmd]
+                if pos.balance == 0:
+                    continue
                 opt = self.strategy.close(code=code, mmd=mmd, pos=pos, market_data=self.datas)
                 if opt is False or opt is None:
                     continue

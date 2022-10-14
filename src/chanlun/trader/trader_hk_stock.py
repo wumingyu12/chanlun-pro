@@ -26,7 +26,7 @@ class TraderHKStock(BackTestTrader):
         self.zx = zixuan.ZiXuan('hk')
 
     # 做多买入
-    def open_buy(self, code, opt: Operation):
+    def open_buy(self, code, opt: Operation, amount: float = None):
         positions = self.ex.positions()
         if len(positions) >= self.b_space:
             return False
@@ -66,7 +66,7 @@ class TraderHKStock(BackTestTrader):
         return {'price': order['dealt_avg_price'], 'amount': order['dealt_amount']}
 
     # 做空卖出
-    def open_sell(self, code, opt: Operation):
+    def open_sell(self, code, opt: Operation, amount: float = None):
         positions = self.ex.positions()
         if len(positions) >= self.b_space:
             return False

@@ -167,7 +167,7 @@ def jhs_save(market, code, name, jh: dict):
 
     if bi:
         is_done = '笔完成' if bi.is_done() else '笔未完成'
-        is_td = ' - TD' if bi.td else '--'
+        is_td = ' - TD' if jh['bi_td'] else '--'
     else:
         is_done = '线段完成' if xd.is_done() else '线段未完成'
         is_td = ''

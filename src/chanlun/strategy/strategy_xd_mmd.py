@@ -30,10 +30,10 @@ class StrategyXDMMD(Strategy):
             bi_1 = data.get_bis()[-2]
         bi_2 = data.get_bis()[bi_1.index - 2]
 
-        if xd.type == 'up' and bi_1.type == 'up' and bi_1.high < bi_2.high and bi_1.td:
+        if xd.type == 'up' and bi_1.type == 'up' and bi_1.high < bi_2.high and self.bi_td(bi_1, data):
             # 线段向上，找转折，最后一笔的高点要小于前一笔的高点
             pass
-        elif xd.type == 'down' and bi_1.type == 'down' and bi_1.low > bi_2.low and bi_1.td:
+        elif xd.type == 'down' and bi_1.type == 'down' and bi_1.low > bi_2.low and self.bi_td(bi_1, data):
             # 线段向下，找转折，最后一笔的低点要大于前一笔的低点
             pass
         else:
@@ -104,11 +104,11 @@ class StrategyXDMMD(Strategy):
         if 'buy' in mmd:
             # 买入做多，检查卖点
             # 笔出现一卖点
-            if bi_1.type == 'up' and bi_1.td and bi_1.mmd_exists(['1sell', '2sell']):
+            if bi_1.type == 'up' and self.bi_td(bi_1, data) and bi_1.mmd_exists(['1sell', '2sell']):
                 return Operation('sell', mmd, msg='%s %s 笔出现 卖点 (%s) 背驰 （%s），多仓清仓' % (
                     mmd, data.get_frequency(), bi_1.line_mmds(), bi_1.line_bcs()))
             # 反向线段有可能结束的时候，清仓
-            if xd.type == 'up' and bi_1.type == 'up' and bi_1.high < bi_2.high and bi_1.td:
+            if xd.type == 'up' and bi_1.type == 'up' and bi_1.high < bi_2.high and self.bi_td(bi_1, data):
                 return Operation('sell', mmd, msg='%s %s 向上线段有可能终结 后笔（%s）低于前笔（%s），多仓清仓' % (
                     mmd, data.get_frequency(), bi_1.high, bi_2.high))
             # 线段出现背驰、卖点，清仓
@@ -121,11 +121,11 @@ class StrategyXDMMD(Strategy):
         if 'sell' in mmd:
             # 买入做多，检查卖点
             # 笔出现一买点
-            if bi_1.type == 'down' and bi_1.td and bi_1.mmd_exists(['1buy', '2buy']):
+            if bi_1.type == 'down' and self.bi_td(bi_1, data) and bi_1.mmd_exists(['1buy', '2buy']):
                 return Operation('sell', mmd, msg='%s %s 笔出现 卖点 (%s) 背驰 （%s），空仓清仓' % (
                     mmd, data.get_frequency(), bi_1.line_mmds(), bi_1.line_bcs()))
             # 反向线段有可能结束的时候，清仓
-            if xd.type == 'down' and bi_1.type == 'down' and bi_1.low > bi_2.low and bi_1.td:
+            if xd.type == 'down' and bi_1.type == 'down' and bi_1.low > bi_2.low and self.bi_td(bi_1, data):
                 return Operation('sell', mmd, msg='%s %s 向下线段有可能终结 后笔（%s）高于前笔（%s），空仓清仓' % (
                     mmd, data.get_frequency(), bi_1.low, bi_2.low))
             # 线段出现背驰、卖点，清仓

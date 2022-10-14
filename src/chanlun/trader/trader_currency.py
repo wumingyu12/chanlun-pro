@@ -29,7 +29,7 @@ class TraderCurrency(BackTestTrader):
         self.zx = zixuan.ZiXuan('currency')
 
     # 做多买入
-    def open_buy(self, code, opt: Operation):
+    def open_buy(self, code, opt: Operation, amount: float = None):
         try:
             positions = self.ex.positions()
             if len(positions) >= self.poss_max:
@@ -67,7 +67,7 @@ class TraderCurrency(BackTestTrader):
             return False
 
     # 做空卖出
-    def open_sell(self, code, opt: Operation):
+    def open_sell(self, code, opt: Operation, amount: float = None):
         try:
             positions = self.ex.positions()
             if len(positions) >= self.poss_max:

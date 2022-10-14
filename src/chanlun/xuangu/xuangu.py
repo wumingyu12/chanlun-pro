@@ -20,7 +20,8 @@ def xg_single_xd_and_bi_mmd(cl_datas: List[ICL]):
     if xd.mmd_exists(['1buy', '2buy', '3buy', 'l2buy', 'l3buy']) and bi.mmd_exists(
             ['1buy', '2buy', '3buy', 'l2buy', 'l3buy']):
         return f'线段买点 【{xd.line_mmds()}】 笔买点【{bi.line_mmds()}】'
-    return next((f'笔出现线段买点【{bi.line_mmds()}】' for mmd in bi.mmds if mmd.zs.zs_type == 'xd' and 'buy' in mmd.name), None)
+    return next(
+        (f'笔出现线段买点【{bi.line_mmds()}】' for mmd in bi.mmds if mmd.zs.zs_type == 'xd' and 'buy' in mmd.name), None)
 
 
 def xg_multiple_xd_bi_mmd(cl_datas: List[ICL]):
@@ -90,7 +91,7 @@ def xg_single_xd_bi_23_overlapped(cl_datas: List[ICL]):
     bi_3 = cd.get_bis()[-3]
 
     overlapped_23_bi = bi.mmd_exists(['2buy']) and bi.mmd_exists(['3buy'])
-    overlapped_23_bi_2 = bi_2.mmd_exists(['2buy']) and bi_2.mmd_exists(['3buy']) and bi.td == True
+    overlapped_23_bi_2 = bi_2.mmd_exists(['2buy']) and bi_2.mmd_exists(['3buy']) and bi_td(bi, cd) is True
     overlapped_23_bi_3 = bi_3.mmd_exists(['2buy']) and bi_3.mmd_exists(['3buy']) and bi.mmd_exists(['l3buy'])
 
     if xd.type == 'up' \

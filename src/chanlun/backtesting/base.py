@@ -118,6 +118,14 @@ class Strategy(ABC):
     def __init__(self):
         pass
 
+    def on_bt_loop_start(self, bt):
+        """
+        回测专用，每次每个代码回测循环都会执行这个方法
+
+        @param bt: 回测 BackTest 对象
+        """
+        pass
+
     @abstractmethod
     def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         """
@@ -248,6 +256,20 @@ class Strategy(ABC):
         TR = MyTT.MAX(MyTT.MAX((HIGH - LOW), MyTT.ABS(MyTT.REF(CLOSE, 1) - HIGH)),
                       MyTT.ABS(MyTT.REF(CLOSE, 1) - LOW))
         return MyTT.SMA(TR, N)
+
+    @staticmethod
+    def get_max_loss_price(mmd_type: str, now_price: float, stop_loss_price: float, max_loss_rate: float):
+        """
+        获取最大可接受的止损价格
+        @param mmd_type: 买卖点类型，值 buy or sell
+        @param now_price: 当前价格
+        @param stop_loss_price: 原始止损价格
+        @param max_loss_rate: 最大可接受的止损百分比，例如 10，则可接受最大10%的损失
+        """
+        if mmd_type == 'buy':
+            return max(stop_loss_price, now_price * (1 - max_loss_rate / 100))
+        elif mmd_type == 'sell':
+            return min(stop_loss_price, now_price * (1 + max_loss_rate / 100))
 
     def get_atr_stop_loss_price(self, cd: ICL, mmd_type: str, atr_period: int = 14, atr_m: float = 1.5):
         """

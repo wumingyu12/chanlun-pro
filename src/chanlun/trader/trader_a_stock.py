@@ -26,7 +26,7 @@ class TraderAStock(BackTestTrader):
         self.zx = zixuan.ZiXuan('a')
 
     # 做多买入
-    def open_buy(self, code, opt: Operation):
+    def open_buy(self, code, opt: Operation, amount: float = None):
         tick = self.ex.ticks([code])
         if code not in tick.keys():
             return False
@@ -60,7 +60,7 @@ class TraderAStock(BackTestTrader):
         return {'price': price, 'amount': amount}
 
     # 做空卖出
-    def open_sell(self, code, opt: Operation):
+    def open_sell(self, code, opt: Operation, amount: float = None):
         return False
 
     # 做多平仓

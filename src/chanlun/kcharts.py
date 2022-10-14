@@ -54,7 +54,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
         'chart_show_ma': True,
         'chart_show_boll': False,
         'chart_show_futu': 'macd',
-        'chart_show_ld': 'none',
+        'chart_show_ld': 'xd',
         'chart_show_atr_stop_loss': False,
         # 指标配置项
         'chart_kline_nums': 1000,
@@ -337,105 +337,105 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
             last_bi_zs.done
         ]
     # 画最后一线段中枢
-    line_last_xd_zs = []
-    if last_xd_zs is not None:
-        start_index = last_xd_zs.start.k.date
-        end_index = last_xd_zs.end.k.date
-        line_last_xd_zs = [
-            [start_index, start_index, end_index, end_index, start_index],
-            [last_xd_zs.zg, last_xd_zs.zd, last_xd_zs.zd, last_xd_zs.zg, last_xd_zs.zg],
-            color_last_xd_zs,
-            last_xd_zs.level + 1,
-            last_xd_zs.done
-        ]
+    # line_last_xd_zs = []
+    # if last_xd_zs is not None:
+    #     start_index = last_xd_zs.start.k.date
+    #     end_index = last_xd_zs.end.k.date
+    #     line_last_xd_zs = [
+    #         [start_index, start_index, end_index, end_index, start_index],
+    #         [last_xd_zs.zg, last_xd_zs.zd, last_xd_zs.zd, last_xd_zs.zg, last_xd_zs.zg],
+    #         color_last_xd_zs,
+    #         last_xd_zs.level + 1,
+    #         last_xd_zs.done
+    #     ]
 
     # 分型中的 背驰 和 买卖点信息，归类，一起显示
     fx_bcs_mmds = {}
     for _bi in bis:
         _fx = _bi.end
         if _fx.index not in fx_bcs_mmds.keys():
-            fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
+            fx_bcs_mmds[_fx.index] = {
+                'fx': _fx, 'bcs': {'bi': [], 'xd': [], 'zsd': []}, 'mmds': {'bi': [], 'xd': [], 'zsd': []}
+            }
         for zs_type in cl_data.get_config()['zs_bi_type']:
             for _bc in _bi.get_bcs(zs_type):
                 if config['chart_show_bi_bc'] is False:
                     break
                 if _bc.bc:
-                    fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
+                    fx_bcs_mmds[_fx.index]['bcs']['bi'].append(_bc)
             for _mmd in _bi.get_mmds(zs_type):
                 if config['chart_show_bi_mmd'] is False:
                     break
-                fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
+                fx_bcs_mmds[_fx.index]['mmds']['bi'].append(_mmd)
     for _xd in xds:
         _fx = _xd.end
         if _fx.index not in fx_bcs_mmds.keys():
-            fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
+            fx_bcs_mmds[_fx.index] = {
+                'fx': _fx, 'bcs': {'bi': [], 'xd': [], 'zsd': []}, 'mmds': {'bi': [], 'xd': [], 'zsd': []}
+            }
         for zs_type in cl_data.get_config()['zs_xd_type']:
             for _bc in _xd.get_bcs(zs_type):
                 if config['chart_show_xd_bc'] is False:
                     break
                 if _bc.bc:
-                    fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
+                    fx_bcs_mmds[_fx.index]['bcs']['xd'].append(_bc)
             for _mmd in _xd.get_mmds(zs_type):
                 if config['chart_show_xd_mmd'] is False:
                     break
-                fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
+                fx_bcs_mmds[_fx.index]['mmds']['xd'].append(_mmd)
     for _zsd in zsds:
         _fx = _zsd.end
         if _fx.index not in fx_bcs_mmds.keys():
-            fx_bcs_mmds[_fx.index] = {'fx': _fx, 'bcs': [], 'mmds': []}
+            fx_bcs_mmds[_fx.index] = {
+                'fx': _fx, 'bcs': {'bi': [], 'xd': [], 'zsd': []}, 'mmds': {'bi': [], 'xd': [], 'zsd': []}
+            }
         for _bc in _zsd.bcs:
             if config['chart_show_zsd_bc'] is False:
                 break
             if _bc.bc:
-                fx_bcs_mmds[_fx.index]['bcs'].append(_bc)
+                fx_bcs_mmds[_fx.index]['bcs']['zsd'].append(_bc)
         for _mmd in _zsd.mmds:
             if config['chart_show_zsd_mmd'] is False:
                 break
-            fx_bcs_mmds[_fx.index]['mmds'].append(_mmd)
+            fx_bcs_mmds[_fx.index]['mmds']['zsd'].append(_mmd)
 
     # 画 背驰
     scatter_bc = {'i': [], 'val': []}  # 背驰
-    bc_maps = {'bi': '笔背驰', 'xd': '线段背驰', 'zsd': '走势段背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
-    zs_type_maps = {'bi': '笔', 'xd': '线段', 'zsd': '走势'}
-    for fx_index in fx_bcs_mmds.keys():
-        fx_bc_info = fx_bcs_mmds[fx_index]
+    bc_maps = {'bi': '背驰', 'xd': '背驰', 'zsd': '背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
+    line_type_maps = {'bi': '笔', 'xd': '线段', 'zsd': '走势段'}
+    for fx_index, fx_bc_info in fx_bcs_mmds.items():
         bc_label = ''
         fx = fx_bc_info['fx']
-        for bc in fx_bc_info['bcs']:
-            # 避免信息混乱，只显示同类型的一个
-            if bc_maps[bc.type] not in bc_label:
-                if bc.zs is not None:
-                    bc_label += zs_type_maps[bc.zs.zs_type] + ':'
-                bc_label += bc_maps[bc.type] + ' '
-                # if bc.zs is not None:
-                #     bc_label += ' ZS[%s (%.2f - %.2f)]' % (bc.zs.type, bc.zs.zg, bc.zs.zd)
-                bc_label += ' /'
-
+        for line_type, bcs in fx_bc_info['bcs'].items():
+            for bc in bcs:
+                # 避免信息混乱，只显示同类型的一个
+                bc_str = f'{line_type_maps[line_type]}{bc_maps[bc.type]}'
+                if bc_str not in bc_label:
+                    bc_label += f'{bc_str} / '
         if bc_label != '':
             scatter_bc['i'].append(fx.k.date)
-            scatter_bc['val'].append([fx.val, bc_label.strip('/')])
+            scatter_bc['val'].append([fx.val, bc_label.strip(' / ')])
 
     # 画买卖点
-    mmd_maps = {'1buy': '一买', '2buy': '二买', 'l2buy': '类二买', '3buy': '三买', 'l3buy': '类三买',
-                '1sell': '一卖', '2sell': '二卖', 'l2sell': '类二卖', '3sell': '三卖', 'l3sell': '类三卖'}
+    mmd_maps = {'1buy': '1B', '2buy': '2B', 'l2buy': 'L2B', '3buy': '3B', 'l3buy': 'L3B',
+                '1sell': '1S', '2sell': '2S', 'l2sell': 'L2S', '3sell': '3S', 'l3sell': 'L3S'}
     scatter_buy = {'i': [], 'val': []}
     scatter_sell = {'i': [], 'val': []}
-    for fx_index in fx_bcs_mmds.keys():
-        fx = fx_bcs_mmds[fx_index]['fx']
-        mmds = fx_bcs_mmds[fx_index]['mmds']
-        if len(mmds) == 0:
-            continue
+    for fx_index, fx_mmd_info in fx_bcs_mmds.items():
+        fx = fx_mmd_info['fx']
+        fx_mmds = fx_mmd_info['mmds']
         buy_label = ''
         sell_label = ''
-        for mmd in mmds:
-            # 避免信息混乱，只显示同类型的一个
-            if mmd_maps[mmd.name] not in buy_label:
-                if mmd.name in ['1buy', '2buy', '3buy', 'l2buy', 'l3buy']:
-                    buy_label += '%s %s /' % (zs_type_maps[mmd.zs.zs_type], mmd_maps[mmd.name])
-            if mmd_maps[mmd.name] not in sell_label:
-                if mmd.name in ['1sell', '2sell', '3sell', 'l2sell', 'l3sell']:
-                    sell_label += '%s %s /' % (zs_type_maps[mmd.zs.zs_type], mmd_maps[mmd.name])
-
+        for line_type, mmds in fx_mmds.items():
+            for mmd in mmds:
+                # 避免信息混乱，只显示同类型的一个
+                mmd_str = f'{line_type_maps[line_type]}{mmd_maps[mmd.name]}'
+                if mmd_str not in buy_label:
+                    if mmd.name in ['1buy', '2buy', '3buy', 'l2buy', 'l3buy']:
+                        buy_label += '%s /' % mmd_str
+                if mmd_str not in sell_label:
+                    if mmd.name in ['1sell', '2sell', '3sell', 'l2sell', 'l3sell']:
+                        sell_label += '%s /' % mmd_str
         if buy_label != '':
             scatter_buy['i'].append(fx.k.date)
             scatter_buy['val'].append([fx.val, buy_label.strip('/')])
@@ -851,7 +851,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
             y_axis=scatter_buy['val'],
             symbol_size=10,
             symbol='arrow',
-            itemstyle_opts=opts.ItemStyleOpts(color='rgba(250,128,114,0.8)'),
+            itemstyle_opts=opts.ItemStyleOpts(color='rgba(250,128,114,0.6)'),
             # tooltip_opts=opts.TooltipOpts(
             #     textstyle_opts=opts.TextStyleOpts(font_size=12),
             #     formatter=JsCode(
@@ -872,7 +872,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
             symbol_size=10,
             symbol='arrow',
             symbol_rotate=180,
-            itemstyle_opts=opts.ItemStyleOpts(color='rgba(30,144,255,0.8)'),
+            itemstyle_opts=opts.ItemStyleOpts(color='rgba(30,144,255,0.6)'),
             # tooltip_opts=opts.TooltipOpts(
             #     textstyle_opts=opts.TextStyleOpts(font_size=12),
             #     formatter=JsCode(

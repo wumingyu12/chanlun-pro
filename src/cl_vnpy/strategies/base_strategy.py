@@ -1,3 +1,4 @@
+import pytz
 from vnpy.trader.constant import Interval
 from vnpy_ctastrategy import (
     CtaTemplate,
@@ -13,6 +14,7 @@ from chanlun import cl
 from chanlun.backtesting.backtest_trader import BackTestTrader
 from chanlun.backtesting.base import *
 from chanlun.strategy.strategy_demo import StrategyDemo
+from chanlun import fun
 
 
 class VNPYTrader(BackTestTrader):
@@ -24,7 +26,7 @@ class VNPYTrader(BackTestTrader):
         # 固定交易手数
         self.fixed_amount = 1
 
-    def open_buy(self, code, opt: Operation):
+    def open_buy(self, code, opt: Operation, amount: float = None):
         """
         买入开仓
         """
@@ -34,7 +36,7 @@ class VNPYTrader(BackTestTrader):
         self.cta.buy(price, self.fixed_amount)
         return {'price': price, 'amount': self.fixed_amount}
 
-    def open_sell(self, code, opt: Operation):
+    def open_sell(self, code, opt: Operation, amount: float = None):
         """
         卖出开仓
         """
@@ -90,7 +92,7 @@ class VNPYDatas(MarketDatas):
         key = '30_1m'
         k = {
             'code': self.symbol,
-            'date': bar.datetime,
+            'date': fun.str_to_datetime(fun.datetime_to_str(bar.datetime)),
             'open': bar.open_price,
             'close': bar.close_price,
             'high': bar.high_price,
@@ -108,7 +110,7 @@ class VNPYDatas(MarketDatas):
         key = '15_1m'
         k = {
             'code': self.symbol,
-            'date': bar.datetime,
+            'date': fun.str_to_datetime(fun.datetime_to_str(bar.datetime)),
             'open': bar.open_price,
             'close': bar.close_price,
             'high': bar.high_price,
@@ -126,7 +128,7 @@ class VNPYDatas(MarketDatas):
         key = '10_1m'
         k = {
             'code': self.symbol,
-            'date': bar.datetime,
+            'date': fun.str_to_datetime(fun.datetime_to_str(bar.datetime)),
             'open': bar.open_price,
             'close': bar.close_price,
             'high': bar.high_price,
@@ -144,7 +146,7 @@ class VNPYDatas(MarketDatas):
         key = '5_1m'
         k = {
             'code': self.symbol,
-            'date': bar.datetime,
+            'date': fun.str_to_datetime(fun.datetime_to_str(bar.datetime)),
             'open': bar.open_price,
             'close': bar.close_price,
             'high': bar.high_price,
@@ -162,7 +164,7 @@ class VNPYDatas(MarketDatas):
         key = '1_1m'
         k = {
             'code': self.symbol,
-            'date': bar.datetime,
+            'date': fun.str_to_datetime(fun.datetime_to_str(bar.datetime)),
             'open': bar.open_price,
             'close': bar.close_price,
             'high': bar.high_price,

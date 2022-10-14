@@ -193,9 +193,9 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'bi_bzh': Config.BI_BZH_YES.value,
         'bi_qj': Config.BI_QJ_DD.value,
         'bi_fx_cgd': Config.BI_FX_CHD_YES.value,
-        'xd_bzh': Config.XD_BZH_NO.value,
+        # 'xd_bzh': Config.XD_BZH_NO.value, # TODO 移除配置
         'xd_qj': Config.XD_QJ_DD.value,
-        'zsd_bzh': Config.ZSD_BZH_NO.value,
+        # 'zsd_bzh': Config.ZSD_BZH_NO.value, # TODO 移除配置
         'zsd_qj': Config.ZSD_QJ_DD.value,
         'zs_bi_type': [Config.ZS_TYPE_BZ.value],
         'zs_xd_type': [Config.ZS_TYPE_BZ.value],
@@ -217,7 +217,7 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'chart_show_boll': '1',
         'chart_show_futu': 'macd',
         'chart_show_atr_stop_loss': False,
-        'chart_show_ld': 'none',
+        'chart_show_ld': 'xd',
         'chart_kline_nums': 1000,
         'chart_idx_ma_period': '120,250',
         'chart_idx_vol_ma_period': '5,60',
@@ -510,3 +510,18 @@ def cl_date_to_tv_chart(cd: ICL, config):
         'bcs': bc_chart_data,
         'mmds': mmd_chart_data,
     }
+
+
+def bi_td(bi: BI, cd: ICL):
+    """
+    判断是否笔停顿
+    """
+    if bi.is_done() is False:
+        return False
+    last_k = cd.get_klines()[-1]
+    if bi.type == 'up' and last_k.c < last_k.o and last_k.c < bi.end.klines[-1].l:
+        return True
+    elif bi.type == 'down' and last_k.c > last_k.o and last_k.c > bi.end.klines[-1].h:
+        return True
+
+    return False

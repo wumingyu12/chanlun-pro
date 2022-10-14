@@ -128,62 +128,77 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
     :param to_f:
     :return:
     """
-    new_kline = {}
-    freq_second_maps = {
-        '5m': 5 * 60, '10m': 10 * 60, '15m': 15 * 60, '30m': 30 * 60, '60m': 60 * 60, '120m': 120 * 60,
-        'd': 24 * 60 * 60, 'm': 30 * 24 * 60 * 60
+
+    # 直接使用 pandas 的 resample 方法进行合并周期
+    period_maps = {
+        '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30min', 'd': 'D', 'w': 'W', 'm': 'M'
     }
-    if to_f not in freq_second_maps.keys():
+    if to_f in period_maps.keys():
+        klines.insert(0, column='date_index', value=klines['date'])
+        klines.set_index('date_index', inplace=True)
+        period_type = period_maps[to_f]
+
+        period_klines = klines.resample(period_type, label='left', closed='right').last()
+        period_klines['open'] = klines['open'].resample(period_type, label='left', closed='right').first()
+        period_klines['close'] = klines['close'].resample(period_type, label='left', closed='right').last()
+        period_klines['high'] = klines['high'].resample(period_type, label='left', closed='right').max()
+        period_klines['low'] = klines['low'].resample(period_type, label='left', closed='right').min()
+        period_klines['volume'] = klines['volume'].resample(period_type, label='left', closed='right').sum()
+        period_klines.dropna(inplace=True)
+        period_klines.reset_index(inplace=True)
+        period_klines.drop('date_index', axis=1, inplace=True)
+        return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+
+    # 60m 周期特殊，9:30-10:30/10:30-11:30
+    freq_config_maps = {
+        '60m': {
+            '10:30:00': ['09:00:00', '10:30:00'],
+            '11:30:00': ['10:30:01', '11:30:00'],
+            '14:00:00': ['13:00:00', '14:00:00'],
+            '15:00:00': ['14:00:01', '15:00:00'],
+        },
+        '120m': {
+            '11:30:00': ['09:00:00', '11:30:00'],
+            '15:00:00': ['13:00:00', '15:00:00'],
+        },
+    }
+    if to_f not in freq_config_maps.keys():
         raise Exception(f'不支持的转换周期：{to_f}')
 
-    seconds = freq_second_maps[to_f]
+    def dt_to_new_dt(config: dict, dt: datetime.datetime):
+        """
+        将时间转换成合并后的时间值
+        """
+        date_str = fun.datetime_to_str(dt, '%Y-%m-%d')
+        for new_time, range_time in config.items():
+            range_start = fun.str_to_timeint(f'{date_str} {range_time[0]}')
+            range_end = fun.str_to_timeint(f'{date_str} {range_time[1]}')
+            if range_start <= fun.datetime_to_int(dt) <= range_end:
+                return fun.str_to_datetime(f'{date_str} {new_time}')
+        return None
 
-    for k in klines.iterrows():
-        dt: datetime.datetime = k[1]['date'].to_pydatetime()
-        date_time = dt.timestamp()
-        if date_time % seconds == 0:
-            new_date_time = date_time
+    new_kline = {}
+    for _, k in klines.iterrows():
+        dt: datetime.datetime = k['date'].to_pydatetime()
+        new_dt = dt_to_new_dt(freq_config_maps[to_f], dt)
+        if new_dt is None:
+            raise Exception(f'转换时间错误：{to_f}, {dt}')
+        if new_dt in new_kline.keys():
+            n_k = new_kline[new_dt]
+            n_k['high'] = max(n_k['high'], k['high'])
+            n_k['low'] = min(n_k['low'], k['low'])
+            n_k['close'] = k['close']
+            n_k['volume'] += float(k['volume']) if k['volume'] is not None else 0
+            new_kline[new_dt] = n_k
         else:
-            if to_f in ['d']:
-                new_date_time = date_time - (date_time % seconds)
-            else:
-                new_date_time = date_time - (date_time % seconds) + seconds
-
-        if to_f in ['m']:
-            new_date_time = fun.str_to_datetime(f'{dt.year}-{dt.month}-01 00:00:00').timestamp()
-        if to_f in ['d']:
-            new_date_time -= 8 * 60 * 60
-        if to_f == '60m':
-            if (dt.hour == 9) or (dt.hour == 10 and dt.minute <= 30):
-                new_date_time = datetime.datetime.strptime(dt.strftime('%Y-%m-%d 10:30:00'),
-                                                           '%Y-%m-%d %H:%M:%S').timestamp()
-            elif (dt.hour == 10 and dt.minute >= 30) or (dt.hour == 11):
-                new_date_time = datetime.datetime.strptime(dt.strftime('%Y-%m-%d 11:30:00'),
-                                                           '%Y-%m-%d %H:%M:%S').timestamp()
-        if to_f == '120m':
-            if dt.hour == 9 or dt.hour == 10 or (dt.hour == 11 and dt.minute <= 30):
-                new_date_time = datetime.datetime.strptime(dt.strftime('%Y-%m-%d 11:30:00'),
-                                                           '%Y-%m-%d %H:%M:%S').timestamp()
-
-        new_date_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(new_date_time))
-        if new_date_time in new_kline:
-            n_k = new_kline[new_date_time]
-            if k[1]['high'] > n_k['high']:
-                n_k['high'] = k[1]['high']
-            if k[1]['low'] < n_k['low']:
-                n_k['low'] = k[1]['low']
-            n_k['close'] = k[1]['close']
-            n_k['volume'] += float(k[1]['volume']) if k[1]['volume'] is not None else 0
-            new_kline[new_date_time] = n_k
-        else:
-            new_kline[new_date_time] = {
-                'code': k[1]['code'],
-                'date': new_date_time,
-                'open': k[1]['open'],
-                'close': k[1]['close'],
-                'high': k[1]['high'],
-                'low': k[1]['low'],
-                'volume': float(k[1]['volume']) if k[1]['volume'] is not None else 0,
+            new_kline[new_dt] = {
+                'code': k['code'],
+                'date': new_dt,
+                'open': k['open'],
+                'close': k['close'],
+                'high': k['high'],
+                'low': k['low'],
+                'volume': float(k['volume']) if k['volume'] is not None else 0,
             }
     kline_pd = pd.DataFrame(new_kline.values())
     kline_pd['date'] = pd.to_datetime(kline_pd['date'])
@@ -194,42 +209,26 @@ def convert_currency_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.Data
     """
     数字货币k线转换方法
     """
-    new_kline = {}
-    f_maps = {
-        '5m': 5 * 60, '10m': 10 * 60, '15m': 15 * 60, '30m': 30 * 60, '60m': 60 * 60,
-        '120m': 120 * 60, '4h': 4 * 60 * 60,
-        'd': 24 * 60 * 60, 'w': 7 * 24 * 60 * 60
+    period_maps = {
+        '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30m', '60m': '1H',
+        '120m': '2H', '4h': '4H',
+        'd': 'D', 'w': 'W', 'm': 'M'
     }
-    seconds = f_maps[to_f]
+    klines.insert(0, column='date_index', value=klines['date'])
+    klines.set_index('date_index', inplace=True)
+    period_type = period_maps[to_f]
 
-    for k in klines.iterrows():
-        _date = k[1]['date'].to_pydatetime()
-        date_time = _date.timestamp()
+    period_klines = klines.resample(period_type, label='right', closed='left').first()
+    period_klines['open'] = klines['open'].resample(period_type, label='right', closed='left').first()
+    period_klines['close'] = klines['close'].resample(period_type, label='right', closed='left').last()
+    period_klines['high'] = klines['high'].resample(period_type, label='right', closed='left').max()
+    period_klines['low'] = klines['low'].resample(period_type, label='right', closed='left').min()
+    period_klines['volume'] = klines['volume'].resample(period_type, label='right', closed='left').sum()
+    period_klines.dropna(inplace=True)
+    period_klines.reset_index(inplace=True)
+    period_klines.drop('date_index', axis=1, inplace=True)
 
-        new_date_time = date_time - (date_time % seconds)
-        new_date_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(new_date_time))
-        if new_date_time in new_kline:
-            n_k = new_kline[new_date_time]
-            if k[1]['high'] > n_k['high']:
-                n_k['high'] = k[1]['high']
-            if k[1]['low'] < n_k['low']:
-                n_k['low'] = k[1]['low']
-            n_k['close'] = k[1]['close']
-            n_k['volume'] += float(k[1]['volume'])
-            new_kline[new_date_time] = n_k
-        else:
-            new_kline[new_date_time] = {
-                'code': k[1]['code'],
-                'date': new_date_time,
-                'open': k[1]['open'],
-                'close': k[1]['close'],
-                'high': k[1]['high'],
-                'low': k[1]['low'],
-                'volume': float(k[1]['volume']),
-            }
-    kline_pd = pd.DataFrame(new_kline.values())
-    kline_pd['date'] = pd.to_datetime(kline_pd['date'])
-    return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+    return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
 
 def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFrame:
@@ -240,56 +239,137 @@ def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataF
     :param to_f:
     :return:
     """
-    new_kline = {}
-    freq_second_maps = {
-        '1m': 1 * 60,
-        '3m': 3 * 60,
-        '5m': 5 * 60,
-        '10m': 10 * 60,
-        '15m': 15 * 60,
-        '30m': 30 * 60,
-        '60m': 60 * 60,
-        '120m': 2 * 60 * 60,
-        'd': 24 * 60 * 60
+
+    # 直接使用 pandas 的 resample 方法进行合并周期
+    period_maps = {
+        '1m': '1min', '3m': '3min', '5m': '5min', '10m': '10min', '15m': '15min', 'd': 'D', 'w': 'W', 'm': 'M'
     }
-    # TODO 由于 期货上午 10点15 休息 15 分钟，所以需要特殊处理
-    freq_special_maps = {
-        '10m': [{'h': [10], 'm': [{'min': 10, 'max': 15, 'to': 10}]}],
-        '30m': [{'h': [10], 'm': [{'min': 10, 'max': 15, 'to': 10}]}],
+    if to_f in period_maps.keys():
+        klines.insert(0, column='date_index', value=klines['date'])
+        klines.set_index('date_index', inplace=True)
+        period_type = period_maps[to_f]
+        # 前对其
+        period_klines = klines.resample(period_type, label='right', closed='left').first()
+        period_klines['open'] = klines['open'].resample(period_type, label='right', closed='left').first()
+        period_klines['close'] = klines['close'].resample(period_type, label='right', closed='left').last()
+        period_klines['high'] = klines['high'].resample(period_type, label='right', closed='left').max()
+        period_klines['low'] = klines['low'].resample(period_type, label='right', closed='left').min()
+        period_klines['volume'] = klines['volume'].resample(period_type, label='right', closed='left').sum()
+        period_klines.dropna(inplace=True)
+        period_klines.reset_index(inplace=True)
+        period_klines.drop('date_index', axis=1, inplace=True)
+        return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+
+    # 因为 10:15 10:30 休息 15分钟， 这一部分 掘金和天勤上的处理逻辑是不一样的，在合成 30m，60m 数据时时有差异的
+    freq_config_maps = {
+        # 天勤的处理逻辑，直接按照整数处理，前对其
+        # '30m': {
+        #     '09:00:00': ['09:00:00', '09:29:59'],
+        #     '09:30:00': ['09:30:00', '09:59:59'],
+        #     '10:00:00': ['10:00:00', '10:29:59'],
+        #     '10:30:00': ['10:30:00', '10:59:59'],
+        #     '11:00:00': ['11:00:00', '11:29:59'],
+        #     '11:30:00': ['11:30:00', '11:59:59'],
+        #     '13:00:00': ['13:00:00', '13:29:59'],
+        #     '13:30:00': ['13:30:00', '13:59:59'],
+        #     '21:00:00': ['21:00:00', '21:29:59'],
+        #     '21:30:00': ['21:30:00', '21:59:59'],
+        #     '22:00:00': ['21:00:00', '22:29:59'],
+        #     '22:30:00': ['21:30:00', '22:59:59'],
+        #     '23:00:00': ['23:00:00', '23:29:59'],
+        #     '23:30:00': ['23:30:00', '23:59:59'],
+        #     '00:00:00': ['00:00:00', '00:29:59'],
+        #     '00:30:00': ['00:30:00', '00:59:59'],
+        #     '01:00:00': ['01:00:00', '01:29:59'],
+        #     '01:30:00': ['01:30:00', '01:59:59'],
+        #     '02:00:00': ['02:00:00', '02:29:59'],
+        #     '02:30:00': ['02:30:00', '02:59:59'],
+        # },
+        # '60m': {
+        #     '09:00:00': ['09:00:00', '09:59:59'],
+        #     '10:00:00': ['10:00:00', '10:59:59'],
+        #     '11:00:00': ['11:00:00', '11:59:59'],
+        #     '13:00:00': ['13:00:00', '13:59:59'],
+        #     '21:00:00': ['21:00:00', '21:59:59'],
+        #     '22:00:00': ['21:00:00', '22:59:59'],
+        #     '23:00:00': ['23:00:00', '23:59:59'],
+        #     '00:00:00': ['00:00:00', '00:59:59'],
+        #     '01:00:00': ['01:00:00', '01:59:59'],
+        #     '02:00:00': ['02:00:00', '02:59:59'],
+        # },
+        # 掘金的处理逻辑，凑够符合分钟数的数据 (有夜盘交易的还是有差异，暂时不考虑)
+        '30m': {
+            '09:00:00': ['09:00:00', '09:29:59'],
+            '09:30:00': ['09:30:00', '09:59:59'],
+            '10:00:00': ['10:00:00', '10:44:59'],
+            '10:45:00': ['10:45:00', '11:14:59'],
+            '11:15:00': ['11:15:00', '13:44:59'],
+            '13:45:00': ['13:45:00', '14:14:59'],
+            '14:15:00': ['14:15:00', '14:44:59'],
+            '14:45:00': ['14:45:00', '14:59:59'],
+            '21:00:00': ['21:00:00', '21:29:59'],
+            '21:30:00': ['21:30:00', '21:59:59'],
+            '22:00:00': ['21:00:00', '22:29:59'],
+            '22:30:00': ['21:30:00', '22:59:59'],
+            '23:00:00': ['23:00:00', '23:29:59'],
+            '23:30:00': ['23:30:00', '23:59:59'],
+            '00:00:00': ['00:00:00', '00:29:59'],
+            '00:30:00': ['00:30:00', '00:59:59'],
+            '01:00:00': ['01:00:00', '01:29:59'],
+            '01:30:00': ['01:30:00', '01:59:59'],
+            '02:00:00': ['02:00:00', '02:29:59'],
+            '02:30:00': ['02:30:00', '02:59:59'],
+        },
+        '60m': {
+            '09:00:00': ['09:00:00', '09:59:59'],
+            '10:00:00': ['10:00:00', '11:14:59'],
+            '11:15:00': ['11:15:00', '14:14:59'],
+            '14:15:00': ['14:15:00', '14:59:59'],
+            '21:00:00': ['21:00:00', '21:59:59'],
+            '22:00:00': ['21:00:00', '22:59:59'],
+            '23:00:00': ['23:00:00', '23:59:59'],
+            '00:00:00': ['00:00:00', '00:59:59'],
+            '01:00:00': ['01:00:00', '01:59:59'],
+            '02:00:00': ['02:00:00', '02:59:59'],
+        },
     }
-    if to_f not in freq_second_maps.keys():
+    if to_f not in freq_config_maps.keys():
         raise Exception(f'不支持的转换周期：{to_f}')
 
-    seconds = freq_second_maps[to_f]
+    def dt_to_new_dt(config: dict, dt: datetime.datetime):
+        """
+        将时间转换成合并后的时间值
+        """
+        date_str = fun.datetime_to_str(dt, '%Y-%m-%d')
+        for new_time, range_time in config.items():
+            range_start = fun.str_to_timeint(f'{date_str} {range_time[0]}')
+            range_end = fun.str_to_timeint(f'{date_str} {range_time[1]}')
+            if range_start <= fun.datetime_to_int(dt) <= range_end:
+                return fun.str_to_datetime(f'{date_str} {new_time}')
+        return None
 
-    for k in klines.iterrows():
-        dt: datetime.datetime = k[1]['date'].to_pydatetime()
-        date_time = dt.timestamp()
-        if date_time % seconds == 0:
-            new_date_time = date_time
+    new_kline = {}
+    for _, k in klines.iterrows():
+        dt: datetime.datetime = k['date'].to_pydatetime()
+        new_dt = dt_to_new_dt(freq_config_maps[to_f], dt)
+        if new_dt is None:
+            raise Exception(f'转换时间错误：{to_f}, {dt}')
+        if new_dt in new_kline.keys():
+            n_k = new_kline[new_dt]
+            n_k['high'] = max(n_k['high'], k['high'])
+            n_k['low'] = min(n_k['low'], k['low'])
+            n_k['close'] = k['close']
+            n_k['volume'] += float(k['volume']) if k['volume'] is not None else 0
+            new_kline[new_dt] = n_k
         else:
-            new_date_time = date_time - (date_time % seconds)
-        # 30m 10
-
-        new_date_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(new_date_time))
-        if new_date_time in new_kline:
-            n_k = new_kline[new_date_time]
-            if k[1]['high'] > n_k['high']:
-                n_k['high'] = k[1]['high']
-            if k[1]['low'] < n_k['low']:
-                n_k['low'] = k[1]['low']
-            n_k['close'] = k[1]['close']
-            n_k['volume'] += float(k[1]['volume'])
-            new_kline[new_date_time] = n_k
-        else:
-            new_kline[new_date_time] = {
-                'code': k[1]['code'],
-                'date': new_date_time,
-                'open': k[1]['open'],
-                'close': k[1]['close'],
-                'high': k[1]['high'],
-                'low': k[1]['low'],
-                'volume': float(k[1]['volume']),
+            new_kline[new_dt] = {
+                'code': k['code'],
+                'date': new_dt,
+                'open': k['open'],
+                'close': k['close'],
+                'high': k['high'],
+                'low': k['low'],
+                'volume': float(k['volume']) if k['volume'] is not None else 0,
             }
     kline_pd = pd.DataFrame(new_kline.values())
     kline_pd['date'] = pd.to_datetime(kline_pd['date'])

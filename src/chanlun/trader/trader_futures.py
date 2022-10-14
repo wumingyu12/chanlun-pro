@@ -26,7 +26,7 @@ class TraderFutures(BackTestTrader):
         self.unit_volume = 2
 
     # 做多买入
-    def open_buy(self, code, opt: Operation):
+    def open_buy(self, code, opt: Operation, amount: float = None):
         try:
             positions = self.ex.positions(code)
             if len(positions) > 0 and positions[code].pos_long > 0:
@@ -62,7 +62,7 @@ class TraderFutures(BackTestTrader):
             return False
 
     # 做空卖出
-    def open_sell(self, code, opt: Operation):
+    def open_sell(self, code, opt: Operation, amount: float = None):
         try:
             positions = self.ex.positions(code)
             if len(positions) > 0 and positions[code].pos_short > 0:
