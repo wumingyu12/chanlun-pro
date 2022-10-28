@@ -235,3 +235,145 @@ class LinesFormAnalyse:
         # TODO 最后剩下的就是中枢扩展的情况了
 
         return None
+
+    def backward_lines_qs_infos(self, lines: List[Union[BI, XD]]) -> Union[None, BW_LINE_QS_INFOS]:
+        """
+        倒推线段，分析趋势信息
+        """
+        if len(lines) <= 3:
+            return None
+
+        # 将线段按照高低排序
+        line_highs = sorted(lines, key=lambda l: l.high, reverse=True)
+        line_lows = sorted(lines, key=lambda l: l.low, reverse=False)
+
+        def find_high_down_zs(end_line: LINE, is_first: bool):
+            """
+            查找符合条件的下跌中枢
+            """
+            hd_zss: List[ZS] = []
+            for lh in line_highs:
+                if end_line.index > lh.index and end_line.index - lh.index <= 8:
+                    _zss = self.cd.create_dn_zs('', lines[lh.index:end_line.index + 1])
+                    if len(_zss) == 1 and \
+                            _zss[0].lines[0].index == lh.index and \
+                            _zss[0].lines[-1].index == end_line.index:
+                        line_max_high = max([max(_l.start.val, _l.end.val) for _l in _zss[0].lines])
+                        line_min_low = min([min(_l.start.val, _l.end.val) for _l in _zss[0].lines])
+                        if is_first is False and _zss[0].type in ['down', 'up']:
+                            hd_zss.append(_zss[0])
+                        elif is_first is True and _zss[0].lines[0].start.val in [line_max_high, line_min_low]:
+                            hd_zss.append(_zss[0])
+            return hd_zss
+
+        def find_low_up_zs(end_line: LINE, is_first: bool):
+            """
+            查找符合条件的上涨中枢
+            """
+            lu_zss: List[ZS] = []
+            for ll in line_lows:
+                if end_line.index > ll.index and end_line.index - ll.index <= 8:
+                    _zss = self.cd.create_dn_zs('', lines[ll.index:end_line.index + 1])
+                    if len(_zss) == 1 and \
+                            _zss[0].lines[0].index == ll.index and \
+                            _zss[0].lines[-1].index == end_line.index:
+                        line_max_high = max([max(_l.start.val, _l.end.val) for _l in _zss[0].lines])
+                        line_min_low = min([min(_l.start.val, _l.end.val) for _l in _zss[0].lines])
+                        if is_first is False and _zss[0].type in ['down', 'up']:
+                            lu_zss.append(_zss[0])
+                        elif is_first is True and _zss[0].lines[0].start.val in [line_max_high, line_min_low]:
+                            lu_zss.append(_zss[0])
+            return lu_zss
+
+        def loop_find_zs(end_line: LINE, end_zs: Union[ZS, None], zs_type: str, qs_zs_infos: Dict[str, List[ZS]]):
+            if zs_type == 'up':
+                _zss = find_low_up_zs(end_line, is_first=end_zs is None)
+            elif zs_type == 'down':
+                _zss = find_high_down_zs(end_line, is_first=end_zs is None)
+            else:
+                return
+            if len(_zss) == 0 and end_zs is not None:
+                if end_zs.type in ['up', 'down']:
+                    # 出现三类买卖点，找不到中枢的情况，符合条件的情况下，往前找找
+                    if end_zs.type == 'up' and zs_type == 'up' and end_line.index - 2 >= 0 and \
+                            (end_line.high > lines[end_line.index - 2].high and end_line.low > lines[
+                                end_line.index - 2].low):
+                        _zss = find_low_up_zs(lines[end_line.index - 2], is_first=False)
+                    elif end_zs.type == 'down' and zs_type == 'down' and end_line.index - 2 >= 0 and \
+                            (end_line.low < lines[end_line.index - 2].low and end_line.high < lines[
+                                end_line.index - 2].high):
+                        _zss = find_high_down_zs(lines[end_line.index - 2], is_first=False)
+                if len(_zss) == 0:
+                    # 同向的没有了，找反向的
+                    if len(lines) > end_line.index - 1:
+                        end_line = lines[end_line.index - 1]
+                        if zs_type == 'up':
+                            zs_type = 'down'
+                            _zss = find_high_down_zs(end_line, is_first=False)
+                            # 反向的出现三类买卖点，符合条件的情况下，也往前多找一段
+                            if len(_zss) == 0 and end_zs.type == 'up' and end_line.index - 2 >= 0 and \
+                                    (end_line.low < lines[end_line.index - 2].low and end_line.high < lines[
+                                        end_line.index - 2].high):
+                                _zss = find_high_down_zs(lines[end_line.index - 2], is_first=False)
+                        else:
+                            zs_type = 'up'
+                            _zss = find_low_up_zs(end_line, is_first=False)
+                            # 反向的出现三类买卖点，符合条件的情况下，也往前多找一段
+                            if len(_zss) == 0 and end_zs.type == 'down' and end_line.index - 2 >= 0 and \
+                                    (end_line.low < lines[end_line.index - 2].low and end_line.high < lines[
+                                        end_line.index - 2].high):
+                                _zss = find_low_up_zs(lines[end_line.index - 2], is_first=False)
+
+            for _zs in _zss:
+                key = f"{(0 if end_zs is None else end_zs.lines[0].index)}_{(0 if end_zs is None else end_zs.lines[-1].index)}"
+                if key not in qs_zs_infos.keys():
+                    qs_zs_infos[key] = []
+                qs_zs_infos[key].append(_zs)
+
+                loop_find_zs(_zs.lines[0], _zs, zs_type, qs_zs_infos)
+            return
+
+        # 倒推起始为下跌中枢
+        down_qs_zs_infos: Dict[str, List[ZS]] = {}
+        loop_find_zs(lines[-1], None, 'down', down_qs_zs_infos)
+        # 倒推起始为下跌中枢
+        up_qs_zs_infos: Dict[str, List[ZS]] = {}
+        loop_find_zs(lines[-1], None, 'up', up_qs_zs_infos)
+
+        qs_zs_infos: List[List[ZS]] = []
+        for zs in down_qs_zs_infos['0_0']:
+            zss = [zs]
+            while True:
+                key = f'{zss[-1].lines[0].index}_{zss[-1].lines[-1].index}'
+                if key in down_qs_zs_infos.keys():
+                    zss.append(down_qs_zs_infos[key][0])
+                else:
+                    break
+            qs_zs_infos.append(zss)
+        for zs in up_qs_zs_infos['0_0']:
+            zss = [zs]
+            while True:
+                key = f'{zss[-1].lines[0].index}_{zss[-1].lines[-1].index}'
+                if key in up_qs_zs_infos.keys():
+                    zss.append(up_qs_zs_infos[key][0])
+                else:
+                    break
+            qs_zs_infos.append(zss)
+
+        if len(qs_zs_infos) == 0:
+            return None
+
+        # 获取中枢最多的
+        qs_zs_infos = list(sorted(qs_zs_infos, key=lambda _zss: len(_zss), reverse=True))
+        qs_zs_infos: List[ZS] = qs_zs_infos[0][::-1]
+        if len(qs_zs_infos) <= 1:
+            return None
+
+        bwlqs = BW_LINE_QS_INFOS(lines[qs_zs_infos[0].lines[0].index:], qs_zs_infos)
+        zs_type_maps = {'up': '上涨中枢', 'down': '下跌中枢', 'zd': '震荡中枢'}
+        zss_str = '-'.join([zs_type_maps[_zs.zs_type] for _zs in qs_zs_infos])
+        bwlqs.zss_str = zss_str
+
+
+
+        return bwlqs

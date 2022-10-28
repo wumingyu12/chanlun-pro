@@ -898,7 +898,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
                 symbol_size=15,
                 symbol='arrow',
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,215,0,0.7)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(255,215,0,1)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(
@@ -916,7 +916,7 @@ def render_charts(title, cl_data: ICL, orders=None, config=None):
                 symbol='arrow',
                 symbol_rotate=180,
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color='rgba(127,255,212,0.7)'),
+                itemstyle_opts=opts.ItemStyleOpts(color='rgba(127,255,212,1)'),
                 tooltip_opts=opts.TooltipOpts(
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                     formatter=JsCode(

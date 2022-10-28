@@ -71,7 +71,7 @@ class KlinesGenerator:
             self.to_klines = self.to_klines.drop_duplicates(['date'], keep='last').sort_values('date')
 
         if self.to_cl_data is None:
-            self.to_cl_data = cl.CL(self.to_klines.iloc[0]['code'], self.minute, self.cl_config).process_klines(
+            self.to_cl_data = cl.CL(self.to_klines.iloc[0]['code'], str(self.minute), self.cl_config).process_klines(
                 self.to_klines)
         else:
             self.to_cl_data.process_klines(self.to_klines)

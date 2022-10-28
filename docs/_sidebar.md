@@ -1,5 +1,6 @@
 * [项目介绍](README.md)
     * [功能](功能.md)
+    * [Windows Version](WINDOWS_VERSION.md)
     * [计算性能](计算性能.md)
     * [售价与联系方式](售价与联系方式.md)
     * [项目展示](项目展示.md)

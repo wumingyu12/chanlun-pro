@@ -623,8 +623,8 @@ class XD(LINE):
                  index: int = 0, default_zs_type: str = None):
         super().__init__(start, end, _type, index)
 
-        self.start_line: LINE = start_line  # 线段起始笔
-        self.end_line: LINE = end_line  # 线段结束笔
+        self.start_line: Union[LINE, BI, XD] = start_line  # 线段起始笔
+        self.end_line: Union[LINE, BI, XD] = end_line  # 线段结束笔
         self.mmds: List[MMD] = []  # 买卖点
         self.bcs: List[BC] = []  # 背驰信息
         self.ding_fx: XLFX = ding_fx
@@ -664,10 +664,10 @@ class XD(LINE):
 
     def get_bcs(self, zs_type: str = None) -> List[BC]:
         if zs_type is None:
-            return self.bcs
+            return [bc for bc in self.bcs if bc.bc]
         if zs_type not in self.zs_type_bcs.keys():
             return []
-        return self.zs_type_bcs[zs_type]
+        return [bc for bc in self.zs_type_bcs[zs_type] if bc.bc]
 
     def add_mmd(self, name: str, zs: ZS, zs_type: str, msg: str = '') -> bool:
         """
@@ -831,6 +831,21 @@ class LINE_FORM_INFOS:
             if 'zs_next_level' in self.infos.keys():
                 msg += f'  后中枢 {self.infos["zs_next_level"]} 级别 / '
         return msg.strip(' / ')
+
+
+@dataclass
+class BW_LINE_QS_INFOS:
+    """
+    倒推线段的趋势信息
+    """
+    # 线段的组成
+    lines: List[Union[LINE, BI, XD]]
+    # 中枢列表
+    zss: List[ZS]
+    # 中枢类型拼接字符串
+    zss_str = ''
+    # 走势类型描述
+    zoushi_type_str = ''
 
 
 class ICL(metaclass=ABCMeta):

@@ -12,7 +12,7 @@ from chanlun import config
 from chanlun.cl_interface import *
 
 
-def get_logger(filename=None, level=logging.INFO):
+def get_logger(filename=None, level=logging.INFO) -> logging.Logger:
     """
     获取一个日志记录的对象
     """

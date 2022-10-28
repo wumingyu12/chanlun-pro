@@ -49,7 +49,7 @@ class BackTestTrader(object):
 
         # 当前持仓信息
         self.positions: Dict[str, Dict[str, POSITION]] = {}
-        self.positions_history = {}
+        self.positions_history: Dict[str, List[POSITION]] = {}
         # 持仓盈亏记录
         self.hold_profit_history = {}
         # 资产历史
