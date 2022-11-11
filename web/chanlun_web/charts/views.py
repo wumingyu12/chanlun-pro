@@ -47,6 +47,17 @@ def login_index(request):
 
 
 @login_required
+def zixuan_groups_json(request):
+    """
+    查询市场下的自选分组
+    """
+    market_type = request.GET.get('market_type')
+
+    zx = zixuan.ZiXuan(market_type)
+    return utils.json_response(zx.zixuan_list)
+
+
+@login_required
 def zixuan_stocks_json(request):
     """
     查询自选分组下的代码
@@ -168,9 +179,10 @@ def cl_chart_config_save(request):
             'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx',
             'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
             'chart_show_infos', 'chart_show_fx',
-            'chart_show_bi_zs', 'chart_show_xd_zs',
-            'chart_show_bi_mmd', 'chart_show_xd_mmd',
-            'chart_show_bi_bc', 'chart_show_xd_bc',
+            'chart_show_bi', 'chart_show_xd', 'chart_show_zsd', 'chart_show_qsd',
+            'chart_show_bi_zs', 'chart_show_xd_zs', 'chart_show_zsd_zs', 'chart_show_qsd_zs',
+            'chart_show_bi_mmd', 'chart_show_xd_mmd', 'chart_show_zsd_mmd', 'chart_show_qsd_mmd',
+            'chart_show_bi_bc', 'chart_show_xd_bc', 'chart_show_zsd_bc', 'chart_show_qsd_bc',
             'chart_show_ma', 'chart_show_boll',
             'chart_show_futu', 'chart_kline_nums', 'chart_show_ld',
             'chart_idx_ma_period', 'chart_idx_vol_ma_period', 'chart_idx_boll_period', 'chart_idx_rsi_period',

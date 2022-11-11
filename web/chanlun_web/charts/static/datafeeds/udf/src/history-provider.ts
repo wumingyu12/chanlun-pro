@@ -76,10 +76,13 @@ export interface GetBarsResult {
 export class HistoryProvider {
     private _datafeedUrl: string;
     private readonly _requester: Requester;
+    public bars_result: Map<string, any>;
 
     public constructor(datafeedUrl: string, requester: Requester) {
         this._datafeedUrl = datafeedUrl;
         this._requester = requester;
+
+        this.bars_result = new Map();
     }
 
     public getBars(symbolInfo: LibrarySymbolInfo, resolution: string, periodParams: PeriodParamsWithOptionalCountback): Promise<GetBarsResult> {
@@ -159,20 +162,22 @@ export class HistoryProvider {
 
                             bars.push(barValue);
                         }
+                        let result = {
+                            bars: bars,
+                            meta: meta,
+                            bis: bis,
+                            xds: xds,
+                            zsds: zsds,
+                            bi_zss: bi_zss,
+                            xd_zss: xd_zss,
+                            zsd_zss: zsd_zss,
+                            bcs: bcs,
+                            mmds: mmds,
+                        }
+                        this.bars_result.set(requestParams['resolution'].toString(), result);
+                        resolve(result);
                     }
 
-                    resolve({
-                        bars: bars,
-                        meta: meta,
-                        bis: bis,
-                        xds: xds,
-                        zsds: zsds,
-                        bi_zss: bi_zss,
-                        xd_zss: xd_zss,
-                        zsd_zss: zsd_zss,
-                        bcs: bcs,
-                        mmds: mmds,
-                    });
                 })
                 .catch((reason?: string | Error) => {
                     const reasonString = getErrorMessage(reason);

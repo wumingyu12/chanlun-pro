@@ -61,6 +61,7 @@ urlpatterns = [
 
     # 自选操作
     path('zixuan/stocks', views.zixuan_stocks_json),
+    path('zixuan/groups', views.zixuan_groups_json),
     path('zixuan/code_zx_names', views.zixuan_code_zx_names_json),
     path('zixuan/opt', views.zixuan_operation_json),
     path('search_code', views.search_code_json),
@@ -81,4 +82,6 @@ urlpatterns = [
     path('tv/search', views_tv.search),
     path('tv/history', views_tv.history),
     path('tv/time', views_tv.time),
+    path('tv/1.1/charts', views_tv.charts),
+    path('tv/1.1/study_templates', views_tv.study_templates),
 ]

@@ -102,18 +102,18 @@
             </select>
         </div>
     </div>
-{#    <div class="form-group">#}
-{#        <label class="col-sm-3 control-label no-padding-right">线段标准化</label>#}
-{#        <div class="col-sm-9 show-tooltips"#}
-{#             title="影响线段的起始端点，标准化会导致一笔成段的出现">#}
-{#            <select type="select" class="form-control" id="xd_bzh">#}
-{#                <option value="xd_bzh_no" {% if xd_bzh == 'xd_bzh_no' %} selected {% endif %}>严格按照特征序列顶底端点#}
-{#                </option>#}
-{#                <option value="xd_bzh_yes" {% if xd_bzh == 'xd_bzh_yes' %} selected {% endif %}>标准化线段画在高低端点#}
-{#                </option>#}
-{#            </select>#}
-{#        </div>#}
-{#    </div>#}
+    {#    <div class="form-group">#}
+    {#        <label class="col-sm-3 control-label no-padding-right">线段标准化</label>#}
+    {#        <div class="col-sm-9 show-tooltips"#}
+    {#             title="影响线段的起始端点，标准化会导致一笔成段的出现">#}
+    {#            <select type="select" class="form-control" id="xd_bzh">#}
+    {#                <option value="xd_bzh_no" {% if xd_bzh == 'xd_bzh_no' %} selected {% endif %}>严格按照特征序列顶底端点#}
+    {#                </option>#}
+    {#                <option value="xd_bzh_yes" {% if xd_bzh == 'xd_bzh_yes' %} selected {% endif %}>标准化线段画在高低端点#}
+    {#                </option>#}
+    {#            </select>#}
+    {#        </div>#}
+    {#    </div>#}
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">线段区间</label>
         <div class="col-sm-9 show-tooltips"
@@ -125,20 +125,20 @@
             </select>
         </div>
     </div>
-{#    <div class="form-group">#}
-{#        <label class="col-sm-3 control-label no-padding-right">走势段标准化</label>#}
-{#        <div class="col-sm-9 show-tooltips"#}
-{#             title="影响走势段的起始端点，标准化会导致一段成走势段的出现">#}
-{#            <select type="select" class="form-control" id="zsd_bzh">#}
-{#                <option value="zsd_bzh_no" {% if zsd_bzh == 'zsd_bzh_no' %} selected {% endif %}>#}
-{#                    严格按照特征序列顶底端点#}
-{#                </option>#}
-{#                <option value="zsd_bzh_yes" {% if zsd_bzh == 'zsd_bzh_yes' %} selected {% endif %}>#}
-{#                    标准化走势画在高低端点#}
-{#                </option>#}
-{#            </select>#}
-{#        </div>#}
-{#    </div>#}
+    {#    <div class="form-group">#}
+    {#        <label class="col-sm-3 control-label no-padding-right">走势段标准化</label>#}
+    {#        <div class="col-sm-9 show-tooltips"#}
+    {#             title="影响走势段的起始端点，标准化会导致一段成走势段的出现">#}
+    {#            <select type="select" class="form-control" id="zsd_bzh">#}
+    {#                <option value="zsd_bzh_no" {% if zsd_bzh == 'zsd_bzh_no' %} selected {% endif %}>#}
+    {#                    严格按照特征序列顶底端点#}
+    {#                </option>#}
+    {#                <option value="zsd_bzh_yes" {% if zsd_bzh == 'zsd_bzh_yes' %} selected {% endif %}>#}
+    {#                    标准化走势画在高低端点#}
+    {#                </option>#}
+    {#            </select>#}
+    {#        </div>#}
+    {#    </div>#}
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">走势段区间</label>
         <div class="col-sm-9 show-tooltips"
@@ -163,12 +163,14 @@
                 </option>
                 <option value="zs_type_fx" {% if 'zs_type_fx' in zs_bi_type %} selected {% endif %}>方向中枢
                 </option>
+                <option value="zs_type_fl" {% if 'zs_type_fl' in zs_bi_type %} selected {% endif %}>分类中枢
+                </option>
             </select>
         </div>
     </div>
 
     <div class="form-group">
-        <label class="col-sm-3 control-label no-padding-right">走势中枢类型</label>
+        <label class="col-sm-3 control-label no-padding-right">线段中枢类型</label>
         <div class="col-sm-9 show-tooltips"
              title="标准中枢，中枢维持，直到出现三类买卖点结束；段内中枢，只计算线段内出现的中枢；方向中枢，严格按照中枢方向生成中枢">
             <select multiple type="select" class="form-control" id="zs_xd_type">
@@ -177,6 +179,8 @@
                 <option value="zs_type_dn" {% if 'zs_type_dn' in zs_xd_type %} selected {% endif %}>段内中枢
                 </option>
                 <option value="zs_type_fx" {% if 'zs_type_fx' in zs_xd_type %} selected {% endif %}>方向中枢
+                </option>
+                <option value="zs_type_fl" {% if 'zs_type_fl' in zs_xd_type %} selected {% endif %}>分类中枢
                 </option>
             </select>
         </div>
@@ -217,6 +221,43 @@
             <div class="col-xs-3">
                 <label>
                     <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_bi == '1' %} checked {% endif %}
+                           id="chart_show_bi">
+                    <span class="lbl">笔</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_xd == '1' %} checked {% endif %}
+                           id="chart_show_xd">
+                    <span class="lbl">线段</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_zsd == '1' %} checked {% endif %}
+                           id="chart_show_zsd">
+                    <span class="lbl">走势段</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_qsd == '1' %} checked {% endif %}
+                           id="chart_show_qsd">
+                    <span class="lbl">趋势段</span>
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
                             {% if chart_show_bi_zs == '1' %} checked {% endif %}
                            id="chart_show_bi_zs">
                     <span class="lbl">笔中枢</span>
@@ -235,12 +276,30 @@
             <div class="col-xs-3">
                 <label>
                     <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_zsd_zs == '1' %} checked {% endif %}
+                           id="chart_show_zsd_zs">
+                    <span class="lbl">走势段中枢</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_qsd_zs == '1' %} checked {% endif %}
+                           id="chart_show_qsd_zs">
+                    <span class="lbl">趋势段中枢</span>
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
                             {% if chart_show_bi_mmd == '1' %} checked {% endif %}
                            id="chart_show_bi_mmd">
                     <span class="lbl">笔买卖点</span>
                 </label>
             </div>
-
             <div class="col-xs-3">
                 <label>
                     <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
@@ -249,8 +308,26 @@
                     <span class="lbl">线段买卖点</span>
                 </label>
             </div>
-        </div>
 
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_zsd_mmd == '1' %} checked {% endif %}
+                           id="chart_show_zsd_mmd">
+
+                    <span class="lbl">走势段买卖点</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_qsd_mmd == '1' %} checked {% endif %}
+                           id="chart_show_qsd_mmd">
+                    <span class="lbl">趋势段买卖点</span>
+                </label>
+            </div>
+        </div>
         <div class="row">
             <div class="col-xs-3">
                 <label>
@@ -267,6 +344,42 @@
                             {% if chart_show_xd_bc == '1' %} checked {% endif %}
                            id="chart_show_xd_bc">
                     <span class="lbl">线段背驰</span>
+                </label>
+            </div>
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_zsd_bc == '1' %} checked {% endif %}
+                           id="chart_show_zsd_bc">
+                    <span class="lbl">走势段背驰</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_qsd_bc == '1' %} checked {% endif %}
+                           id="chart_show_qsd_bc">
+                    <span class="lbl">趋势段背驰</span>
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_infos == '1' %} checked {% endif %}
+                           id="chart_show_infos">
+                    <span class="lbl">形态信息</span>
+                </label>
+            </div>
+
+            <div class="col-xs-3">
+                <label>
+                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
+                            {% if chart_show_fx == '1' %} checked {% endif %}
+                           id="chart_show_fx">
+                    <span class="lbl">强分型</span>
                 </label>
             </div>
 
@@ -290,38 +403,6 @@
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-xs-3">
-                <label>
-                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
-                            {% if chart_show_infos == '1' %} checked {% endif %}
-                           id="chart_show_infos">
-                    <span class="lbl">形态信息</span>
-                </label>
-            </div>
-
-            <div class="col-xs-3">
-                <label>
-                    <input name="form-field-checkbox" type="checkbox" value="1" class="ace"
-                            {% if chart_show_fx == '1' %} checked {% endif %}
-                           id="chart_show_fx">
-                    <span class="lbl">强分型</span>
-                </label>
-            </div>
-
-            <div class="col-xs-3">
-                <label>
-
-                </label>
-            </div>
-
-            <div class="col-xs-3">
-                <label>
-
-                </label>
-            </div>
-        </div>
-
     </div>
     <hr style="clear:both;"/>
     <h4>指标配置</h4>
@@ -332,6 +413,7 @@
                 <option value="none" {% if chart_show_ld == 'none' %} selected {% endif %}>无</option>
                 <option value="bi" {% if chart_show_ld == 'bi' %} selected {% endif %}>笔</option>
                 <option value="xd" {% if chart_show_ld == 'xd' %} selected {% endif %}>线段</option>
+                <option value="zsd" {% if chart_show_ld == 'zsd' %} selected {% endif %}>走势段</option>
             </select>
         </div>
     </div>

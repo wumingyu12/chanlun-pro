@@ -70,6 +70,7 @@ class Config(Enum):
     ZS_TYPE_BZ = 'zs_type_bz'  # 计算的中枢类型，标准中枢，中枢维持的方法
     ZS_TYPE_DN = 'zs_type_dn'  # 计算中枢的类型，段内中枢，形成线段内的中枢
     ZS_TYPE_FX = 'zs_type_fx'  # 计算中枢的类型，方向中枢，进入与离开线的方向相反，严格的分为上涨与下跌中枢
+    ZS_TYPE_FL = 'zs_type_fl'  # 计算中枢的类型，分类中枢，段内中枢的优化，包括的在线段转折的中阴中枢
     ZS_QJ_DD = 'zs_qj_dd'  # 中枢区间，使用线段的顶底点作为区间
     ZS_QJ_CK = 'zs_qj_ck'  # 中枢区间，使用线段中缠论K线的最高最低作为区间
     ZS_QJ_K = 'zs_qj_k'  # 中枢区间，使用线段中原始K线的最高最低作为区间
@@ -250,6 +251,13 @@ class LINE:
         self.low: float = 0  # 根据缠论配置，得来的高低点（顶底高低 或 缠论K线高低 或 原始K线高低）
         self.type: str = _type  # 线的方向类型 （up 上涨  down 下跌）
         self.index: int = index  # 线的索引，后续查找方便
+
+    @abstractmethod
+    def is_done(self):
+        """
+        判断线是否结束
+        """
+        return False
 
     def get_ld(self, cl) -> dict:
         """
@@ -594,6 +602,7 @@ class XLFX:
         self.xls: List[TZXL] = xls
 
         self.qk = False  # 分型是否有缺口
+        self.is_line_bad = False  # 是否是一笔破坏分型
         self.fx_high = max(_xl.max for _xl in self.xls if _xl is not None)
         self.fx_low = min(_xl.min for _xl in self.xls if _xl is not None)
 
@@ -965,11 +974,9 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_level_lines(self) -> List[List[XD]]:
+    def get_qsds(self) -> List[XD]:
         """
-        返回比走势段更高级别的线段，下标从 0 开始，级别依次增大
-        下标 0 ：使用 zsd 走势段进行特征序列划分高级别线段
-        下标 1 ：使用 下标0 的线段，进行特征序列划分高级别线段
+        返回计算缠论趋势段列表
         """
         pass
 
@@ -995,6 +1002,13 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_qsd_zss(self) -> List[ZS]:
+        """
+        返回趋势段中枢
+        """
+        pass
+
+    @abstractmethod
     def get_last_bi_zs(self) -> Union[ZS, None]:
         """
         返回最后的笔中枢，根据最后几笔倒推出的笔中枢，和 self.get_bi_zss()[-1] 方式获取的中枢不一定一致
@@ -1009,11 +1023,12 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def create_dn_zs(self, zs_type: str, lines: List[LINE]) -> List[ZS]:
+    def create_dn_zs(self, zs_type: str, lines: List[LINE], max_line_num: int = 999) -> List[ZS]:
         """
         创建段内中枢
         @param zs_type: 中枢类型：bi 笔中枢 xd 线段中枢
         @param lines: 线的列表
+        @param max_line_num: 中枢最大线段数量
         """
         pass
 
@@ -1133,14 +1148,16 @@ def user_custom_mmd(cd: ICL, line: Union[BI, XD], lines: List[Union[BI, XD]], zs
                 continue
             line.add_mmd('l2sell', new_zss[0], zs_type, msg='二卖后，重叠中枢后，不创二卖高点，形成类二卖')
 
-    # 类三类买卖点，如果前一笔同向的线段出现三类买卖点，当前与三类买卖点笔有重叠（形成中枢），不创前一笔的高点或低点，增加类三类买卖点
+    # 类三类买卖点，如果前一笔同向的线段出现三类买卖点，当前与三类买卖点笔有重叠（形成中枢），不创前中枢的高低点，并且力度笔三类买卖点小，增加类三类买卖点
     for mmd in pre_same_line.get_mmds(zs_type):
-        if line.type == 'down' and mmd.name == '3buy' and line.low > pre_same_line.low:
+        if line.type == 'down' and mmd.name == '3buy' and \
+                line.low > mmd.zs.zg and compare_ld_beichi(pre_same_line.get_ld(cd), line.get_ld(cd), 'down'):
             new_zss = cd.create_dn_zs('', lines[-4:])  # 从三买的前一段到现在一段，共4段形成的中枢
             if len(new_zss) != 1:
                 continue
             line.add_mmd('l3buy', new_zss[0], zs_type, msg='三买后，重叠中枢后，不创三买低点，形成类三买')
-        if line.type == 'up' and mmd.name == '3sell' and line.high < pre_same_line.high:
+        if line.type == 'up' and mmd.name == '3sell' and \
+                line.high < mmd.zs.zd and compare_ld_beichi(pre_same_line.get_ld(cd), line.get_ld(cd), 'up'):
             new_zss = cd.create_dn_zs('', lines[-4:])  # 从三卖的前一段到现在一段，共4段形成的中枢
             if len(new_zss) != 1:
                 continue

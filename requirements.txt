@@ -22,3 +22,4 @@ alpaca-trade-api
 mytt
 protobuf~=3.20.1
 tenacity
+gm

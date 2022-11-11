@@ -207,12 +207,22 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         # 画图默认配置
         'chart_show_infos': '1',
         'chart_show_fx': '1',
+        'chart_show_bi': '1',
+        'chart_show_xd': '1',
+        'chart_show_zsd': '1',
+        'chart_show_qsd': '0',
         'chart_show_bi_zs': '1',
         'chart_show_xd_zs': '1',
+        'chart_show_zsd_zs': '1',
+        'chart_show_qsd_zs': '0',
         'chart_show_bi_mmd': '1',
         'chart_show_xd_mmd': '1',
+        'chart_show_zsd_mmd': '1',
+        'chart_show_qsd_mmd': '1',
         'chart_show_bi_bc': '1',
         'chart_show_xd_bc': '1',
+        'chart_show_zsd_bc': '1',
+        'chart_show_qsd_bc': '1',
         'chart_show_ma': '1',
         'chart_show_boll': '1',
         'chart_show_futu': 'macd',
@@ -387,62 +397,72 @@ def cl_date_to_tv_chart(cd: ICL, config):
     将缠论数据，转换成 tv 画图的坐标数据
     """
     bi_chart_data = []
-    for bi in cd.get_bis():
-        bi_chart_data.append({
-            'points': [
-                {'time': fun.datetime_to_int(bi.start.k.date), 'price': bi.start.val},
-                {'time': fun.datetime_to_int(bi.end.k.date), 'price': bi.end.val},
-            ],
-            'linestyle': '0' if bi.is_done() else '1',
-        })
+    if config['chart_show_bi'] == '1':
+        for bi in cd.get_bis():
+            bi_chart_data.append({
+                'points': [
+                    {'time': fun.datetime_to_int(bi.start.k.date), 'price': bi.start.val},
+                    {'time': fun.datetime_to_int(bi.end.k.date), 'price': bi.end.val},
+                ],
+                'linestyle': '0' if bi.is_done() else '1',
+            })
 
     xd_chart_data = []
-    for xd in cd.get_xds():
-        xd_chart_data.append({
-            'points': [
-                {'time': fun.datetime_to_int(xd.start.k.date), 'price': xd.start.val},
-                {'time': fun.datetime_to_int(xd.end.k.date), 'price': xd.end.val},
-            ],
-            'linestyle': '0' if xd.is_done() else '1',
-        })
+    if config['chart_show_xd'] == '1':
+        for xd in cd.get_xds():
+            xd_chart_data.append({
+                'points': [
+                    {'time': fun.datetime_to_int(xd.start.k.date), 'price': xd.start.val},
+                    {'time': fun.datetime_to_int(xd.end.k.date), 'price': xd.end.val},
+                ],
+                'linestyle': '0' if xd.is_done() else '1',
+            })
+
     zsd_chart_data = []
-    for zsd in cd.get_zsds():
-        zsd_chart_data.append({
-            'points': [
-                {'time': fun.datetime_to_int(zsd.start.k.date), 'price': zsd.start.val},
-                {'time': fun.datetime_to_int(zsd.end.k.date), 'price': zsd.end.val},
-            ],
-            'linestyle': '0' if zsd.is_done() else '1',
-        })
+    if config['chart_show_zsd'] == '1':
+        for zsd in cd.get_zsds():
+            zsd_chart_data.append({
+                'points': [
+                    {'time': fun.datetime_to_int(zsd.start.k.date), 'price': zsd.start.val},
+                    {'time': fun.datetime_to_int(zsd.end.k.date), 'price': zsd.end.val},
+                ],
+                'linestyle': '0' if zsd.is_done() else '1',
+            })
+
     bi_zs_chart_data = []
-    for zs_type in config['zs_bi_type']:
-        for zs in cd.get_bi_zss(zs_type):
-            bi_zs_chart_data.append({
-                'points': [
-                    {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.start.val},
-                    {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.end.val},
-                ],
-                'linestyle': '0' if zs.done else '1',
-            })
+    if config['chart_show_bi_zs'] == '1':
+        for zs_type in config['zs_bi_type']:
+            for zs in cd.get_bi_zss(zs_type):
+                bi_zs_chart_data.append({
+                    'points': [
+                        {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.zg},
+                        {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.zd},
+                    ],
+                    'linestyle': '0' if zs.done else '1',
+                })
+
     xd_zs_chart_data = []
-    for zs_type in config['zs_xd_type']:
-        for zs in cd.get_xd_zss(zs_type):
-            xd_zs_chart_data.append({
+    if config['chart_show_xd_zs'] == '1':
+        for zs_type in config['zs_xd_type']:
+            for zs in cd.get_xd_zss(zs_type):
+                xd_zs_chart_data.append({
+                    'points': [
+                        {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.zg},
+                        {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.zd},
+                    ],
+                    'linestyle': '0' if zs.done else '1',
+                })
+
+    zsd_zs_chart_data = []
+    if config['chart_show_zsd_zs'] == '1':
+        for zs in cd.get_zsd_zss():
+            zsd_zs_chart_data.append({
                 'points': [
-                    {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.start.val},
-                    {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.end.val},
+                    {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.zg},
+                    {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.zd},
                 ],
                 'linestyle': '0' if zs.done else '1',
             })
-    zsd_zs_chart_data = []
-    for zs in cd.get_zsd_zss():
-        zsd_zs_chart_data.append({
-            'points': [
-                {'time': fun.datetime_to_int(zs.start.k.date), 'price': zs.start.val},
-                {'time': fun.datetime_to_int(zs.end.k.date), 'price': zs.end.val},
-            ],
-            'linestyle': '0' if zs.done else '1',
-        })
 
     # 背驰信息
     bc_infos = {}
@@ -454,11 +474,12 @@ def cl_date_to_tv_chart(cd: ICL, config):
         'xd': cd.get_xds(),
         'zsd': cd.get_zsds(),
     }
-    line_type_map = {'bi': '笔', 'xd': '线段', 'zsd': '走势段'}
-    bc_type_map = {'bi': '笔背驰', 'xd': '线段背驰', 'pz': '盘整背驰', 'qs': '趋势背驰'}
+    line_type_map = {'bi': '笔', 'xd': '段', 'zsd': '走', 'qsd': '趋'}
+    bc_type_map = {'bi': '笔背驰', 'xd': '线段背驰', 'zsd': '走势段背驰', 'qsd': '趋势段背驰', 'pz': '盘整背驰',
+                   'qs': '趋势背驰'}
     mmd_type_map = {
-        '1buy': '一买', '2buy': '二买', 'l2buy': '类二买', '3buy': '三买', 'l3buy': '类三买',
-        '1sell': '一卖', '2sell': '二卖', 'l2sell': '类二卖', '3sell': '三卖', 'l3sell': '类三卖'
+        '1buy': '1B', '2buy': '2B', 'l2buy': 'L2B', '3buy': '3B', 'l3buy': 'L3B',
+        '1sell': '1S', '2sell': '2S', 'l2sell': 'L2S', '3sell': '3S', 'l3sell': 'L3S'
     }
     for line_type, ls in lines.items():
         for l in ls:
@@ -469,12 +490,13 @@ def cl_date_to_tv_chart(cd: ICL, config):
                     'bc_types': [],
                     'bc_texts': []
                 }
-            for bc in bcs:
-                if bc not in bc_infos[l.end.k.date]['bc_types']:
-                    bc_infos[l.end.k.date]['bc_types'].append(bc)
-                    bc_infos[l.end.k.date]['bc_texts'].append(f"{line_type_map[line_type]} {bc_type_map[bc]}")
+            if config[f'chart_show_{line_type}_bc'] == '1':
+                for bc in bcs:
+                    bc_text = f"{line_type_map[line_type]} {bc_type_map[bc]}"
+                    if bc_text not in bc_infos[l.end.k.date]['bc_texts']:
+                        bc_infos[l.end.k.date]['bc_types'].append(bc)
+                        bc_infos[l.end.k.date]['bc_texts'].append(bc_text)
 
-            pass
             mmds = l.line_mmds('|')
             if len(mmds) != 0 and l.end.k.date not in mmd_infos.keys():
                 mmd_infos[l.end.k.date] = {
@@ -482,10 +504,12 @@ def cl_date_to_tv_chart(cd: ICL, config):
                     'mmd_types': [],
                     'mmd_texts': []
                 }
-            for mmd in mmds:
-                if f'{line_type}_{mmd}' not in mmd_infos[l.end.k.date]['mmd_types']:
-                    mmd_infos[l.end.k.date]['mmd_types'].append(f'{line_type}_{mmd}')
-                    mmd_infos[l.end.k.date]['mmd_texts'].append(f"{line_type_map[line_type]} {mmd_type_map[mmd]}")
+            if config[f'chart_show_{line_type}_mmd'] == '1':
+                for mmd in mmds:
+                    mmd_text = f"{line_type_map[line_type]} {mmd_type_map[mmd]}"
+                    if mmd_text not in mmd_infos[l.end.k.date]['mmd_texts']:
+                        mmd_infos[l.end.k.date]['mmd_types'].append(f'{line_type}_{mmd}')
+                        mmd_infos[l.end.k.date]['mmd_texts'].append(mmd_text)
 
     bc_chart_data = []
     for dt, bc in bc_infos.items():

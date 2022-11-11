@@ -94,8 +94,6 @@ export class UDFCompatibleDatafeedBase implements IExternalDatafeed, IDatafeedQu
 
     private readonly _requester: Requester;
 
-    public bars_result: GetBarsResult;
-
     protected constructor(datafeedURL: string, quotesProvider: IQuotesProvider, requester: Requester, updateFrequency: number = 10 * 1000) {
         this._datafeedURL = datafeedURL;
         this._requester = requester;
@@ -104,19 +102,6 @@ export class UDFCompatibleDatafeedBase implements IExternalDatafeed, IDatafeedQu
 
         this._dataPulseProvider = new DataPulseProvider(this._historyProvider, updateFrequency);
         this._quotesPulseProvider = new QuotesPulseProvider(this._quotesProvider);
-
-        this.bars_result = {
-            bars: [],
-            meta: {},
-            bis: [],
-            xds: [],
-            zsds: [],
-            bi_zss: [],
-            xd_zss: [],
-            zsd_zss: [],
-            bcs: [],
-            mmds: []
-        };
 
         this._configurationReadyPromise = this._requestConfiguration()
             .then((configuration: UdfCompatibleConfiguration | null) => {
@@ -321,7 +306,6 @@ export class UDFCompatibleDatafeedBase implements IExternalDatafeed, IDatafeedQu
     public getBars(symbolInfo: LibrarySymbolInfo, resolution: ResolutionString, periodParams: PeriodParamsWithOptionalCountback, onResult: HistoryCallback, onError: ErrorCallback): void {
         this._historyProvider.getBars(symbolInfo, resolution, periodParams)
             .then((result: GetBarsResult) => {
-                this.bars_result = result;
                 onResult(result.bars, result.meta);
             })
             .catch(onError);
