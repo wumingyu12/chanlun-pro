@@ -221,7 +221,6 @@ def history(request):
 
     # 记录最开始的一根k线时间
     load_old_kline_times[_symbol_res_old_k_time_key] = fun.datetime_to_int(klines.iloc[0]['date'])
-    print(load_old_kline_times[_symbol_res_old_k_time_key])
 
     cl_chart_config = query_cl_chart_config(market, code)
     cd = batch_cls(code, {frequency: klines}, cl_chart_config, )[0]

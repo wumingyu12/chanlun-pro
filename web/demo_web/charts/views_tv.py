@@ -40,6 +40,11 @@ market_types = {
     'a': 'stock',
 }
 
+# 记录背驰marks 记录
+load_bc_marks_cache = {}
+# 记录最后历史k线的最后时间
+load_old_kline_times = {}
+
 
 def index_show(request):
     """
@@ -159,7 +164,7 @@ def history(request):
     """
     K线柱
     """
-    global load_bc_marks_cache
+    global load_bc_marks_cache, load_old_kline_times
 
     symbol = request.GET.get('symbol')
     _from = request.GET.get('from')
@@ -167,8 +172,13 @@ def history(request):
     resolution = request.GET.get('resolution')
     countback = request.GET.get('countback')
 
+    _symbol_res_old_k_time_key = f'{symbol}_{resolution}'
+    old_k_time = 0
+    if _symbol_res_old_k_time_key in load_old_kline_times.keys():
+        old_k_time = load_old_kline_times[_symbol_res_old_k_time_key]
+
     now_time = fun.datetime_to_int(datetime.datetime.now())
-    if int(_from) < 0 or int(_to) < 0 or int(_to) < (now_time - 8 * 24 * 60 * 60):
+    if int(_to) < old_k_time:
         return response_as_json({'s': 'no_data', 'errmsg': '不支持历史数据加载', 'nextTime': now_time + 3})
 
     market = symbol.split(':')[0]
@@ -177,6 +187,9 @@ def history(request):
     ex = get_exchange(Market(market))
     frequency = resolution_maps[resolution]
     klines = ex.klines(code, frequency)
+
+    # 记录最开始的一根k线时间
+    load_old_kline_times[_symbol_res_old_k_time_key] = fun.datetime_to_int(klines.iloc[0]['date'])
 
     cl_chart_config = {
         # 缠论默认配置项
