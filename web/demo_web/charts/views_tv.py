@@ -211,6 +211,23 @@ def history(request):
         'idx_macd_fast': 12,
         'idx_macd_slow': 26,
         'idx_macd_signal': 9,
+        'chart_show_fx': '1',
+        'chart_show_bi': '1',
+        'chart_show_xd': '1',
+        'chart_show_zsd': '1',
+        'chart_show_qsd': '0',
+        'chart_show_bi_zs': '1',
+        'chart_show_xd_zs': '1',
+        'chart_show_zsd_zs': '1',
+        'chart_show_qsd_zs': '0',
+        'chart_show_bi_mmd': '1',
+        'chart_show_xd_mmd': '1',
+        'chart_show_zsd_mmd': '1',
+        'chart_show_qsd_mmd': '1',
+        'chart_show_bi_bc': '1',
+        'chart_show_xd_bc': '1',
+        'chart_show_zsd_bc': '1',
+        'chart_show_qsd_bc': '1',
     }
     cd = batch_cls(code, {frequency: klines}, cl_chart_config, )[0]
 
