@@ -3,7 +3,7 @@
 <html lang="zh">
 <head>
 
-    <title>缠论解盘 - TradingView Charting</title>
+    <title>缠论解盘 - TradingView Chart</title>
 
     <!-- Fix for iOS Safari zooming bug -->
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
@@ -67,11 +67,14 @@
 
                 symbol_search_request_delay: 100,
                 auto_save_delay: 5,
-                study_count_limit: 10,
+                study_count_limit: 100,
 
                 saved_data_meta_info: {
                     'uid': 1, 'name': 'default', 'description': 'default'
                 },
+{#                {% if is_mobile %}#}
+{#                    preset: "mobile",#}
+{#                {% endif %}#}
 
                 charts_storage_url: '/tv',
                 charts_storage_api_version: "1.1",
@@ -344,34 +347,39 @@
 
 </head>
 
-<body style="margin:0;">
-<div style="position: relative;">
-    <div id="tv_chart_container" style="float: left; width: 90%;"></div>
-    <div style="float: left; width: 10%;">
-        <h4>自选列表</h4>
-        <hr/>
-        <form class="form-inline">
-            <div class="form-group">
-                <label for="market">
-                    <select name="market" class="form-control" id="market">
-                        <option value="a">沪深A股</option>
-                        <option value="hk">港股</option>
-                        <option value="us">美股</option>
-                        <option value="futures">期货</option>
-                        <option value="currency">数字货币</option>
-                    </select>
-                </label>
-            </div>
-            <div class="form-group">
-                <label for="zx_group">
-                    <select name="zx_group" class="form-control" id="zx_group">
-                        <option value="我的持仓">我的持仓</option>
-                    </select>
-                </label>
-            </div>
-        </form>
-        <ul class="nav nav-list" id="my_stocks" style="height: 600px; overflow: auto;">
-        </ul>
+<body>
+<div class="container-fluid" style="padding: 0;">
+    <div class="row-fluid">
+        <div id="tv_chart_container"
+             class="{% if is_mobile %}col-xs-12 col-sm-12 col-md-12 col-lg-12{% else %}col-xs-11 col-sm-11 col-md-11 col-lg-11{% endif %}"
+             style="padding: 0;margin: 0;"></div>
+        <div class="{% if is_mobile %}col-xs-12 col-sm-12 col-md-12 col-lg-12{% else %}col-xs-1 col-sm-1 col-md-1 col-lg-1{% endif %}"
+             style="padding: 0;margin: 0;">
+            <h4>自选列表</h4>
+            <hr/>
+            <form class="form-inline">
+                <div class="form-group">
+                    <label for="market">
+                        <select name="market" class="form-control" id="market">
+                            <option value="a">沪深A股</option>
+                            <option value="hk">港股</option>
+                            <option value="us">美股</option>
+                            <option value="futures">期货</option>
+                            <option value="currency">数字货币</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="zx_group">
+                        <select name="zx_group" class="form-control" id="zx_group">
+                            <option value="我的持仓">我的持仓</option>
+                        </select>
+                    </label>
+                </div>
+            </form>
+            <ul class="nav nav-list" id="my_stocks" style="height: 600px; overflow: auto;">
+            </ul>
+        </div>
     </div>
 </div>
 </body>

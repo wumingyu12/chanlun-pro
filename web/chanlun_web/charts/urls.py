@@ -81,6 +81,7 @@ urlpatterns = [
     path('tv/symbols', views_tv.symbols),
     path('tv/search', views_tv.search),
     path('tv/history', views_tv.history),
+    path('tv/marks', views_tv.marks),
     path('tv/time', views_tv.time),
     path('tv/1.1/charts', views_tv.charts),
     path('tv/1.1/study_templates', views_tv.study_templates),

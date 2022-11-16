@@ -124,7 +124,8 @@ class ExchangeTq(Exchange):
         g_look.acquire()
         frequency_maps = {
             'w': 7 * 24 * 60 * 60, 'd': 24 * 60 * 60, '60m': 60 * 60, '30m': 30 * 60, '15m': 15 * 60,
-            '10m': 10 * 60, '6m': 6 * 60, '5m': 5 * 60, '1m': 1 * 60, '30s': 30, '10s': 10
+            '10m': 10 * 60, '6m': 6 * 60, '5m': 5 * 60, '3m': 3 * 60, '2m': 2 * 60, '1m': 1 * 60,
+            '30s': 30, '10s': 10
         }
 
         if start_date is not None and end_date is not None:

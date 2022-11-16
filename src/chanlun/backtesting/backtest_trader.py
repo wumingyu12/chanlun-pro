@@ -1,4 +1,5 @@
 import pickle
+import time
 
 from chanlun import rd
 from chanlun.backtesting.base import Strategy, Operation, POSITION, MarketDatas
@@ -40,6 +41,13 @@ class BackTestTrader(object):
         # 是否打印日志
         self.log = log
         self.log_history = []
+
+        # 时间统计
+        self._use_times = {
+            'strategy_close': 0,
+            'strategy_open': 0,
+            'execute': 0,
+        }
 
         # 策略对象
         self.strategy: Strategy = None
@@ -146,7 +154,11 @@ class BackTestTrader(object):
                 pos = self.positions[code][mmd]
                 if pos.balance == 0:
                     continue
+
+                _time = time.time()
                 opt = self.strategy.close(code=code, mmd=mmd, pos=pos, market_data=self.datas)
+                self._use_times['strategy_close'] += time.time() - _time
+
                 if opt is False or opt is None:
                     continue
                 if isinstance(opt, Operation):
@@ -156,7 +168,11 @@ class BackTestTrader(object):
 
         # 再执行检查机会方法
         poss = self.positions[code] if code in self.positions.keys() else {}
+
+        _time = time.time()
         opts = self.strategy.open(code=code, market_data=self.datas, poss=poss)
+        self._use_times['strategy_open'] += time.time() - _time
+
         for opt in opts:
             self.execute(code, opt)
 
@@ -432,220 +448,224 @@ class BackTestTrader(object):
 
     # 执行操作
     def execute(self, code, opt: Operation):
-        opt_mmd = opt.mmd
-        # 检查是否在允许做的买卖点上
-        if self.allow_mmds is not None and opt_mmd not in self.allow_mmds:
-            return True
+        _time = time.time()
+        try:
+            opt_mmd = opt.mmd
+            # 检查是否在允许做的买卖点上
+            if self.allow_mmds is not None and opt_mmd not in self.allow_mmds:
+                return True
 
-        pos = self.query_code_mmd_pos(code, opt_mmd)
-        res = None
-        order_type = None
+            pos = self.query_code_mmd_pos(code, opt_mmd)
+            res = None
+            order_type = None
 
-        # 期货，进行锁仓操作
-        if self.is_futures and opt.opt == 'lock':
-            return self.lock_position(code, pos, opt)
-        # 期货，进行平仓锁仓操作
-        if self.is_futures and opt.opt == 'unlock':
-            return self.unlock_position(code, pos, opt)
+            # 期货，进行锁仓操作
+            if self.is_futures and opt.opt == 'lock':
+                return self.lock_position(code, pos, opt)
+            # 期货，进行平仓锁仓操作
+            if self.is_futures and opt.opt == 'unlock':
+                return self.unlock_position(code, pos, opt)
 
-        # 买点，买入，开仓做多
-        if 'buy' in opt_mmd and opt.opt == 'buy':
-            # 判断当前是否满仓
-            if pos.now_pos_rate >= 1:
-                return False
-            # 唯一key判断
-            if opt.key in pos.open_keys.keys():
-                return False
-            # 修正错误的开仓比例
-            opt.pos_rate = min(1.0 - pos.now_pos_rate, opt.pos_rate)
+            # 买点，买入，开仓做多
+            if 'buy' in opt_mmd and opt.opt == 'buy':
+                # 判断当前是否满仓
+                if pos.now_pos_rate >= 1:
+                    return False
+                # 唯一key判断
+                if opt.key in pos.open_keys.keys():
+                    return False
+                # 修正错误的开仓比例
+                opt.pos_rate = min(1.0 - pos.now_pos_rate, opt.pos_rate)
 
-            res = self.open_buy(code, opt)
-            if res is False:
-                return False
+                res = self.open_buy(code, opt)
+                if res is False:
+                    return False
 
-            pos.type = '做多'
-            pos.price = res['price']
-            pos.amount = res['amount']
-            pos.balance = res['price'] * res['amount']
-            pos.loss_price = opt.loss_price
-            pos.open_date = self.get_now_datetime().strftime('%Y-%m-%d')
-            pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
-            pos.open_msg = opt.msg
-            pos.info = opt.info
-            pos.now_pos_rate += min(1., opt.pos_rate)
-            pos.open_keys[opt.key] = opt.pos_rate
+                pos.type = '做多'
+                pos.price = res['price']
+                pos.amount = res['amount']
+                pos.balance = res['price'] * res['amount']
+                pos.loss_price = opt.loss_price
+                pos.open_date = self.get_now_datetime().strftime('%Y-%m-%d')
+                pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
+                pos.open_msg = opt.msg
+                pos.info = opt.info
+                pos.now_pos_rate += min(1., opt.pos_rate)
+                pos.open_keys[opt.key] = opt.pos_rate
 
-            order_type = 'open_long'
+                order_type = 'open_long'
 
-            self._print_log(
-                f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做多买入（{res['price']} - {res['amount']}），原因： {opt.msg}"
-            )
+                self._print_log(
+                    f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做多买入（{res['price']} - {res['amount']}），原因： {opt.msg}"
+                )
 
-        # 卖点，买入，开仓做空（期货）
-        if self.is_futures and 'sell' in opt_mmd and opt.opt == 'buy':
-            # 判断当前是否满仓
-            if pos.now_pos_rate >= 1:
-                return False
-            # 唯一key判断
-            if opt.key in pos.open_keys.keys():
-                return False
-            # 修正错误的开仓比例
-            opt.pos_rate = min(1.0 - pos.now_pos_rate, opt.pos_rate)
+            # 卖点，买入，开仓做空（期货）
+            if self.is_futures and 'sell' in opt_mmd and opt.opt == 'buy':
+                # 判断当前是否满仓
+                if pos.now_pos_rate >= 1:
+                    return False
+                # 唯一key判断
+                if opt.key in pos.open_keys.keys():
+                    return False
+                # 修正错误的开仓比例
+                opt.pos_rate = min(1.0 - pos.now_pos_rate, opt.pos_rate)
 
-            res = self.open_sell(code, opt)
-            if res is False:
-                return False
-            pos.type = '做空'
-            pos.price = res['price']
-            pos.amount = res['amount']
-            pos.balance = res['price'] * res['amount']
-            pos.loss_price = opt.loss_price
-            pos.open_date = self.get_now_datetime().strftime('%Y-%m-%d')
-            pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
-            pos.open_msg = opt.msg
-            pos.info = opt.info
-            pos.now_pos_rate += min(1., opt.pos_rate)
-            pos.open_keys[opt.key] = opt.pos_rate
+                res = self.open_sell(code, opt)
+                if res is False:
+                    return False
+                pos.type = '做空'
+                pos.price = res['price']
+                pos.amount = res['amount']
+                pos.balance = res['price'] * res['amount']
+                pos.loss_price = opt.loss_price
+                pos.open_date = self.get_now_datetime().strftime('%Y-%m-%d')
+                pos.open_datetime = self.get_now_datetime().strftime('%Y-%m-%d %H:%M:%S')
+                pos.open_msg = opt.msg
+                pos.info = opt.info
+                pos.now_pos_rate += min(1., opt.pos_rate)
+                pos.open_keys[opt.key] = opt.pos_rate
 
-            order_type = 'open_short'
+                order_type = 'open_short'
 
-            self._print_log(
-                f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做空卖出（{res['price']} - {res['amount']}），原因： {opt.msg}"
-            )
+                self._print_log(
+                    f"[{code} - {self.get_now_datetime()}] // {opt_mmd} 做空卖出（{res['price']} - {res['amount']}），原因： {opt.msg}"
+                )
 
-        # 卖点，卖出，平仓做空（期货）
-        if self.is_futures and 'sell' in opt_mmd and opt.opt == 'sell':
-            # 判断当前是否有仓位
-            if pos.now_pos_rate <= 0:
-                return False
-            # 唯一key判断
-            if opt.key in pos.close_keys.keys():
-                return False
-            # 修正错误的平仓比例
-            opt.pos_rate = pos.now_pos_rate if pos.now_pos_rate < opt.pos_rate else opt.pos_rate
+            # 卖点，卖出，平仓做空（期货）
+            if self.is_futures and 'sell' in opt_mmd and opt.opt == 'sell':
+                # 判断当前是否有仓位
+                if pos.now_pos_rate <= 0:
+                    return False
+                # 唯一key判断
+                if opt.key in pos.close_keys.keys():
+                    return False
+                # 修正错误的平仓比例
+                opt.pos_rate = pos.now_pos_rate if pos.now_pos_rate < opt.pos_rate else opt.pos_rate
 
-            if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
-                # 股票交易，当日不能卖出
-                return False
-            if len(pos.lock_positions) > 0:
-                # 有锁仓记录，先平仓锁仓记录
-                self.unlock_position(code, pos, opt)
+                if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
+                    # 股票交易，当日不能卖出
+                    return False
+                if len(pos.lock_positions) > 0:
+                    # 有锁仓记录，先平仓锁仓记录
+                    self.unlock_position(code, pos, opt)
 
-            res = self.close_sell(code, pos, opt)
-            if res is False:
-                return False
+                res = self.close_sell(code, pos, opt)
+                if res is False:
+                    return False
 
-            sell_balance = res['price'] * res['amount']
-            hold_balance = pos.balance * opt.pos_rate
+                sell_balance = res['price'] * res['amount']
+                hold_balance = pos.balance * opt.pos_rate
 
-            # 做空收益：持仓金额 减去 卖出金额的 差价，加上锁仓的收益 - 手续费（双边手续费）
-            fee_use = (sell_balance * self.fee_rate * 2)
-            profit = hold_balance - sell_balance + sum(
-                [(_p.amount * _p.price) * (_p.profit_rate / 100) for _p in pos.lock_positions.values()]
-            ) - fee_use
-            profit_rate = round((profit / hold_balance) * 100, 2)
+                # 做空收益：持仓金额 减去 卖出金额的 差价，加上锁仓的收益 - 手续费（双边手续费）
+                fee_use = (sell_balance * self.fee_rate * 2)
+                profit = hold_balance - sell_balance + sum(
+                    [(_p.amount * _p.price) * (_p.profit_rate / 100) for _p in pos.lock_positions.values()]
+                ) - fee_use
+                profit_rate = round((profit / hold_balance) * 100, 2)
 
-            self._print_log('[%s - %s] // %s 平仓做空（%s - %s） 盈亏：%s (%.2f%%)，原因： %s' % (
-                code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
+                self._print_log('[%s - %s] // %s 平仓做空（%s - %s） 盈亏：%s (%.2f%%)，原因： %s' % (
+                    code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
 
-            if self.mode == 'signal':
-                self.fee_total += fee_use
+                if self.mode == 'signal':
+                    self.fee_total += fee_use
 
-            pos.profit += profit
-            pos.now_pos_rate -= opt.pos_rate
-            pos.close_keys[opt.key] = opt.pos_rate
+                pos.profit += profit
+                pos.now_pos_rate -= opt.pos_rate
+                pos.close_keys[opt.key] = opt.pos_rate
 
-            if pos.now_pos_rate <= 0:
-                if pos.profit > 0:
-                    # 盈利
-                    self.results[opt_mmd]['win_num'] += 1
-                    self.results[opt_mmd]['win_balance'] += pos.profit
-                else:
-                    # 亏损
-                    self.results[opt_mmd]['loss_num'] += 1
-                    self.results[opt_mmd]['loss_balance'] += abs(pos.profit)
+                if pos.now_pos_rate <= 0:
+                    if pos.profit > 0:
+                        # 盈利
+                        self.results[opt_mmd]['win_num'] += 1
+                        self.results[opt_mmd]['win_balance'] += pos.profit
+                    else:
+                        # 亏损
+                        self.results[opt_mmd]['loss_num'] += 1
+                        self.results[opt_mmd]['loss_balance'] += abs(pos.profit)
 
-                profit_rate = round((pos.profit / pos.balance) * 100, 2)
-                pos.profit_rate = profit_rate
-                pos.close_msg = opt.msg
-                # 清空持仓
-                self.reset_pos(code, opt_mmd)
+                    profit_rate = round((pos.profit / pos.balance) * 100, 2)
+                    pos.profit_rate = profit_rate
+                    pos.close_msg = opt.msg
+                    # 清空持仓
+                    self.reset_pos(code, opt_mmd)
 
-            order_type = 'close_short'
+                order_type = 'close_short'
 
-        # 买点，卖出，平仓做多
-        if 'buy' in opt_mmd and opt.opt == 'sell':
-            # 判断当前是否有仓位
-            if pos.now_pos_rate <= 0:
-                return False
-            # 唯一key判断
-            if opt.key in pos.close_keys.keys():
-                return False
-            # 修正错误的平仓比例
-            opt.pos_rate = pos.now_pos_rate if pos.now_pos_rate < opt.pos_rate else opt.pos_rate
+            # 买点，卖出，平仓做多
+            if 'buy' in opt_mmd and opt.opt == 'sell':
+                # 判断当前是否有仓位
+                if pos.now_pos_rate <= 0:
+                    return False
+                # 唯一key判断
+                if opt.key in pos.close_keys.keys():
+                    return False
+                # 修正错误的平仓比例
+                opt.pos_rate = pos.now_pos_rate if pos.now_pos_rate < opt.pos_rate else opt.pos_rate
 
-            if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
-                # 股票交易，当日不能卖出
-                return False
-            if len(pos.lock_positions) > 0:
-                # 有锁仓记录，先平仓锁仓记录
-                self.unlock_position(code, pos, opt)
+                if self.is_stock and pos.open_date == self.get_now_datetime().strftime('%Y-%m-%d'):
+                    # 股票交易，当日不能卖出
+                    return False
+                if len(pos.lock_positions) > 0:
+                    # 有锁仓记录，先平仓锁仓记录
+                    self.unlock_position(code, pos, opt)
 
-            res = self.close_buy(code, pos, opt)
-            if res is False:
-                return False
+                res = self.close_buy(code, pos, opt)
+                if res is False:
+                    return False
 
-            sell_balance = res['price'] * res['amount']
-            hold_balance = pos.balance * opt.pos_rate
-            # 做出收益：卖出金额 减去 持有金额的 差价，加上锁仓的收益 - 手续费（双边手续费）
-            fee_use = sell_balance * self.fee_rate * 2
-            profit = sell_balance - hold_balance + sum(
-                [(_p.amount * _p.price) * (_p.profit_rate / 100) for _p in pos.lock_positions.values()]
-            ) - fee_use
-            profit_rate = round((profit / hold_balance) * 100, 2)
+                sell_balance = res['price'] * res['amount']
+                hold_balance = pos.balance * opt.pos_rate
+                # 做出收益：卖出金额 减去 持有金额的 差价，加上锁仓的收益 - 手续费（双边手续费）
+                fee_use = sell_balance * self.fee_rate * 2
+                profit = sell_balance - hold_balance + sum(
+                    [(_p.amount * _p.price) * (_p.profit_rate / 100) for _p in pos.lock_positions.values()]
+                ) - fee_use
+                profit_rate = round((profit / hold_balance) * 100, 2)
 
-            self._print_log('[%s - %s] // %s 平仓做多（%s - %s） 盈亏：%s  (%.2f%%)，原因： %s' % (
-                code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
+                self._print_log('[%s - %s] // %s 平仓做多（%s - %s） 盈亏：%s  (%.2f%%)，原因： %s' % (
+                    code, self.get_now_datetime(), opt_mmd, res['price'], res['amount'], profit, profit_rate, opt.msg))
 
-            pos.profit += profit
-            pos.now_pos_rate -= opt.pos_rate
-            pos.close_keys[opt.key] = opt.pos_rate
+                pos.profit += profit
+                pos.now_pos_rate -= opt.pos_rate
+                pos.close_keys[opt.key] = opt.pos_rate
 
-            if self.mode == 'signal':
-                self.fee_total += fee_use
+                if self.mode == 'signal':
+                    self.fee_total += fee_use
 
-            if pos.now_pos_rate <= 0:
-                if pos.profit > 0:
-                    # 盈利
-                    self.results[opt_mmd]['win_num'] += 1
-                    self.results[opt_mmd]['win_balance'] += pos.profit
-                else:
-                    # 亏损
-                    self.results[opt_mmd]['loss_num'] += 1
-                    self.results[opt_mmd]['loss_balance'] += abs(pos.profit)
+                if pos.now_pos_rate <= 0:
+                    if pos.profit > 0:
+                        # 盈利
+                        self.results[opt_mmd]['win_num'] += 1
+                        self.results[opt_mmd]['win_balance'] += pos.profit
+                    else:
+                        # 亏损
+                        self.results[opt_mmd]['loss_num'] += 1
+                        self.results[opt_mmd]['loss_balance'] += abs(pos.profit)
 
-                profit_rate = round((pos.profit / pos.balance) * 100, 2)
-                pos.profit_rate = profit_rate
-                pos.close_msg = opt.msg
-                # 清空持仓
-                self.reset_pos(code, opt_mmd)
+                    profit_rate = round((pos.profit / pos.balance) * 100, 2)
+                    pos.profit_rate = profit_rate
+                    pos.close_msg = opt.msg
+                    # 清空持仓
+                    self.reset_pos(code, opt_mmd)
 
-            order_type = 'close_long'
+                order_type = 'close_long'
 
-        if res:
-            # 记录订单信息
-            if code not in self.orders:
-                self.orders[code] = []
-            self.orders[code].append({
-                'datetime': self.get_now_datetime(),
-                'type': order_type,
-                'price': res['price'],
-                'amount': res['amount'],
-                'info': opt.msg,
-            })
-            return True
+            if res:
+                # 记录订单信息
+                if code not in self.orders:
+                    self.orders[code] = []
+                self.orders[code].append({
+                    'datetime': self.get_now_datetime(),
+                    'type': order_type,
+                    'price': res['price'],
+                    'amount': res['amount'],
+                    'info': opt.msg,
+                })
+                return True
 
-        return False
+            return False
+        finally:
+            self._use_times['execute'] += time.time() - _time
 
     def lock_position(self, code, pos: POSITION, opt: Operation):
         """

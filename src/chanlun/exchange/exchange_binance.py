@@ -118,7 +118,8 @@ class ExchangeBinance(Exchange):
         if args is None:
             args = {}
         frequency_map = {'w': '1w', 'd': '1d', '4h': '4h', '60m': '1h',
-                         '30m': '30m', '15m': '15m', '10m': '5m', '5m': '5m', '1m': '1m'}
+                         '30m': '30m', '15m': '15m', '10m': '5m', '5m': '5m',
+                         '3m': '1m', '2m': '1m', '1m': '1m'}
         if frequency not in frequency_map.keys():
             raise Exception(f'不支持的周期: {frequency}')
 
@@ -140,7 +141,7 @@ class ExchangeBinance(Exchange):
         # 'Asia/Shanghai')
         kline_pd = kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
         # 自定义级别，需要进行转换
-        if frequency in ['10m'] and len(kline_pd) > 0:
+        if frequency in ['10m', '3m', '2m'] and len(kline_pd) > 0:
             kline_pd = convert_currency_kline_frequency(kline_pd, frequency)
         return kline_pd
 

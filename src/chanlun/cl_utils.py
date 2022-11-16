@@ -511,12 +511,23 @@ def cl_date_to_tv_chart(cd: ICL, config):
                         mmd_infos[l.end.k.date]['mmd_types'].append(f'{line_type}_{mmd}')
                         mmd_infos[l.end.k.date]['mmd_texts'].append(mmd_text)
 
+    # bc_marks = {
+    #     'id': [], 'time': [], 'color': [], 'text': [], 'label': [], 'labelFontColor': [], 'minSize': []
+    # }
     bc_chart_data = []
     for dt, bc in bc_infos.items():
         bc_chart_data.append({
             'points': {'time': fun.datetime_to_int(dt), 'price': bc['price']},
             'text': ('/'.join(bc['bc_texts'])).strip('/')
         })
+        # bc_marks['id'].append(len(bc_marks['id']))
+        # bc_marks['time'].append(fun.datetime_to_int(dt))
+        # bc_marks['color'].append('red')
+        # bc_marks['text'].append(('/'.join(bc['bc_texts'])).strip('/'))
+        # bc_marks['label'].append(bc['price'])
+        # bc_marks['labelFontColor'].append('blue')
+        # bc_marks['minSize'].append(10)
+
     mmd_chart_data = []
     for dt, mmd in mmd_infos.items():
         mmd_chart_data.append({
@@ -533,6 +544,7 @@ def cl_date_to_tv_chart(cd: ICL, config):
         'zsd_zss': zsd_zs_chart_data,
         'bcs': bc_chart_data,
         'mmds': mmd_chart_data,
+        # 'bc_marks': bc_marks,
     }
 
 

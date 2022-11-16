@@ -148,11 +148,14 @@ class Strategy(ABC):
         """
 
     @staticmethod
-    def idx_ma(cd: ICL, period=5):
+    def idx_ma(cd: ICL, period=5, is_all_prices=False):
         """
-        返回 boll 指标
+        返回 MA 指标
         """
-        prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
+        if is_all_prices:
+            prices = np.array([k.c for k in cd.get_klines()])
+        else:
+            prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
         ma = talib.MA(prices, timeperiod=period)
         return ma
 

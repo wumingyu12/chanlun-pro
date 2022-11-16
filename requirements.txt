@@ -16,7 +16,7 @@ dbutils~=3.0.2
 tqdm~=4.62.3
 ipywidgets
 tqsdk~=3.2.3
-apscheduler~=3.7.0
+apscheduler
 polygon-api-client
 alpaca-trade-api
 mytt

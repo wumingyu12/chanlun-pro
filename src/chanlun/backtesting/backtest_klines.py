@@ -61,6 +61,13 @@ class BackTestKlines(MarketDatas):
 
         self.time_fmt = '%Y-%m-%d %H:%M:%S'
 
+        # 统计时间
+        self._use_times = {
+            'klines': 0,
+            'convert_klines': 0,
+            'get_cl_data': 0,
+        }
+
     def init(self, base_code: str, frequency: Union[str, list]):
         # 初始化，获取循环的日期列表
         self.base_code = base_code
@@ -103,62 +110,67 @@ class BackTestKlines(MarketDatas):
         }
 
     def get_cl_data(self, code, frequency, cl_config: dict = None) -> ICL:
-        # 根据回测配置，可自定义不同周期所使用的缠论配置项
-        if cl_config is None:
-            if code in self.cl_config.keys():
-                cl_config = self.cl_config[code]
-            elif frequency in self.cl_config.keys():
-                cl_config = self.cl_config[frequency]
-            elif 'default' in self.cl_config.keys():
-                cl_config = self.cl_config['default']
+        _time = time.time()
+        try:
+            # 根据回测配置，可自定义不同周期所使用的缠论配置项
+            if cl_config is None:
+                if code in self.cl_config.keys():
+                    cl_config = self.cl_config[code]
+                elif frequency in self.cl_config.keys():
+                    cl_config = self.cl_config[frequency]
+                elif 'default' in self.cl_config.keys():
+                    cl_config = self.cl_config['default']
+                else:
+                    cl_config = self.cl_config
+
+            # 将配置项md5哈希，并加入到 key 中，这样可以保存并获取多个缠论配置项的数据
+            cl_config_key = json.dumps(cl_config)
+            cl_config_key = hashlib.md5(cl_config_key.encode(encoding='UTF-8')).hexdigest()
+
+            key = '%s_%s_%s' % (code, frequency, cl_config_key)
+            if key in self.cache_cl_datas.keys():
+                return self.cache_cl_datas[key]
+
+            if key not in self.cl_datas.keys():
+                # 第一次进行计算
+                klines = self.klines(code, frequency)
+                self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
             else:
-                cl_config = self.cl_config
-
-        # 将配置项md5哈希，并加入到 key 中，这样可以保存并获取多个缠论配置项的数据
-        cl_config_key = json.dumps(cl_config)
-        cl_config_key = hashlib.md5(cl_config_key.encode(encoding='UTF-8')).hexdigest()
-
-        key = '%s_%s_%s' % (code, frequency, cl_config_key)
-        if key in self.cache_cl_datas.keys():
-            return self.cache_cl_datas[key]
-
-        if key not in self.cl_datas.keys():
-            # 第一次进行计算
-            klines = self.klines(code, frequency)
-            self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
-        else:
-            # 更新计算
-            cd = self.cl_datas[key]
-
-            # TODO 节省内存，最多存 20000 k线数据，超过就清空重新计算，必须要大于每次K线获取的数量
-            if len(cd.get_klines()) >= 20000:
-                self.cl_datas[key] = cl.CL(code, frequency, cl_config)
+                # 更新计算
                 cd = self.cl_datas[key]
 
-            klines = self.klines(code, frequency)
+                # TODO 节省内存，最多存 30000 k线数据，超过就清空重新计算，必须要大于每次K线获取的数量
+                if len(cd.get_klines()) >= 30000:
+                    self.cl_datas[key] = cl.CL(code, frequency, cl_config)
+                    cd = self.cl_datas[key]
 
-            if len(klines) > 0:
-                if len(cd.get_klines()) == 0:
-                    self.cl_datas[key].process_klines(klines)
-                else:
-                    # 判断是追加更新还是从新计算
-                    cl_end_time = cd.get_klines()[-1].date
-                    kline_start_time = klines.iloc[0]['date']
-                    if cl_end_time > kline_start_time:
+                klines = self.klines(code, frequency)
+
+                if len(klines) > 0:
+                    if len(cd.get_klines()) == 0:
                         self.cl_datas[key].process_klines(klines)
                     else:
-                        self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
+                        # 判断是追加更新还是从新计算
+                        cl_end_time = cd.get_klines()[-1].date
+                        kline_start_time = klines.iloc[0]['date']
+                        if cl_end_time > kline_start_time:
+                            self.cl_datas[key].process_klines(klines)
+                        else:
+                            self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
 
-        # 回测单次循环周期内，计算过后进行缓存，避免多次计算
-        self.cache_cl_datas[key] = self.cl_datas[key]
+            # 回测单次循环周期内，计算过后进行缓存，避免多次计算
+            self.cache_cl_datas[key] = self.cl_datas[key]
 
-        return self.cache_cl_datas[key]
+            return self.cache_cl_datas[key]
+        finally:
+            self._use_times['get_cl_data'] += time.time() - _time
 
     def klines(self, code, frequency) -> pd.DataFrame:
         if code in self.cache_klines.keys():
             # 直接从缓存中读取
             return self.cache_klines[code][frequency]
 
+        _time = time.time()
         klines = {}
         if self.load_data_to_cache:
             # 使用缓存
@@ -184,6 +196,7 @@ class BackTestKlines(MarketDatas):
             # 使用数据库按需查询
             for f in self.frequencys:
                 klines[f] = self.ex.klines(code, f, end_date=fun.datetime_to_str(self.now_date), args={'limit': 10000})
+        self._use_times['klines'] += time.time() - _time
 
         # 转换周期k线，去除未来数据
         klines = self.convert_klines(klines)
@@ -205,6 +218,7 @@ class BackTestKlines(MarketDatas):
         #     '15m': {'5m': 5, '1m': 20},
         #     '5m': {'1m': 10},
         # }
+        _time = time.time()
         for i in range(len(self.frequencys), 1, -1):
             min_f = self.frequencys[i - 1]
             max_f = self.frequencys[i - 2]
@@ -217,7 +231,7 @@ class BackTestKlines(MarketDatas):
                 klines[max_f] = klines[max_f].drop(
                     klines[max_f][klines[max_f]['date'] > klines[min_f].iloc[-1]['date']].index
                 )
-
+        self._use_times['convert_klines'] += time.time() - _time
         return klines
 
     def _cal_start_date_by_frequency(self, start_date: datetime, frequency) -> str:
@@ -228,7 +242,7 @@ class BackTestKlines(MarketDatas):
         :return:
         """
         market_days_freq_maps = {
-            'a': {'w': 10000, 'd': 10000, '120m': 500, '4h': 500, '60m': 100, '30m': 2000, '15m': 50, '5m': 50,
+            'a': {'w': 10000, 'd': 10000, '120m': 500, '4h': 500, '60m': 100, '30m': 2000, '15m': 50, '5m': 200,
                   '1m': 5},
             'hk': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
             'us': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
