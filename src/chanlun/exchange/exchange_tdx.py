@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Union
 
@@ -5,11 +6,9 @@ from pytdx.hq import TdxHq_API
 from pytdx.util import best_ip
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
-from chanlun import fun, rd
+from chanlun import rd
 from chanlun.exchange.exchange import *
 from chanlun.exchange.exchange_futu import ExchangeFutu
-
-import time
 
 g_all_stocks = []
 g_trade_days = None
@@ -203,23 +202,19 @@ class ExchangeTDX(Exchange):
     def now_trading(self):
         """
         返回当前是否是交易时间
+        周一至周五，09:30-11:30 13:00-15:00
         """
-        global g_trade_days
-        if g_trade_days is None:
-            g_trade_days = self.futu_ex.market_trade_days('cn')
-
-        now_date = time.strftime('%Y-%m-%d')
-        if g_trade_days[-1]['time'] < now_date:
-            g_trade_days = self.futu_ex.market_trade_days('cn')
-
-        for _t in g_trade_days:
-            if _t['time'] == now_date:
-                hour = int(time.strftime('%H'))
-                minute = int(time.strftime('%M'))
-                if _t['trade_date_type'] in ['WHOLE', 'MORNING'] and ((hour == 9 and minute >= 30) or hour in {10, 11}):
-                    return True
-                if _t['trade_date_type'] in ['WHOLE', 'AFTERNOON'] and hour in {13, 14}:
-                    return True
+        now_dt = datetime.datetime.now()
+        if now_dt.weekday() in [5, 6]:  # 周六日不交易
+            return False
+        hour = now_dt.hour
+        minute = now_dt.minute
+        if hour == 9 and minute >= 30:
+            return True
+        if hour in [10, 13, 14]:
+            return True
+        if hour == 11 and minute < 30:
+            return True
         return False
 
     @staticmethod

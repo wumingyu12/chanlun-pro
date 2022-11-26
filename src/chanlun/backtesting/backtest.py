@@ -322,7 +322,7 @@ class BackTest:
         return results
 
     def show_charts(self, code, frequency,
-                    to_minutes: int = None, to_dt_align_type: str = 'bob',
+                    to_minutes: int = None, to_frequency: str = None, to_dt_align_type: str = 'bob',
                     change_cl_config=None, chart_config=None):
         """
         显示指定代码指定周期的图表
@@ -366,7 +366,7 @@ class BackTest:
         # 是否屏蔽锁仓订单
         if 'not_show_lock_order' in chart_config and chart_config['not_show_lock_order'] == True:
             orders = [o for o in orders if '锁仓' not in o['info']]
-        render = kcharts.render_charts(title, cd, orders=orders, config=chart_config)
+        render = kcharts.render_charts(title, cd, to_frequency=to_frequency, orders=orders, config=chart_config)
         return render
 
     def result(self, is_print=True):

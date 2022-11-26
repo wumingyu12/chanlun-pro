@@ -3,7 +3,7 @@ import re
 
 from django.shortcuts import render
 
-from chanlun.cl_utils import batch_cls, query_cl_chart_config, cl_date_to_tv_chart
+from chanlun.cl_utils import batch_cls, query_cl_chart_config, cl_date_to_tv_chart, kcharts_frequency_h_l_map
 from .apps import login_required
 from .utils import *
 from chanlun.exchange import *
@@ -216,29 +216,36 @@ def history(request):
     code = symbol.split(':')[1]
 
     ex = get_exchange(Market(market))
+    # 判断当前是否可交易时间
+    if ex.now_trading() is False and int(countback) < 5:
+        return response_as_json({'s': 'no_data', 'errmsg': '非交易时间', 'nextTime': now_time + (10 * 60)})
+
     frequency = resolution_maps[resolution]
-    klines = ex.klines(code, frequency)
+    # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
+    frequency_low, kchart_to_frequency = kcharts_frequency_h_l_map(market, frequency)
+    frequency_new = frequency_low if frequency_low else frequency
+    klines = ex.klines(code, frequency_new)
 
     # 记录最开始的一根k线时间
     load_old_kline_times[_symbol_res_old_k_time_key] = fun.datetime_to_int(klines.iloc[0]['date'])
 
     cl_chart_config = query_cl_chart_config(market, code)
-    cd = batch_cls(code, {frequency: klines}, cl_chart_config, )[0]
+    cd = batch_cls(code, {frequency_new: klines}, cl_chart_config, )[0]
 
     # 将缠论数据，转换成 tv 画图的坐标数据
-    cl_chart_data = cl_date_to_tv_chart(cd, cl_chart_config)
+    cl_chart_data = cl_date_to_tv_chart(cd, cl_chart_config, to_frequency=kchart_to_frequency)
 
     # 将计算好的背驰 marks 保存起来
     # load_bc_marks_cache[resolution] = cl_chart_data['bc_marks']
 
     info = {
         's': 'ok',
-        't': [fun.datetime_to_int(k.date) for k in cd.get_klines()],
-        'c': [k.c for k in cd.get_klines()],
-        'o': [k.o for k in cd.get_klines()],
-        'h': [k.h for k in cd.get_klines()],
-        'l': [k.l for k in cd.get_klines()],
-        'v': [k.a for k in cd.get_klines()],
+        't': cl_chart_data['t'],
+        'c': cl_chart_data['c'],
+        'o': cl_chart_data['o'],
+        'h': cl_chart_data['h'],
+        'l': cl_chart_data['l'],
+        'v': cl_chart_data['v'],
         'bis': cl_chart_data['bis'],
         'xds': cl_chart_data['xds'],
         'zsds': cl_chart_data['zsds'],

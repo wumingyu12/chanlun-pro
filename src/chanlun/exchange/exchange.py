@@ -131,7 +131,8 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
 
     # 直接使用 pandas 的 resample 方法进行合并周期
     period_maps = {
-        '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30min', 'd': 'D', 'w': 'W', 'm': 'M'
+        '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30min',
+        'd': 'D', 'w': 'W', 'm': 'M'
     }
     if to_f in period_maps.keys():
         klines.insert(0, column='date_index', value=klines['date'])
@@ -147,6 +148,21 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
         period_klines.dropna(inplace=True)
         period_klines.reset_index(inplace=True)
         period_klines.drop('date_index', axis=1, inplace=True)
+        # 后对其的，最后一个k线的时间不是未来的结束时间，需要特殊处理一下
+        # 周期是 d、w、m，只保留年月日
+        if to_f in ['d', 'w', 'm']:
+            period_klines['date'] = period_klines['date'].map(lambda d: fun.datetime_to_str(d, '%Y-%m-%d'))
+            period_klines['date'] = pd.to_datetime(period_klines['date'])
+        elif to_f in ['5m', '10m', '15m', '30m']:
+            def lts_time(d: datetime.datetime):
+                dt_int = fun.datetime_to_int(d)
+                seconds = int(to_f.replace('m', '')) * 60
+                if dt_int % seconds == 0:
+                    return d
+                return fun.timeint_to_datetime(dt_int - (dt_int % seconds) + seconds)
+
+            period_klines['date'] = period_klines['date'].map(lts_time)
+            period_klines['date'] = pd.to_datetime(period_klines['date'])
         return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
     # 60m 周期特殊，9:30-10:30/10:30-11:30
@@ -243,7 +259,8 @@ def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataF
 
     # 直接使用 pandas 的 resample 方法进行合并周期
     period_maps = {
-        '1m': '1min', '3m': '3min', '5m': '5min', '10m': '10min', '15m': '15min', 'd': 'D', 'w': 'W', 'm': 'M'
+        '1m': '1min', '3m': '3min', '5m': '5min', '6m': '6min', '10m': '10min', '15m': '15min',
+        'd': 'D', 'w': 'W', 'm': 'M'
     }
     if to_f in period_maps.keys():
         klines.insert(0, column='date_index', value=klines['date'])

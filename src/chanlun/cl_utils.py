@@ -1,9 +1,11 @@
 import hashlib
 import json
+from chanlun import config
 
 from chanlun import rd, fun
 from chanlun.cl_interface import *
 from chanlun import cl
+from chanlun.exchange import exchange
 
 # 缓存计算好的缠论数据，第二次则不用重新计算了，减少计算消耗的时间
 _global_cache_day = datetime.datetime.now().strftime('%Y%m%d')
@@ -110,64 +112,6 @@ def cal_zs_macd_infos(zs: ZS, cd: ICL) -> MACD_INFOS:
     infos.last_dif = dif[-1]
     infos.last_dea = dea[-1]
     return infos
-
-
-def up_cross(one_list: np.array, two_list: np.array):
-    """
-    获取上穿信号列表
-    """
-    assert len(one_list) == len(two_list), '信号输入维度不相等'
-    if len(one_list) < 2:
-        return []
-    cross = []
-    for i in range(1, len(two_list)):
-        if one_list[i - 1] < two_list[i - 1] and one_list[i] > two_list[i]:
-            cross.append(i)
-    return cross
-
-
-def down_cross(one_list: np.array, two_list: np.array):
-    """
-    获取下穿信号列表
-    """
-    assert len(one_list) == len(two_list), '信号输入维度不相等'
-    if len(one_list) < 2:
-        return []
-    cross = []
-    for i in range(1, len(two_list)):
-        if one_list[i - 1] > two_list[i - 1] and one_list[i] < two_list[i]:
-            cross.append(i)
-    return cross
-
-
-def last_done_bi(cd: ICL):
-    """
-    获取最后一个 完成笔
-    """
-    bis = cd.get_bis()
-    if len(bis) == 0:
-        return None
-    for bi in bis[::-1]:
-        if bi.is_done():
-            return bi
-    return None
-
-
-def bi_qk_num(cd: ICL, bi: BI) -> Tuple[int, int]:
-    """
-    获取笔的缺口数量（分别是向上跳空，向下跳空数量）
-    """
-    up_qk_num = 0
-    down_qk_num = 0
-    klines = cd.get_klines()[bi.start.k.k_index:bi.end.k.k_index + 1]
-    for i in range(1, len(klines)):
-        pre_k = klines[i - 1]
-        now_k = klines[i]
-        if now_k.l > pre_k.h:
-            up_qk_num += 1
-        elif now_k.h < pre_k.l:
-            down_qk_num += 1
-    return up_qk_num, down_qk_num
 
 
 def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
@@ -291,6 +235,47 @@ def del_cl_chart_config(market: str, code: str) -> bool:
     return True
 
 
+def kcharts_frequency_h_l_map(market: str, frequency) -> Tuple[Union[None, str], Union[None, str]]:
+    """
+    将原周期，转换为新的周期进行图表展示
+    按照设置好的对应关系进行返回
+
+    返回两个值，第一个是需要获取的低级别周期值，第二个是 kcharts 画图指定的 to_frequency 值
+    """
+    if config.enable_kchart_low_to_high is False:
+        # 没有开启，直接返回 None，使用原周期计算并展示
+        return None, None
+    # 高级别对应的低级别关系
+    market_frequencs_map = {
+        'a': {
+            'm': 'w', 'w': 'd', 'd': '30m', '120m': '15m', '60m': '15m',
+            '30m': '5m', '15m': '5m', '5m': '1m'
+        },
+        'futures': {
+            'w': 'd', 'd': '60m', '60m': '10m', '30m': '5m', '15m': '3m', '10m': '2m',
+            '6m': '1m', '5m': '1m', '3m': '1m',
+        },
+        # TODO 港美股没有写周期转换的方法，先不支持呢
+        # 'us': {
+        #     'y': 'q', 'q': 'm', 'm': 'w', 'w': 'd', 'd': '60m', '120m': '15m',
+        #     '60m': '15m', '30m': '5m', '15m': '5m', '5m': '1m',
+        # },
+        # 'hk': {
+        #     'y': 'm', 'm': 'w', 'w': 'd', 'd': '60m', '120m': '15m', '60m': '15m',
+        #     '30m': '5m', '15m': '5m', '10m': '1m', '5m': '1m',
+        # },
+        'currency': {
+            'w': 'd', 'd': '4h', '4h': '30m', '60m': '15m', '30m': '5m',
+            '15m': '5m', '10m': '2m', '5m': '1m', '3m': '1m',
+        },
+    }
+
+    try:
+        return market_frequencs_map[market][frequency], f'{market}:{frequency}'
+    except Exception:
+        return None, None
+
+
 def cl_qstd(cd: ICL, line_type='xd', line_num: int = 5):
     """
     缠论线段的趋势通道
@@ -392,10 +377,38 @@ def prices_jiaodu(prices):
     return j if prices[-1] > prices[0] else -j
 
 
-def cl_date_to_tv_chart(cd: ICL, config):
+def cl_date_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
     """
     将缠论数据，转换成 tv 画图的坐标数据
     """
+    # K线
+    klines = [
+        {'date': k.date, 'high': k.h, 'low': k.l, 'open': k.o, 'close': k.c, 'volume': k.a}
+        for k in cd.get_klines()
+    ]
+    klines = pd.DataFrame(klines)
+    klines.loc[:, 'code'] = cd.get_code()
+
+    if to_frequency is not None:
+        # 将数据转换成指定的周期数据
+        market = to_frequency.split(':')[0]
+        frequency = to_frequency.split(':')[1]
+        if market == 'a':
+            klines = exchange.convert_stock_kline_frequency(klines, frequency)
+        elif market == 'futures':
+            klines = exchange.convert_futures_kline_frequency(klines, frequency)
+        elif market == 'currency':
+            klines = exchange.convert_currency_kline_frequency(klines, frequency)
+        else:
+            raise Exception(f'图表周期数据转换，不支持的市场 {market}')
+    # K 线数据
+    kline_ts = klines['date'].map(fun.datetime_to_int).tolist()
+    kline_cs = klines['close'].tolist()
+    kline_os = klines['open'].tolist()
+    kline_hs = klines['high'].tolist()
+    kline_ls = klines['low'].tolist()
+    kline_vs = klines['volume'].tolist()
+
     bi_chart_data = []
     if config['chart_show_bi'] == '1':
         for bi in cd.get_bis():
@@ -536,6 +549,12 @@ def cl_date_to_tv_chart(cd: ICL, config):
         })
 
     return {
+        't': kline_ts,
+        'c': kline_cs,
+        'o': kline_os,
+        'h': kline_hs,
+        'l': kline_ls,
+        'v': kline_vs,
         'bis': bi_chart_data,
         'xds': xd_chart_data,
         'zsds': zsd_chart_data,
@@ -561,3 +580,61 @@ def bi_td(bi: BI, cd: ICL):
         return True
 
     return False
+
+
+def up_cross(one_list: np.array, two_list: np.array):
+    """
+    获取上穿信号列表
+    """
+    assert len(one_list) == len(two_list), '信号输入维度不相等'
+    if len(one_list) < 2:
+        return []
+    cross = []
+    for i in range(1, len(two_list)):
+        if one_list[i - 1] < two_list[i - 1] and one_list[i] > two_list[i]:
+            cross.append(i)
+    return cross
+
+
+def down_cross(one_list: np.array, two_list: np.array):
+    """
+    获取下穿信号列表
+    """
+    assert len(one_list) == len(two_list), '信号输入维度不相等'
+    if len(one_list) < 2:
+        return []
+    cross = []
+    for i in range(1, len(two_list)):
+        if one_list[i - 1] > two_list[i - 1] and one_list[i] < two_list[i]:
+            cross.append(i)
+    return cross
+
+
+def last_done_bi(cd: ICL):
+    """
+    获取最后一个 完成笔
+    """
+    bis = cd.get_bis()
+    if len(bis) == 0:
+        return None
+    for bi in bis[::-1]:
+        if bi.is_done():
+            return bi
+    return None
+
+
+def bi_qk_num(cd: ICL, bi: BI) -> Tuple[int, int]:
+    """
+    获取笔的缺口数量（分别是向上跳空，向下跳空数量）
+    """
+    up_qk_num = 0
+    down_qk_num = 0
+    klines = cd.get_klines()[bi.start.k.k_index:bi.end.k.k_index + 1]
+    for i in range(1, len(klines)):
+        pre_k = klines[i - 1]
+        now_k = klines[i]
+        if now_k.l > pre_k.h:
+            up_qk_num += 1
+        elif now_k.h < pre_k.l:
+            down_qk_num += 1
+    return up_qk_num, down_qk_num

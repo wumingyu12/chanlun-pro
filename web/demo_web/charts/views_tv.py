@@ -204,8 +204,8 @@ def history(request):
         'xd_qj': Config.XD_QJ_DD.value,
         # 'zsd_bzh': Config.ZSD_BZH_NO.value, # TODO 移除配置
         'zsd_qj': Config.ZSD_QJ_DD.value,
-        'zs_bi_type': [Config.ZS_TYPE_FL.value],
-        'zs_xd_type': [Config.ZS_TYPE_FL.value],
+        'zs_bi_type': [Config.ZS_TYPE_BZ.value],
+        'zs_xd_type': [Config.ZS_TYPE_BZ.value],
         'zs_qj': Config.ZS_QJ_DD.value,
         'zs_wzgx': Config.ZS_WZGX_ZGGDD.value,
         'idx_macd_fast': 12,

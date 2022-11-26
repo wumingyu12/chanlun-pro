@@ -167,7 +167,8 @@ class BackTestTrader(object):
                     self.execute(code, o)
 
         # 再执行检查机会方法
-        poss = self.positions[code] if code in self.positions.keys() else {}
+        poss: Dict[str, POSITION] = self.positions[code] if code in self.positions.keys() else {}
+        poss = {k: v for k, v in poss.items() if v.balance > 0}  # 只获取有持仓的记录
 
         _time = time.time()
         opts = self.strategy.open(code=code, market_data=self.datas, poss=poss)

@@ -1,4 +1,5 @@
 # 回放行情所需
+import datetime
 import hashlib
 import json
 import time
@@ -39,11 +40,13 @@ class BackTestKlines(MarketDatas):
             end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
         self.end_date = end_date
 
-        self.now_date = start_date
+        self.now_date: datetime.datetime = start_date
 
         # 是否使用 cache 保存所有k线数据，True 会将代码周期时间段内所有数据读取并保存到内存，False 在每次使用的时候从数据库中获取
         # True 在多代码时会占用太多内存，这时可以设置为 False 增加使用数据库按需获取，增加运行时间，减少占用内存空间
         self.load_data_to_cache = True
+        self.load_kline_nums = 10000  # 每次重新加载的K线数量
+        self.cl_data_kline_max_nums = 50000  # 缠论数据中最大保存的k线数量
 
         # 保存k线数据
         self.all_klines: Dict[str, pd.DataFrame] = {}
@@ -85,10 +88,21 @@ class BackTestKlines(MarketDatas):
 
         self.bar = tqdm(total=len(list(self.loop_datetime_list.values())[-1]))
 
+    def clear_all_cache(self):
+        """
+        清除所有可用缓存，释放内存
+        """
+        self.cache_klines = {}
+        self.all_klines = {}
+        self.cache_cl_datas = {}
+        self.cl_datas = {}
+        return True
+
     def next(self, frequency: str = ''):
         if frequency == '' or frequency is None:
             frequency = self.frequencys[-1]
         if len(self.loop_datetime_list[frequency]) == 0:
+            self.clear_all_cache()
             return False
         self.now_date = self.loop_datetime_list[frequency].pop(0)
         for f, loop_dt_list in self.loop_datetime_list.items():
@@ -139,8 +153,8 @@ class BackTestKlines(MarketDatas):
                 # 更新计算
                 cd = self.cl_datas[key]
 
-                # TODO 节省内存，最多存 30000 k线数据，超过就清空重新计算，必须要大于每次K线获取的数量
-                if len(cd.get_klines()) >= 30000:
+                # 节省内存，最多存 n k线数据，超过就清空重新计算，必须要大于每次K线获取的数量
+                if self.cl_data_kline_max_nums is not None and len(cd.get_klines()) >= self.cl_data_kline_max_nums:
                     self.cl_datas[key] = cl.CL(code, frequency, cl_config)
                     cd = self.cl_datas[key]
 
@@ -166,7 +180,7 @@ class BackTestKlines(MarketDatas):
             self._use_times['get_cl_data'] += time.time() - _time
 
     def klines(self, code, frequency) -> pd.DataFrame:
-        if code in self.cache_klines.keys():
+        if code in self.cache_klines.keys() and len(self.cache_klines[code][frequency]) > 0:
             # 直接从缓存中读取
             return self.cache_klines[code][frequency]
 
@@ -188,9 +202,9 @@ class BackTestKlines(MarketDatas):
             for f in self.frequencys:
                 key = '%s-%s' % (code, f)
                 if self.market in ['currency', 'futures']:
-                    kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-10000::]
+                    kline = self.all_klines[key][self.all_klines[key]['date'] < self.now_date][-self.load_kline_nums::]
                 else:
-                    kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-10000::]
+                    kline = self.all_klines[key][self.all_klines[key]['date'] <= self.now_date][-self.load_kline_nums::]
                 klines[f] = kline
         else:
             # 使用数据库按需查询

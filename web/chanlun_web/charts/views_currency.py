@@ -5,7 +5,7 @@ from django.shortcuts import render
 
 from chanlun import kcharts, fun
 from chanlun import rd, zixuan
-from chanlun.cl_utils import batch_cls, query_cl_chart_config
+from chanlun.cl_utils import batch_cls, query_cl_chart_config, kcharts_frequency_h_l_map
 from chanlun.exchange import get_exchange, Market
 from . import utils
 from .apps import login_required
@@ -43,17 +43,21 @@ def kline_show(request):
     """
     code = request.POST.get('code')
     frequency = request.POST.get('frequency')
-    kline_dt = request.POST.get('kline_dt')
 
     cl_chart_config = query_cl_chart_config('currency', code)
+    # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
+    frequency_low, kchart_to_frequency = kcharts_frequency_h_l_map('currency', frequency)
+    frequency_new = frequency_low if frequency_low else frequency
 
     ex = get_exchange(Market.CURRENCY)
-    klines = ex.klines(code, frequency=frequency, end_date=None if kline_dt == '' else kline_dt)
-    cd = batch_cls(code, {frequency: klines}, cl_chart_config, )[0]
+    klines = ex.klines(code, frequency=frequency_new)
+    cd = batch_cls(code, {frequency_new: klines}, cl_chart_config, )[0]
 
     orders = rd.order_query('currency', code)
-
-    chart = kcharts.render_charts(f'{code}:{cd.get_frequency()}', cd, orders=orders, config=cl_chart_config)
+    title = code + ':' + f'{frequency_low}->{frequency}' if frequency_low else frequency
+    chart = kcharts.render_charts(
+        title, cd, to_frequency=kchart_to_frequency, orders=orders, config=cl_chart_config
+    )
 
     return HttpResponse(chart)
 
@@ -103,7 +107,8 @@ def pos_close(request):
         return utils.json_error('手动平仓失败')
 
     # 记录操作记录
-    rd.currency_opt_record_save(code, '手动平仓交易：交易类型 %s 平仓价格 %s 数量 %s' % (trade_type, res['price'], res['amount']))
+    rd.currency_opt_record_save(code, '手动平仓交易：交易类型 %s 平仓价格 %s 数量 %s' % (
+        trade_type, res['price'], res['amount']))
     rd.order_save('currency', code, {
         'code': code,
         'name': code,

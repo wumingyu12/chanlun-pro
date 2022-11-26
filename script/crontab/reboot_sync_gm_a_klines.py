@@ -383,9 +383,10 @@ run_codes = [
     "SZSE.300648", "SZSE.300355", "SHSE.600565", "SZSE.002376", "SZSE.300177", "SZSE.002449", "SZSE.001267",
     "SHSE.688358", "SZSE.300846", "SZSE.300506", "SZSE.000584", "SZSE.000576", "SZSE.300801", "SZSE.002609",
     "SZSE.002344", "SHSE.605337", "SHSE.600268", "SZSE.002912",
+    
 ]
 
-# run_codes = ['SHSE.600571']
+# run_codes = []
 
 print(len(run_codes))
 
@@ -400,10 +401,11 @@ sync_frequencys = {
     'd': {'start': '2005-01-01 00:00:00'},
     '30m': {'start': '2016-01-01 00:00:00'},
     '5m': {'start': '2016-01-01 00:00:00'},
+    # '1m': {'start': '2018-01-01 00:00:00'},
 }
 # 本地周期与掘金周期对应关系
 fre_maps = {
-    '5m': '300s', '30m': '1800s', 'd': '1d'
+    '1m': '60s', '5m': '300s', '30m': '1800s', 'd': '1d'
 }
 
 # K线数据采用后复权，可增量更新
@@ -431,7 +433,7 @@ for code in tqdm(run_codes):
                 klines = klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
                 print('Run code %s frequency %s klines len %s' % (code, f, len(klines)))
                 db_ex.insert_klines(code, f, klines)
-                if len(klines) < 200:
+                if len(klines) < 500:
                     break
         except Exception as e:
             print('执行 %s 同步K线异常' % code)

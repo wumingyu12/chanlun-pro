@@ -39,9 +39,21 @@ class ExchangeBaostock(Exchange):
 
     def now_trading(self):
         """
-        返回当前是否可交易
+        返回当前是否是交易时间
+        周一至周五，09:30-11:30 13:00-15:00
         """
-        raise Exception('交易所接口不支持')
+        now_dt = datetime.datetime.now()
+        if now_dt.weekday() in [5, 6]:  # 周六日不交易
+            return False
+        hour = now_dt.hour
+        minute = now_dt.minute
+        if hour == 9 and minute >= 30:
+            return True
+        if hour in [10, 13, 14]:
+            return True
+        if hour == 11 and minute < 30:
+            return True
+        return False
 
     def klines(self, code: str, frequency: str,
                start_date: str = None, end_date: str = None,

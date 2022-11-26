@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from chanlun import rd, kcharts, zixuan
-from chanlun.cl_utils import batch_cls
+from chanlun.cl_utils import batch_cls, kcharts_frequency_h_l_map
 from chanlun.cl_utils import query_cl_chart_config
 from chanlun.exchange import get_exchange, Market
 from . import utils
@@ -41,15 +41,19 @@ def kline_show(request):
     frequency = request.POST.get('frequency')
 
     cl_chart_config = query_cl_chart_config('futures', code)
+    # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
+    frequency_low, kchart_to_frequency = kcharts_frequency_h_l_map('futures', frequency)
+    frequency_new = frequency_low if frequency_low else frequency
 
     ex = get_exchange(Market.FUTURES)
-    klines = ex.klines(code, frequency=frequency)
-    cd = batch_cls(code, {frequency: klines}, cl_chart_config, )[0]
+    klines = ex.klines(code, frequency=frequency_new)
+    cd = batch_cls(code, {frequency_new: klines}, cl_chart_config, )[0]
     stock_info = ex.stock_info(code)
     orders = rd.order_query('futures', code)
+    title = stock_info['code'] + ':' + stock_info['name'] + ':' + (
+        f'{frequency_low}->{frequency}' if frequency_low else frequency)
     chart = kcharts.render_charts(
-        stock_info['code'] + ':' + stock_info['name'] + ':' + cd.get_frequency(),
-        cd, orders=orders, config=cl_chart_config)
+        title, cd, to_frequency=kchart_to_frequency, orders=orders, config=cl_chart_config)
     return HttpResponse(chart)
 
 
