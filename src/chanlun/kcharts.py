@@ -146,6 +146,9 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
     # last_xd_zs = cl_data.get_last_xd_zs()
 
     idx = cl_data.get_idx()
+    idx_macd_dea = idx['macd']['dea']
+    idx_macd_dif = idx['macd']['dif']
+    idx_macd_hist = idx['macd']['hist']
 
     # 用于日期目标转换的时间序列
     target_dates = []
@@ -172,9 +175,9 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
             slowperiod=cl_data.get_config()['idx_macd_slow'],
             signalperiod=cl_data.get_config()['idx_macd_signal']
         )
-        idx['macd']['dea'] = macd_dea
-        idx['macd']['dif'] = macd_dif
-        idx['macd']['hist'] = macd_hist
+        idx_macd_dea = macd_dea
+        idx_macd_dif = macd_dif
+        idx_macd_hist = macd_hist
 
     # 展示的K线数据
     klines_xaxis = klines['date'].tolist()
@@ -971,7 +974,7 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
     bar_macd = (
         Bar().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
             series_name="MACD",
-            y_axis=list(idx['macd']['hist']),
+            y_axis=list(idx_macd_hist),
             label_opts=opts.LabelOpts(is_show=False),
             itemstyle_opts=opts.ItemStyleOpts(
                 color=JsCode('function(p){var c;if (p.data >= 0) {c = \'#ef232a\';} else {c = \'#14b143\';}return c;}')
@@ -991,13 +994,13 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
     line_macd_dif = (
         Line().add_xaxis(xaxis_data=klines_xaxis).add_yaxis(
             series_name="DIF",
-            y_axis=idx['macd']['dif'],
+            y_axis=idx_macd_dif,
             is_symbol_show=False,
             label_opts=opts.LabelOpts(is_show=False),
             itemstyle_opts=opts.ItemStyleOpts(color='white'),
         ).add_yaxis(
             series_name="DEA",
-            y_axis=idx['macd']['dea'],
+            y_axis=idx_macd_dea,
             is_symbol_show=False,
             label_opts=opts.LabelOpts(is_show=False),
             itemstyle_opts=opts.ItemStyleOpts(color='yellow'),
