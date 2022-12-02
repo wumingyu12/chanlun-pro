@@ -6,7 +6,7 @@ from django.shortcuts import render
 from chanlun import fun
 from chanlun import rd
 from chanlun.cl_interface import Config
-from chanlun.cl_utils import batch_cls, cl_date_to_tv_chart
+from chanlun.cl_utils import web_batch_get_cl_datas, cl_date_to_tv_chart
 from chanlun.exchange import *
 from .utils import *
 
@@ -229,7 +229,7 @@ def history(request):
         'chart_show_zsd_bc': '1',
         'chart_show_qsd_bc': '1',
     }
-    cd = batch_cls(code, {frequency: klines}, cl_chart_config, )[0]
+    cd = web_batch_get_cl_datas(market, code, {frequency: klines}, cl_chart_config, )[0]
 
     # 将缠论数据，转换成 tv 画图的坐标数据
     cl_chart_data = cl_date_to_tv_chart(cd, cl_chart_config)

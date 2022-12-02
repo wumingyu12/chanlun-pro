@@ -9,6 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 from chanlun import rd
 from chanlun.exchange.exchange import *
 from chanlun.exchange.exchange_futu import ExchangeFutu
+from chanlun.file_db import FileCacheDB
 
 g_all_stocks = []
 g_trade_days = None
@@ -33,8 +34,8 @@ class ExchangeTDX(Exchange):
 
         self.futu_ex = ExchangeFutu()
 
-        # 缓存已经请求的数据
-        self.cache_klines: Dict[str, pd.DataFrame] = {}
+        # 文件缓存
+        self.fdb = FileCacheDB()
 
     def all_stocks(self):
         """
@@ -111,6 +112,10 @@ class ExchangeTDX(Exchange):
             args['fq'] = 'qfq'
         if 'use_cache' not in args.keys():
             args['use_cache'] = True
+        if 'pages' not in args.keys():
+            args['pages'] = 8
+        else:
+            args['pages'] = int(args['pages'])
 
         frequency_map = {
             'y': 11, 'q': 10, 'm': 6, 'w': 5, 'd': 9, '120m': 3, '60m': 3, '30m': 2, '15m': 1, '5m': 0, '1m': 8
@@ -129,20 +134,18 @@ class ExchangeTDX(Exchange):
                 else:
                     get_bars = client.get_security_bars
 
-                key = f'{code}_{frequency}'
-                if args['use_cache'] is False or key not in self.cache_klines.keys():
-                    # 获取 6*800 = 4800 条数据
-                    # print('not use cache')
+                klines: pd.DataFrame = self.fdb.get_tdx_klines(code, frequency)
+                if klines is None:
+                    # 获取 8*800 = 6400 条数据
                     klines = pd.concat([
                         client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
-                        for i in [1, 2, 3, 4, 5, 6]
+                        for i in range(1, args['pages'] + 1)
                     ], axis=0, sort=False)
                     klines.loc[:, 'date'] = pd.to_datetime(klines['datetime'])
                     klines.sort_values('date', inplace=True)
                 else:
-                    # print('use cache')
-                    klines = self.cache_klines[key]
-                    for i in [1, 2, 3, 4, 5, 6]:
+                    for i in range(1, args['pages'] + 1):
+                        print(f'{code} 使用缓存，更新获取第 {i} 页')
                         _ks = client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
                         _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime'])
                         _ks.sort_values('date', inplace=True)
@@ -153,10 +156,9 @@ class ExchangeTDX(Exchange):
                         if old_end_dt >= new_start_dt:
                             break
 
-            if args['use_cache']:
-                # 删除重复数据
-                self.cache_klines[key] = klines.drop_duplicates(['date'], keep='last').sort_values('date')
-                klines = self.cache_klines[key].copy()
+            # 删除重复数据
+            klines = klines.drop_duplicates(['date'], keep='last').sort_values('date')
+            self.fdb.save_tdx_klines(code, frequency, klines)
 
             klines.loc[:, 'code'] = code
             klines.loc[:, 'volume'] = klines['vol']
@@ -170,7 +172,7 @@ class ExchangeTDX(Exchange):
                 klines = convert_stock_kline_frequency(klines, frequency)
 
             if args['fq'] in ['qfq', 'hfq']:
-                klines = self.klines_fq(klines, self.xdxr(market, tdx_code), args['fq'])
+                klines = self.klines_fq(klines, self.xdxr(market, code, tdx_code), args['fq'])
 
             return klines
         except Exception as e:
@@ -294,7 +296,7 @@ class ExchangeTDX(Exchange):
     def order(self, code: str, o_type: str, amount: float, args=None):
         raise Exception('交易所不支持')
 
-    def xdxr(self, market: int, code: str):
+    def xdxr(self, market: int, project_code: str, code: str):
         """
         读取除权除息信息
         """
@@ -309,11 +311,18 @@ class ExchangeTDX(Exchange):
                 data.loc[:, 'date'] = data['year'].map(str) + '-' + data['month'].map(str) + '-' + data['day'].map(str)
                 data['date'] = pd.to_datetime(data['date'])
                 data.set_index('date', inplace=True)
-            redis_data = {
+            redis_new_data = {
                 'date': now_day,
                 'data': data.to_json(date_format='epoch', orient='split')
             }
-            rd.Robj().hset('tdx_xdxr', key, json.dumps(redis_data))
+            # 如果之前的不为none，对比复权信息是否有变更，有变更需要清除对应的缓存信息
+            if redis_data is not None:
+                old_data = pd.read_json(json.loads(redis_data)['data'], orient='split')
+                if len(old_data) > 0 and old_data.index[-1] != data.index[-1]:
+                    # 清理缓存
+                    print(f'{code}复权信息变动，清理缠论数据缓存')
+                    self.fdb.clear_web_cl_data('a', project_code)
+            rd.Robj().hset('tdx_xdxr', key, json.dumps(redis_new_data))
         else:
             # print('直接读取缓存')
             data = pd.read_json(json.loads(redis_data)['data'], orient='split')

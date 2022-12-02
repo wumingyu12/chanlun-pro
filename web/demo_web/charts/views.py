@@ -5,7 +5,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from chanlun import kcharts
-from chanlun.cl_utils import batch_cls
+from chanlun.cl_utils import web_batch_get_cl_datas
 from chanlun.exchange import exchange_tdx
 
 g_code = 'SH.000001'
@@ -74,6 +74,6 @@ def kline_chart(request):
     chart_config = {_k: request.POST.get(_k, '1') for _k in chart_bool_keys}
 
     klines = g_klines[frequency]
-    cd = batch_cls(g_code, {frequency: klines}, cl_config, )[0]
+    cd = web_batch_get_cl_datas('a', g_code, {frequency: klines}, cl_config, )[0]
     chart = kcharts.render_charts('上证指数:' + cd.get_frequency(), cd, config=chart_config)
     return HttpResponse(chart)

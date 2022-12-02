@@ -5,10 +5,10 @@ from typing import List, Dict
 
 import pandas as pd
 
-from chanlun import cl
 from chanlun.backtesting.base import MarketDatas
 from chanlun.cl_interface import ICL
 from chanlun.exchange.exchange import Exchange
+from chanlun.file_db import FileCacheDB
 
 
 class OnlineMarketDatas(MarketDatas):
@@ -23,6 +23,7 @@ class OnlineMarketDatas(MarketDatas):
         """
         super().__init__(market, frequencys, cl_config)
         self.ex = ex
+        self.fdb = FileCacheDB()
 
         self.use_cache = use_cache
 
@@ -39,7 +40,7 @@ class OnlineMarketDatas(MarketDatas):
         key = f'{code}_{frequency}'
         if self.use_cache and key in self.cache_klines.keys():
             return self.cache_klines[key]
-        klines = self.ex.klines(code, frequency)
+        klines = self.ex.klines(code, frequency, args={'pages': 12})  # TDX 接口尽量返回数据多一些
         self.cache_klines[key] = klines
         return klines
 
@@ -54,8 +55,6 @@ class OnlineMarketDatas(MarketDatas):
         }
 
     def get_cl_data(self, code, frequency, cl_config: dict = None) -> ICL:
-        key = '%s-%s' % (code, frequency)
-
         # 根据回测配置，可自定义不同周期所使用的缠论配置项
         if code in self.cl_config.keys():
             cl_config = self.cl_config[code]
@@ -68,11 +67,5 @@ class OnlineMarketDatas(MarketDatas):
 
         klines = self.klines(code, frequency)
 
-        # print(f'{code} - {frequency} kline len : {len(klines)} cl_config : {cl_config}')
-
-        if key not in self.cl_datas.keys():
-            self.cl_datas[key] = cl.CL(code, frequency, cl_config).process_klines(klines)
-        else:
-            self.cl_datas[key].process_klines(klines)
-
-        return self.cl_datas[key]
+        cd = self.fdb.get_web_cl_data(self.market, code, frequency, cl_config, klines)
+        return cd

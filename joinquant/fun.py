@@ -29,7 +29,7 @@ def get_cl_datas(code, frequencys, cl_config):
         _k = _k[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
         _k['date'] = pd.to_datetime(_k['date'])
         klines[f] = _k
-    cl_datas = cl.batch_cls(code, klines, cl_config)
+    cl_datas = cl.web_batch_get_cl_datas(code, klines, cl_config)
     return cl_datas
 
 

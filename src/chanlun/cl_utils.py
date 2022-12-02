@@ -1,57 +1,29 @@
-import hashlib
 import json
-import threading
-import time
 
 from chanlun import config
-
 from chanlun import rd, fun
 from chanlun.cl_interface import *
-from chanlun import cl
 from chanlun.exchange import exchange
-
-# 缓存计算好的缠论数据，第二次则不用重新计算了，减少计算消耗的时间
-_global_lock = threading.Lock()
-_global_cache_day = datetime.datetime.now().strftime('%Y%m%d')
-_global_caches: Dict[str, ICL] = {}
+from chanlun.file_db import FileCacheDB
 
 
-def batch_cls(
-        code, klines: Dict[str, pd.DataFrame],
-        config: dict = None, start_datetime: datetime.datetime = None) -> List[ICL]:
+def web_batch_get_cl_datas(
+        market: str, code: str, klines: Dict[str, pd.DataFrame], cl_config: dict = None
+) -> List[ICL]:
     """
-    批量计算并获取 缠论 数据
+    WEB端批量计算并获取 缠论 数据
+    内部使用文件缓存，只能进行增量更新，不可用来获取并计算历史k线数据
+    :param market: 市场
     :param code: 计算的标的
     :param klines: 计算的 k线 数据，每个周期对应一个 k线DataFrame，例如 ：{'30m': klines_30m, '5m': klines_5m}
-    :param config: 缠论配置
-    :param start_datetime: 开始分析的时间
+    :param cl_config: 缠论配置
     :return: 返回计算好的缠论数据对象，List 列表格式，按照传入的 klines.keys 顺序返回 如上调用：[0] 返回 30m 周期数据 [1] 返回 5m 数据
     """
-    global _global_lock, _global_cache_day, _global_caches
-    try:
-        _global_lock.acquire(timeout=5)
-        # 只记录当天的缓存，第二天缓存清空
-        if _global_cache_day != datetime.datetime.now().strftime('%Y%m%d'):
-            _global_cache_day = datetime.datetime.now().strftime('%Y%m%d')
-            _global_caches = {}
-
-        cls = []
-        _time_s = time.time()
-        _use_cache = False
-        for f, k in klines.items():
-            key = hashlib.md5(f'{code}_{f}_{config}_{start_datetime}'.encode('UTF-8')).hexdigest()
-            if key in _global_caches.keys():
-                _use_cache = True
-                cls.append(_global_caches[key].process_klines(k))
-            else:
-                _global_caches[key] = cl.CL(code, f, config, start_datetime)
-                cls.append(_global_caches[key].process_klines(k))
-        print(
-            f'计算 {code} - {list(klines.keys())} {"使用缓存" if _use_cache else "重新计算"} 缠论数据用时: {time.time() - _time_s}'
-        )
-        return cls
-    finally:
-        _global_lock.release()
+    cls = []
+    fdb = FileCacheDB()
+    for f, k in klines.items():
+        cls.append(fdb.get_web_cl_data(market, code, f, cl_config, k))
+    return cls
 
 
 def cal_klines_macd_infos(start_k: Kline, end_k: Kline, cd: ICL) -> MACD_INFOS:

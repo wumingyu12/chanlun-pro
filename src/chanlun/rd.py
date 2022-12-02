@@ -3,7 +3,7 @@ import random
 import time
 
 import redis
-from typing import Dict
+
 from chanlun import config
 from chanlun.cl_interface import *
 

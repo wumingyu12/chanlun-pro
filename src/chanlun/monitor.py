@@ -2,7 +2,7 @@
 监控相关代码
 """
 from chanlun import rd
-from chanlun.cl_utils import batch_cls, bi_td
+from chanlun.cl_utils import web_batch_get_cl_datas, bi_td
 from chanlun.exchange import get_exchange, Market
 from chanlun.fun import *
 
@@ -30,7 +30,7 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
     ex = get_exchange(Market(market))
 
     klines = {f: ex.klines(code, f) for f in frequencys}
-    cl_datas: List[ICL] = batch_cls(code, klines, cl_config)
+    cl_datas: List[ICL] = web_batch_get_cl_datas(market, code, klines, cl_config)
 
     jh_msgs = []
     bc_maps = {

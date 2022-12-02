@@ -4,7 +4,7 @@ import time
 
 from chanlun import zixuan
 from chanlun.cl_interface import *
-from chanlun.cl_utils import batch_cls
+from chanlun.cl_utils import web_batch_get_cl_datas
 from chanlun.exchange.exchange_tdx import ExchangeTDX
 from chanlun.xuangu import xuangu
 
@@ -209,7 +209,7 @@ for code in codes:
         for f in frequencys:
             k = ex.klines(code, f)
             klines[f] = k
-        cds: List[ICL] = batch_cls(code, klines, cl_config)
+        cds: List[ICL] = web_batch_get_cl_datas('a', code, klines, cl_config)
         """
         *** 这里使用自己需要的选股条件方法进行判断 ***
         """

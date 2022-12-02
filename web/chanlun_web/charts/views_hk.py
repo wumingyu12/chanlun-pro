@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from chanlun import rd, kcharts, zixuan
-from chanlun.cl_utils import batch_cls, query_cl_chart_config
+from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config
 from chanlun.exchange import get_exchange, Market
 from . import utils
 from .apps import login_required
@@ -80,7 +80,7 @@ def kline_chart(request):
 
     ex = get_exchange(Market.HK)
     klines = ex.klines(code, frequency=frequency, end_date=None if kline_dt == '' else kline_dt)
-    cd = batch_cls(code, {frequency: klines}, cl_chart_config, )[0]
+    cd = web_batch_get_cl_datas('hk', code, {frequency: klines}, cl_chart_config, )[0]
     stock_info = ex.stock_info(code)
     orders = rd.order_query('hk', code)
     chart = kcharts.render_charts(

@@ -605,7 +605,8 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
     #             if xl is None:
     #                 continue
     #             line_xd_xl_dings.append(
-    #                 {'index': [xl.get_start_fx().k.date, xl.get_end_fx().k.date],
+    #                 {'index': datetime_convect_frequency([xl.get_start_fx().k.date, xl.get_end_fx().k.date],
+    #                                                      target_dates),
     #                  'val': [xl.get_start_fx().val, xl.get_end_fx().val]}
     #             )
     #     elif xd.type == 'down':
@@ -613,7 +614,8 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
     #             if xl is None:
     #                 continue
     #             line_xd_xl_dis.append(
-    #                 {'index': [xl.get_start_fx().k.date, xl.get_end_fx().k.date],
+    #                 {'index': datetime_convect_frequency([xl.get_start_fx().k.date, xl.get_end_fx().k.date],
+    #                                                      target_dates),
     #                  'val': [xl.get_start_fx().val, xl.get_end_fx().val]}
     #             )
     # for line_xl in line_xd_xl_dings:

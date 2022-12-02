@@ -3,7 +3,7 @@ import re
 
 from django.shortcuts import render
 
-from chanlun.cl_utils import batch_cls, query_cl_chart_config, cl_date_to_tv_chart, kcharts_frequency_h_l_map
+from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config, cl_date_to_tv_chart, kcharts_frequency_h_l_map
 from .apps import login_required
 from .utils import *
 from chanlun.exchange import *
@@ -230,7 +230,7 @@ def history(request):
     load_old_kline_times[_symbol_res_old_k_time_key] = fun.datetime_to_int(klines.iloc[0]['date'])
 
     cl_chart_config = query_cl_chart_config(market, code)
-    cd = batch_cls(code, {frequency_new: klines}, cl_chart_config, )[0]
+    cd = web_batch_get_cl_datas(market, code, {frequency_new: klines}, cl_chart_config, )[0]
 
     # 将缠论数据，转换成 tv 画图的坐标数据
     cl_chart_data = cl_date_to_tv_chart(cd, cl_chart_config, to_frequency=kchart_to_frequency)

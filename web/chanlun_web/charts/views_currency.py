@@ -5,7 +5,7 @@ from django.shortcuts import render
 
 from chanlun import kcharts, fun
 from chanlun import rd, zixuan
-from chanlun.cl_utils import batch_cls, query_cl_chart_config, kcharts_frequency_h_l_map
+from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config, kcharts_frequency_h_l_map
 from chanlun.exchange import get_exchange, Market
 from . import utils
 from .apps import login_required
@@ -51,7 +51,7 @@ def kline_show(request):
 
     ex = get_exchange(Market.CURRENCY)
     klines = ex.klines(code, frequency=frequency_new)
-    cd = batch_cls(code, {frequency_new: klines}, cl_chart_config, )[0]
+    cd = web_batch_get_cl_datas('currency', code, {frequency_new: klines}, cl_chart_config, )[0]
 
     orders = rd.order_query('currency', code)
     title = code + ':' + f'{frequency_low}->{frequency}' if frequency_low else frequency
