@@ -34,19 +34,19 @@ class ZiXuan(object):
         """
         return [{'zx_name': zx_name, 'stocks': self.zx_stocks(zx_name)} for zx_name in self.zx_names]
 
-    def zx_stocks(self, zx_name):
+    def zx_stocks(self, zx_group):
         """
         根据自选名称，获取其中的 代码列表
         """
-        if zx_name not in self.zx_names:
+        if zx_group not in self.zx_names:
             return []
-        return rd.zx_query(self.market_type, zx_name)
+        return rd.zx_query(self.market_type, zx_group)
 
-    def add_stock(self, zx_name, code, name):
+    def add_stock(self, zx_group, code, name):
         """
         添加自选
         """
-        if zx_name not in self.zx_names:
+        if zx_group not in self.zx_names:
             return False
         # 如果名称为空，则自动进行获取
         if name == '' or name == 'undefined':
@@ -57,33 +57,33 @@ class ZiXuan(object):
             except Exception:
                 pass
         # 先删除原来的，如果有的话
-        self.del_stock(zx_name, code)
-        stocks = self.zx_stocks(zx_name)
+        self.del_stock(zx_group, code)
+        stocks = self.zx_stocks(zx_group)
         stocks.insert(0, {'code': code, 'name': name})
-        rd.zx_save(self.market_type, zx_name, stocks)
+        rd.zx_save(self.market_type, zx_group, stocks)
         return True
 
-    def del_stock(self, zx_name, code):
+    def del_stock(self, zx_group, code):
         """
         删除自选中的代码
         """
-        if zx_name not in self.zx_names:
+        if zx_group not in self.zx_names:
             return False
-        stocks = self.zx_stocks(zx_name)
+        stocks = self.zx_stocks(zx_group)
         del_index = next((i for i in range(len(stocks)) if stocks[i]['code'] == code), None)
 
         if del_index is not None:
             del (stocks[del_index])
-            rd.zx_save(self.market_type, zx_name, stocks)
+            rd.zx_save(self.market_type, zx_group, stocks)
         return True
 
-    def clear_zx_stocks(self, zx_name):
+    def clear_zx_stocks(self, zx_group):
         """
         清空自选组内的股票
         """
-        stocks = self.zx_stocks(zx_name)
+        stocks = self.zx_stocks(zx_group)
         for s in stocks:
-            self.del_stock(zx_name, s['code'])
+            self.del_stock(zx_group, s['code'])
         return True
 
     def query_code_zx_names(self, code):

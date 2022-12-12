@@ -145,7 +145,7 @@ class ExchangeTDX(Exchange):
                     klines.sort_values('date', inplace=True)
                 else:
                     for i in range(1, args['pages'] + 1):
-                        print(f'{code} 使用缓存，更新获取第 {i} 页')
+                        # print(f'{code} 使用缓存，更新获取第 {i} 页')
                         _ks = client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
                         _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime'])
                         _ks.sort_values('date', inplace=True)

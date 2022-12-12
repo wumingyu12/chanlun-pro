@@ -14,14 +14,6 @@ import pandas as pd
 CL_*** 配置项，可以在调用缠论计算时，通过传递 config 变量进行变更，如 config['CL_BI_FX_STRICT'] = True
 """
 
-"""
-笔分型是否严格处理
-False : 不严格处理，允许顶的最低点低于底分型最低点，允许底分型的最高点高于顶分型的最高点
-True：严格处理，不允许顶的最低点低于底分型最低点，不允许底分型的最高点高于顶分型的最高点
-"""
-CL_BI_FX_STRICT = False
-
-
 class Config(Enum):
     """
     缠论配置项

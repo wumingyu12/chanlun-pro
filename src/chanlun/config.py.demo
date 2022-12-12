@@ -82,3 +82,11 @@ US_ZX = [{'name': '我的持仓', 'short_name': '持'}, {'name': '今日关注',
 # 低级别转高级别方法在 chanlun.exchange.exchange.py convert_***_kline_frequency，也需要有对应的周期转换配置
 # 自己根据实际情况，根据经验自行设置
 enable_kchart_low_to_high = False
+
+# 特殊情况，拆分线段时，是否允许单笔成段
+allow_split_one_line_to_xd = True
+
+# 笔分型是否严格处理
+# False : 不严格处理，允许顶的最低点低于底分型最低点，允许底分型的最高点高于顶分型的最高点
+# True：严格处理，不允许顶的最低点低于底分型最低点，不允许底分型的最高点高于顶分型的最高点
+allow_bi_fx_strict = True

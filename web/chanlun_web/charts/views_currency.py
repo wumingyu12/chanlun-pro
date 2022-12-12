@@ -54,7 +54,7 @@ def kline_show(request):
     cd = web_batch_get_cl_datas('currency', code, {frequency_new: klines}, cl_chart_config, )[0]
 
     orders = rd.order_query('currency', code)
-    title = code + ':' + f'{frequency_low}->{frequency}' if frequency_low else frequency
+    title = f'{code}:{frequency_low}->{frequency}' if frequency_low else f'{code}:{frequency}'
     chart = kcharts.render_charts(
         title, cd, to_frequency=kchart_to_frequency, orders=orders, config=cl_chart_config
     )

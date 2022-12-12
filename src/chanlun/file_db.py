@@ -7,7 +7,7 @@ from typing import Union
 
 import pandas as pd
 
-from chanlun import cl, fun
+from chanlun import cl, fun, rd
 from chanlun.cl_interface import ICL
 from chanlun.exchange import Exchange
 
@@ -79,22 +79,38 @@ class FileCacheDB(object):
         key = hashlib.md5(
             f'{[f"{k}:{v}" for k, v in cl_config.items() if k in self.config_keys]}'.encode('UTF-8')
         ).hexdigest()
-        file_pathname = f"{self.data_path}/{market}_{code.replace('/', '_').replace('.', '_')}_{frequency}_{key}.pkl"
-        cd: ICL = cl.CL(code, frequency, cl_config)
-        if os.path.isfile(file_pathname):
-            # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 使用缓存')
-            with open(file_pathname, 'rb') as fp:
-                cd = pickle.load(fp)
-            # 判断缓存中的最后k线是否大于给定的最新一根k线时间，如果小于说明直接有断档，不连续，重新全量重新计算
-            if len(cd.get_klines()) > 0 and len(klines) > 0 and cd.get_klines()[-1].date < klines.iloc[0]['date']:
-                print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 历史数据有错位，重新计算')
-                cd = cl.CL(code, frequency, cl_config)
-        else:
-            pass
-            # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 没有找到缓存，重新计算')
-        cd.process_klines(klines)
-        with open(file_pathname, 'wb') as fp:
-            pickle.dump(cd, fp)
+        # 加分布式锁，避免同时访问一个文件造成异常
+        lock_name = f'{market}_{code}_{frequency}'
+        lock_id = rd.acquire_lock(lock_name)
+        try:
+            file_pathname = f"{self.data_path}/{market}_{code.replace('/', '_').replace('.', '_')}_{frequency}_{key}.pkl"
+            cd: ICL = cl.CL(code, frequency, cl_config)
+            try:
+                if os.path.isfile(file_pathname):
+                    # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 使用缓存')
+                    with open(file_pathname, 'rb') as fp:
+                        cd = pickle.load(fp)
+                    # 判断缓存中的最后k线是否大于给定的最新一根k线时间，如果小于说明直接有断档，不连续，重新全量重新计算
+                    if len(cd.get_klines()) > 0 and len(klines) > 0 and cd.get_klines()[-1].date < klines.iloc[0][
+                        'date']:
+                        print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 历史数据有错位，重新计算')
+                        cd = cl.CL(code, frequency, cl_config)
+                else:
+                    pass
+                    # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 没有找到缓存，重新计算')
+            except Exception as e:
+                if os.path.isfile(file_pathname):
+                    print(f'获取 web 缓存的缠论数据对象异常 {market} {code} {frequency} - {e}，尝试删除缓存文件重新计算')
+                    os.remove(file_pathname)
+
+            cd.process_klines(klines)
+            try:
+                with open(file_pathname, 'wb') as fp:
+                    pickle.dump(cd, fp)
+            except Exception as e:
+                print(f'写入缓存异常 {market} {code} {frequency} - {e}')
+        finally:
+            rd.release_lock(lock_name, lock_id)
 
         # 加一个随机概率，去清理历史的缓存，避免太多占用空间
         if random.randint(0, 100) <= 5:
@@ -107,8 +123,11 @@ class FileCacheDB(object):
         清除指定市场下标的缠论缓存对象
         """
         for filename in os.listdir(self.data_path):
-            if '.pkl' in filename and f"{market}_{code.replace('/', '_').replace('.', '_')}" in filename:
-                os.remove(f'{self.data_path}/{filename}')
+            try:
+                if '.pkl' in filename and f"{market}_{code.replace('/', '_').replace('.', '_')}" in filename:
+                    os.remove(f'{self.data_path}/{filename}')
+            except Exception:
+                pass
         return True
 
     def clear_old_web_cl_data(self):
@@ -117,8 +136,11 @@ class FileCacheDB(object):
         """
         del_lt_times = fun.datetime_to_int(datetime.datetime.now()) - (7 * 24 * 60 * 60)
         for filename in os.listdir(self.data_path):
-            if '.pkl' in filename and os.path.getmtime(f"{self.data_path}/{filename}") < del_lt_times:
-                os.remove(f'{self.data_path}/{filename}')
+            try:
+                if '.pkl' in filename and os.path.getmtime(f"{self.data_path}/{filename}") < del_lt_times:
+                    os.remove(f'{self.data_path}/{filename}')
+            except Exception:
+                pass
         return True
 
     def get_low_to_high_cl_data(self, db_ex: Exchange, market: str, code: str, frequency: str, cl_config: dict) -> ICL:

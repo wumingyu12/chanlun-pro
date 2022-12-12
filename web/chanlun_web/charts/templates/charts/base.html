@@ -136,18 +136,13 @@
     <div class="main-content">
         <div class="main-content-inner">
             <div class="page-content">
-
+                <!-- PAGE CONTENT BEGINS -->
                 <div class="row">
-                    <div class="col-xs-12">
-                        <!-- PAGE CONTENT BEGINS -->
-                        <div class="row">
-                            {% block content %}
-                                内容
-                            {% endblock %}
-                        </div><!-- /.row -->
-                        <!-- PAGE CONTENT ENDS -->
-                    </div><!-- /.col -->
+                    {% block content %}
+                        内容
+                    {% endblock %}
                 </div><!-- /.row -->
+                <!-- PAGE CONTENT ENDS -->
             </div><!-- /.page-content -->
         </div>
     </div><!-- /.main-content -->

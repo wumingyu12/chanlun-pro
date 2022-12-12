@@ -49,8 +49,6 @@
                 </div>
             </form>
         </li>
-
-
     </ul>
 {% endblock %}
 
@@ -68,7 +66,6 @@
                     机会列表
                 </a>
             </li>
-
         </ul>
 
         <div class="tab-content">
@@ -102,9 +99,10 @@
             </div>
         </div>
     </div>
-
-
-
+    <div>
+        <p>行业信息：<span class="hy_list"></span></p>
+        <p>概念信息：<span class="gn_list"></span></p>
+    </div>
 {% endblock %}
 
 {% block content %}
@@ -119,10 +117,12 @@
         </div><!-- /.ace-settings-box -->
     </div><!-- /.ace-settings-container -->
 
-
-    <div class="col-lg-12">
-        <div class="btn-toolbar" role="toolbar" aria-label="配置选项">
-            <div class="btn-group btn-group-xs btn-corner" role="group" id="zq_high">
+    <div class="row" style="margin-left: -4px;">
+        <div id="kline_high" class="kline_chart"
+             style="float:left;width: calc(100% - 56px);height:100px;min-height: 320px;"></div>
+        <div class="btn-toolbar" role="toolbar" aria-label="配置选项"
+             style="float:right; margin-top: 40px; width: 55px;height:320px;max-width: 55px;min-width: 55px;">
+            <div class="btn-group btn-group-vertical btn-group-xs btn-corner" role="group" id="zq_high">
                 <button type="button" class="btn btn-xs btn-default" data-zq="y">Year</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="m">Month</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
@@ -134,14 +134,15 @@
                 <button type="button" class="btn btn-xs btn-default" data-zq="5m">5M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="1m">1M</button>
             </div>
-
         </div>
-        <div id="kline_high" class="kline_chart" style="width:100%; min-height: 320px;"></div>
     </div>
-
-    <div class="col-lg-12">
-        <div class="btn-toolbar" role="toolbar" aria-label="配置选项">
-            <div class="btn-group btn-group-xs btn-corner" role="group" id="zq_low">
+    <hr style="margin-top: 2px; margin-bottom: 2px;"/>
+    <div class="row" style="margin-left: -4px;">
+        <div id="kline_low" class="kline_chart"
+             style="float:left;width: calc(100% - 56px);height:100px;min-height: 320px;"></div>
+        <div class="btn-toolbar" role="toolbar" aria-label="配置选项"
+             style="float:right; width: 55px;height:320px;max-width: 55px;min-width: 55px;">
+            <div class="btn-group btn-group-vertical btn-group-xs btn-corner" role="group" id="zq_low">
                 <button type="button" class="btn btn-xs btn-default" data-zq="y">Year</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="m">Month</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
@@ -153,13 +154,7 @@
                 <button type="button" class="btn btn-xs btn-default" data-zq="5m">5M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="1m">1M</button>
             </div>
-
         </div>
-        <div id="kline_low" class="kline_chart" style="width:100%; min-height: 320px;"></div>
-    </div>
-    <div style="width:100%; clear: both;">
-        <p>行业信息：<span class="hy_list"></span></p>
-        <p>概念信息：<span class="gn_list"></span></p>
     </div>
 
     {% include 'charts/order_opt.html' with market='a' %}
@@ -171,7 +166,7 @@
     <script type="text/javascript">
         $(
             function () {
-                var chart_div_high = getClientHeight() - (45 + 8 + 34);
+                var chart_div_high = getClientHeight() - 58;
 
                 $('.stocks_list').ace_scroll({
                     size: 600
@@ -230,7 +225,7 @@
                 });
                 // 打开 F10 页面
                 $('#open_code_f10_btn').click(function () {
-                    var url = 'http://emweb.securities.eastmoney.com/CompanySurvey/Index?type=web&code=' + code.replace('.', '').toLowerCase();
+                    var url = 'http://emweb.securities.eastmoney.com/OperationsRequired/Index?type=web&code=' + code.replace('.', '').toLowerCase();
                     window.open(url);
                 });
 
