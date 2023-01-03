@@ -14,6 +14,7 @@ import pandas as pd
 CL_*** 配置项，可以在调用缠论计算时，通过传递 config 变量进行变更，如 config['CL_BI_FX_STRICT'] = True
 """
 
+
 class Config(Enum):
     """
     缠论配置项
@@ -1015,12 +1016,15 @@ class ICL(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def create_dn_zs(self, zs_type: str, lines: List[LINE], max_line_num: int = 999) -> List[ZS]:
+    def create_dn_zs(
+            self, zs_type: str, lines: List[LINE], max_line_num: int = 999, zs_include_last_line=True
+    ) -> List[ZS]:
         """
         创建段内中枢
         @param zs_type: 中枢类型：bi 笔中枢 xd 线段中枢
         @param lines: 线的列表
         @param max_line_num: 中枢最大线段数量
+        @param zs_include_last_line: 如果中枢最后一笔不是最高 or 最低，在中枢内部，中枢区间是否包含最后一笔，默认包含
         """
         pass
 

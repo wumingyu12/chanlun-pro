@@ -1,6 +1,13 @@
 """
 监控相关代码
 """
+import os
+
+from pyecharts.render import make_snapshot
+from qiniu import Auth, put_file
+from snapshot_selenium import snapshot
+
+from chanlun import kcharts
 from chanlun import rd
 from chanlun.cl_utils import web_batch_get_cl_datas, bi_td
 from chanlun.exchange import get_exchange, Market
@@ -32,7 +39,7 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
     klines = {f: ex.klines(code, f) for f in frequencys}
     cl_datas: List[ICL] = web_batch_get_cl_datas(market, code, klines, cl_config)
 
-    jh_msgs = []
+    jh_msgs = []  # 这里保存当前触发的所有机会信息
     bc_maps = {
         'xd': '线段背驰',
         'bi': '笔背驰',
@@ -98,9 +105,67 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
         if is_exists is False and is_send_msg:
             send_msgs += '【%s - %s】触发 %s (%s - %s) \n' % (name, jh['frequency'], jh['type'], is_done, is_td)
 
+    # 沪深A股，增加行业概念信息
+    if market == 'a' and send_msgs != '':
+        hygn = ex.stock_owner_plate(code)
+        if len(hygn['HY']) > 0:
+            send_msgs += '\n行业 : ' + '/'.join([_['name'] for _ in hygn['HY']])
+        if len(hygn['GN']) > 0:
+            send_msgs += '\n概念 : ' + '/'.join([_['name'] for _ in hygn['GN']])
     # print('Send_msgs: ', send_msgs)
 
+    # 添加图片
+    if send_msgs != '':
+        pics = []
+        for cd in cl_datas:
+            title = f'{name} - {cd.get_frequency()}'
+            pic = kchart_to_png(title, cd, cl_config)
+            if pic != '':
+                pics.append(pic)
+        if len(pics) > 0:
+            # 有图片，将 text 转换成 markdown 类型
+            for pic in pics:
+                send_msgs += f'\n![pic]({pic})'
+            send_msgs = {
+                'title': send_msgs.split('\n')[0],
+                'text': send_msgs.replace('\n', '\n\n')
+            }
     if len(send_msgs) > 0:
         send_dd_msg(market, send_msgs)
 
     return jh_msgs
+
+
+def kchart_to_png(title: str, cd: ICL, cl_config: dict) -> str:
+    """
+    缠论数据保存图表并上传网络，返回访问地址
+    """
+    # 如果没有设置七牛云的 key，则不使用生成图片的功能
+    if config.QINIU_AK == '':
+        return ''
+
+    try:
+        cl_config['chart_width'] = '1000px'
+        cl_config['chart_heigh'] = '800px'
+
+        file_name = cd.get_code().replace('.', '_').replace('/', '_').replace('@', '_') + '_' + cd.get_frequency()
+        cl_config['to_file'] = f'{file_name}_{int(time.time())}.html'
+        png_file = f'{file_name}_{int(time.time())}.png'
+
+        # 渲染并保存图片
+        render_file = kcharts.render_charts(title, cd, config=cl_config)
+        make_snapshot(snapshot, render_file, png_file, is_remove_html=True, delay=4)
+
+        # 上传图片
+        q = Auth(config.QINIU_AK, config.QINIU_SK)
+        file_key = f'{config.QINIU_PATH}/{file_name}_{int(time.time())}.png'
+        token = q.upload_token(config.QINIU_BUCKET_NAME, file_key, 3600)
+        ret, info = put_file(token, file_key, png_file, version='v2')
+
+        # 删除本地图片
+        os.remove(png_file)
+
+        return config.QINIU_URL + '/' + ret['key']
+    except Exception as e:
+        print(f'{title} 生成并上传图片异常：{e}')
+        return ''

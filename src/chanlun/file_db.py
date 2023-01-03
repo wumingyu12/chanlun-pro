@@ -38,6 +38,13 @@ class FileCacheDB(object):
             'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal'
         ]
 
+        # 缠论的更新时间，如果与当前保存不一致，需要清空缓存的计算结果，重新计算
+        self.cl_update_date = '2022-12-31'
+        rd_cl_update_date = rd.Robj().get('__cl_update_date')
+        if rd_cl_update_date != self.cl_update_date:
+            rd.Robj().set('__cl_update_date', self.cl_update_date)
+            self.clear_all_cl_data()
+
     def get_tdx_klines(self, code: str, frequency: str) -> Union[None, pd.DataFrame]:
         """
         获取缓存在文件中的股票数据
@@ -138,6 +145,18 @@ class FileCacheDB(object):
         for filename in os.listdir(self.data_path):
             try:
                 if '.pkl' in filename and os.path.getmtime(f"{self.data_path}/{filename}") < del_lt_times:
+                    os.remove(f'{self.data_path}/{filename}')
+            except Exception:
+                pass
+        return True
+
+    def clear_all_cl_data(self):
+        """
+        删除所有缓存的计算结果文件
+        """
+        for filename in os.listdir(self.data_path):
+            try:
+                if '.pkl' in filename:
                     os.remove(f'{self.data_path}/{filename}')
             except Exception:
                 pass

@@ -1,4 +1,3 @@
-import datetime
 import json
 from typing import Union
 
@@ -8,8 +7,9 @@ from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
 from chanlun import rd
 from chanlun.exchange.exchange import *
-from chanlun.exchange.exchange_futu import ExchangeFutu
 from chanlun.file_db import FileCacheDB
+from chanlun.exchange.exchange_futu import ExchangeFutu, CTX
+from chanlun.exchange.stocks_bkgn import StocksBKGN
 
 g_all_stocks = []
 g_trade_days = None
@@ -33,6 +33,9 @@ class ExchangeTDX(Exchange):
         self.connect_ip = {'ip': connect_ip.split(':')[0], 'port': int(connect_ip.split(':')[1])}
 
         self.futu_ex = ExchangeFutu()
+
+        # 板块概念信息
+        self.stock_bkgn = StocksBKGN()
 
         # 文件缓存
         self.fdb = FileCacheDB()
@@ -197,9 +200,30 @@ class ExchangeTDX(Exchange):
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         """
-        使用富途的接口获取行情Tick数据
+        如果可以使用 富途 的接口，就用 富途的，否则就用 日线的 K线计算
+        使用 富途 的接口会很快，日线则很慢
+        获取日线的k线，并返回最后一根k线的数据
         """
-        return self.futu_ex.ticks(codes)
+        if CTX() is not None:
+            return self.futu_ex.ticks(codes)
+        ticks = {}
+        for code in codes:
+            try:
+                klines = self.klines(code, 'd')
+                close = klines.iloc[-1]['close']
+                open = klines.iloc[-1]['open']
+                high = klines.iloc[-1]['high']
+                low = klines.iloc[-1]['low']
+                volume = klines.iloc[-1]['volume']
+                rate = round((close - klines.iloc[-2]['close']) / klines.iloc[-2]['close'] * 100, 2)
+                tick = Tick(
+                    code=code, last=close, buy1=close, sell1=close, high=high, low=low, open=open, volume=volume,
+                    rate=rate
+                )
+                ticks[code] = tick
+            except Exception as e:
+                print(f'{code} 获取 tick 异常 {e}')
+        return ticks
 
     def now_trading(self):
         """
@@ -277,15 +301,34 @@ class ExchangeTDX(Exchange):
 
     def stock_owner_plate(self, code: str):
         """
-        使用富途的服务
+        使用已经保存好的板块概念信息
         """
-        return self.futu_ex.stock_owner_plate(code)
+        code_type = ''
+        if 'SH.' in code:
+            code_type = self.for_sh(code.split('.')[1])
+        elif 'SZ.' in code:
+            code_type = self.for_sz(code.split('.')[1])
+        if code_type != 'stock_cn':
+            return {'HY': [], 'GN': []}
+        bkgn = self.stock_bkgn.get_code_bkgn(code.split('.')[1])
+        hys = [{'code': n, 'name': n} for n in bkgn['HY']]
+        gns = [{'code': n, 'name': n} for n in bkgn['GN']]
+        return {'HY': hys, 'GN': gns}
 
     def plate_stocks(self, code: str):
         """
-        使用富途的服务
+        使用已经保存好的板块概念信息
         """
-        return self.futu_ex.plate_stocks(code)
+        stock_codes = self.stock_bkgn.get_codes_by_gn(code)
+        stock_codes += self.stock_bkgn.get_codes_by_hy(code)
+
+        def code_to_tdx(_code: str):
+            if _code[0] == '6':
+                return 'SH.' + _code
+            else:
+                return 'SZ.' + _code
+
+        return [self.stock_info(code_to_tdx(c)) for c in stock_codes]
 
     def balance(self):
         raise Exception('交易所不支持')

@@ -129,8 +129,8 @@ class ExchangeFutu(Exchange):
         return None
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
-        CTX().subscribe(codes, [SubType.QUOTE], subscribe_push=False)
-        ret, data = CTX().get_stock_quote(codes)
+        # CTX().subscribe(codes, [SubType.QUOTE], subscribe_push=False)
+        ret, data = CTX().get_market_snapshot(codes)
         if ret == RET_OK:
             return {_d[1]['code']: Tick(code=_d[1]['code'],
                                         last=_d[1]['last_price'],
@@ -138,8 +138,12 @@ class ExchangeFutu(Exchange):
                                         low=_d[1]['low_price'],
                                         open=_d[1]['open_price'],
                                         volume=_d[1]['volume'],
-                                        buy1=_d[1]['last_price'],
-                                        sell1=_d[1]['last_price'], )
+                                        buy1=_d[1]['bid_price'],
+                                        sell1=_d[1]['ask_price'],
+                                        rate=round(
+                                            (_d[1]['last_price'] - _d[1]['prev_close_price']) / _d[1][
+                                                'prev_close_price'] * 100, 2)
+                                        )
                     for _d in data.iterrows()}
 
         print('Ticks Error : ', data)

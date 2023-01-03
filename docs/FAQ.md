@@ -21,3 +21,12 @@
 ### 运行报错 License is not for this machine
 
 许可文件绑定的网卡地址错误，可通过以上获取网卡地址的命令，重新获取网卡地址进行授权即可。
+
+### 沪深A股的 行业/概念 板块更新
+
+项目中的行业/概念板块，采用同花顺的板块与概念数据，数据通过脚本采集更新，并保存在本地 json 文件中，需要手动定时去更新
+
+    Python 文件 ：src/chanlun/exchange/stocks_bkgn.py
+    JSON 文件：src/chanlun/exchange/stocks_bkgn.json
+    
+    # 更新方式：python  stocks_bkgn.py 即可

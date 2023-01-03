@@ -216,9 +216,10 @@
                                 $('#my_stocks').html('');
                                 for (var i = 0; i < result['data'].length; i++) {
                                     var stock = result['data'][i];
-                                    $('#my_stocks').append('<li class="code" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="#' + stock['code'] + '"><span class="menu-text">' + stock['code'] + ' / ' + stock['name'] + '</span></a></li>');
+                                    $('#my_stocks').append('<li class="code" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="#' + stock['code'] + '"><span class="menu-text">' + stock['code'] + ' / ' + stock['name'] + '</span><span class="menu-rate">--</span></a></li>');
                                 }
                                 $('#stock_search').quicksearch('#my_stocks li');
+                                stock_update_rates();
                             }
                         }
                     });

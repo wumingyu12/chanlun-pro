@@ -152,11 +152,12 @@ class ExchangeAlpaca(Exchange):
                 code=code,
                 last=_tick.latest_trade.p,
                 buy1=_tick.latest_quote.bp,
-                sell1=_tick.latest_quote.sp,
+                sell1=_tick.latest_quote.ap,
                 high=_tick.daily_bar.h,
                 low=_tick.daily_bar.l,
                 open=_tick.daily_bar.o,
-                volume=_tick.daily_bar.v
+                volume=_tick.daily_bar.v,
+                rate=round((_tick.daily_bar.c - _tick.prev_daily_bar.c) / _tick.prev_daily_bar.c * 100, 2),
             )
         return code_ticks
 

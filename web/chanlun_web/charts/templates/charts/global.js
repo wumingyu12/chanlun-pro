@@ -221,16 +221,58 @@ $('.btn_zixuan').click(function () {
                 for (var i = 0; i < result['data'].length; i++) {
                     var stock = result['data'][i];
                     if (market === 'currency') {
-                        $('#my_stocks').append('<li class="code" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="#' + stock['code'] + '"><span class="menu-text">' + stock['code'] + '</span></a></li>');
+                        $('#my_stocks').append('<li class="code" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="#' + stock['code'] + '"><span class="menu-text">' + stock['code'] + '</span><span class="menu-rate">--</span></a></li>');
                     } else {
-                        $('#my_stocks').append('<li class="code" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="#' + stock['code'] + '"><span class="menu-text">' + stock['code'] + ' / ' + stock['name'] + '</span></a></li>');
+                        $('#my_stocks').append('<li class="code" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="#' + stock['code'] + '"><span class="menu-text">' + stock['code'] + ' / ' + stock['name'] + '</span><span class="menu-rate">--</span></a></li>');
                     }
                 }
                 $('#stock_search').quicksearch('#my_stocks li');
+                stock_update_rates();
             }
         }
     });
 });
+
+// 自选列表的涨跌幅获取
+let interval_update_rates = undefined;
+
+function stock_update_rates() {
+    // 获取自选列表中的代码
+    let codes = [];
+    $('#my_stocks').find('.code').each(function () {
+        codes.push($(this).data('code'))
+    });
+    console.log(market);
+    console.log(codes);
+    $.ajax({
+        type: "POST",
+        url: "/ticks",
+        data: {'market': market, 'codes': JSON.stringify(codes)},
+        dataType: 'json',
+        success: function (result) {
+            console.log(result);
+            if (result['code'] === 200) {
+                for (let i = 0; i < result['data']['ticks'].length; i++) {
+                    let tick = result['data']['ticks'][i];
+                    console.log(tick);
+                    let color = tick['rate'] > 0 ? 'red' : 'green';
+                    let obj_span_rate = $('#my_stocks .code[data-code="' + tick['code'] + '"]').find('.menu-rate');
+                    obj_span_rate.html(tick['rate'] + '%');
+                    obj_span_rate.css('color', color);
+                    console.log(obj_span_rate);
+                    console.log('-------');
+                }
+                let now_trading = result['data']['now_trading'];
+                if (now_trading !== true) {
+                    clearInterval(interval_update_rates);
+                }
+            }
+        }
+    });
+}
+
+// 每60s更新涨跌幅
+interval_update_rates = setInterval(stock_update_rates, 60000);
 
 // 根据代码，查询自选分组
 function zixuan_code_query_zx_names(code) {

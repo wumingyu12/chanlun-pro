@@ -77,7 +77,9 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
         'chart_idx_kdj_period': '9,3,3',
         'chart_qstd': 'xd,0',
         # 图表高度
-        'chart_high': 800,
+        'chart_width': '100%',
+        'chart_high': '800px',
+        'to_file': ''
     }
 
     # 配置项整理
@@ -1084,7 +1086,7 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
         )
 
     # 最后的 Grid
-    grid_chart = Grid(init_opts=opts.InitOpts(width="100%", height=f"{config['chart_high']}px", theme='dark'))
+    grid_chart = Grid(init_opts=opts.InitOpts(width=config['chart_width'], height=config['chart_high'], theme='dark'))
 
     grid_chart.add(
         overlap_kline,
@@ -1213,6 +1215,9 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                 width="96%", pos_left='1%', pos_right='3%'
             ),
         )
+
+    if config['to_file'] != '':
+        return grid_chart.render(config['to_file'])
 
     if "JPY_PARENT_PID" in os.environ:
         return grid_chart.render_notebook()

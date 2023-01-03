@@ -64,6 +64,13 @@ DINGDING_KEY_US = {'token': '', 'secret': ''}
 DINGDING_KEY_CURRENCY = {'token': '', 'secret': ''}
 DINGDING_KEY_FUTURES = {'token': '', 'secret': ''}
 
+# 七牛云配置 (用于消息推送时的图片保存)
+QINIU_AK = ''
+QINIU_SK = ''
+QINIU_BUCKET_NAME = ''
+QINIU_PATH = ''
+QINIU_URL = 'http://**'
+
 # 自选组配置
 STOCK_ZX = [{'name': '我的持仓', 'short_name': '持'}, {'name': '今日关注', 'short_name': '今'}]
 HK_ZX = [{'name': '我的持仓', 'short_name': '持'}, {'name': '今日关注', 'short_name': '今'}]

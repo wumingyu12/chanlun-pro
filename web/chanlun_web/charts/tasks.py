@@ -43,7 +43,6 @@ def task_a_1():
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:
-            time.sleep(2)
             code = stock['code']
             name = stock['name']
             cl_config = query_cl_chart_config('a', code)
@@ -80,7 +79,6 @@ def task_a_2():
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:
-            time.sleep(2)
             code = stock['code']
             name = stock['name']
             cl_config = query_cl_chart_config('a', code)
@@ -115,7 +113,6 @@ def task_hk():
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:
-            time.sleep(2)
             code = stock['code']
             name = stock['name']
             cl_config = query_cl_chart_config('hk', code)
@@ -151,7 +148,6 @@ def task_us():
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:
-            time.sleep(2)
             code = stock['code']
             name = stock['name']
             cl_config = query_cl_chart_config('us', code)
@@ -187,7 +183,6 @@ def task_futures():
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:
-            time.sleep(2)
             code = stock['code']
             name = stock['name']
             cl_config = query_cl_chart_config('futures', code)
@@ -219,7 +214,6 @@ def task_currency():
     stocks = zx.zx_stocks(config['zixuan'])
     for stock in stocks:
         try:
-            time.sleep(2)
             code = stock['code']
             name = stock['name']
             cl_config = query_cl_chart_config('currency', code)

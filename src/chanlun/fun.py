@@ -40,11 +40,13 @@ def get_logger(filename=None, level=logging.INFO) -> logging.Logger:
     return logger
 
 
-def send_dd_msg(market: str, msg: str):
+def send_dd_msg(market: str, msg: Union[str, dict]):
     """
     发送钉钉消息
+    https://open.dingtalk.com/document/robots/custom-robot-access
+
     :param market:
-    :param msg:
+    :param msg: 如果类型是 str 则发送文本消息，dict 发送 markdown 消息 (dict demo {'title': '标题', 'text': 'markdown内容'})
     :return:
     """
     dd_info = None
@@ -75,10 +77,16 @@ def send_dd_msg(market: str, msg: str):
 
     t, s = sign()
     url = url % (dd_info['token'], t, s)
-    requests.post(url, json={
-        'msgtype': 'text',
-        'text': {"content": msg},
-    })
+    if isinstance(msg, str):
+        requests.post(url, json={
+            'msgtype': 'text',
+            'text': {"content": msg},
+        })
+    else:
+        requests.post(url, json={
+            'msgtype': 'markdown',
+            'markdown': msg
+        })
     return True
 
 

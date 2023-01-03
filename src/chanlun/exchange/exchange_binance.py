@@ -148,10 +148,13 @@ class ExchangeBinance(Exchange):
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         res_ticks = {}
         for code in codes:
-            _t = self.exchange.fetch_ticker(code)
-            res_ticks[code] = Tick(
-                code=code, last=_t['last'], buy1=_t['bid'], sell1=_t['ask'], high=_t['high'], low=_t['low'],
-                open=_t['open'], volume=_t['quoteVolume'])
+            try:
+                _t = self.exchange.fetch_ticker(code)
+                res_ticks[code] = Tick(
+                    code=code, last=_t['last'], buy1=_t['bid'], sell1=_t['ask'], high=_t['high'], low=_t['low'],
+                    open=_t['open'], volume=_t['quoteVolume'], rate=_t['percentage'])
+            except Exception as e:
+                print(f'{code} 获取 tick 异常 {e}')
         return res_ticks
 
     def ticker24HrRank(self, num=20):

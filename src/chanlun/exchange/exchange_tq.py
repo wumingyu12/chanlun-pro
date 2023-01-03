@@ -1,19 +1,18 @@
+import math
 import threading
 
 import tqsdk
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
-from tqsdk.objs import Account, Position
+from tqsdk.objs import Account, Position, Quote
 
-from chanlun import config, fun
+from chanlun import config
 from chanlun.exchange.exchange import *
 
 # 全局的变量
 g_api: tqsdk.TqApi = None
 g_account: tqsdk.TqAccount = None
 g_account_enable: bool = False
-g_look = threading.Lock()
 g_all_stocks = []
-g_klines = {}
 
 
 class ExchangeTq(Exchange):
@@ -24,6 +23,80 @@ class ExchangeTq(Exchange):
     def __init__(self, use_simulate_account=True):
         # 是否使用模拟账号，进行交易测试（这种模式无需设置实盘账号）
         self.use_simulate_account = use_simulate_account
+
+        # 命令任务队列
+        self.command_tasks: List[str] = []
+        # 记录已经收到并执行的命令
+        self.past_commands = []
+        # K线返回对象
+        self.res_klines: Dict[str, pd.DataFrame] = {}
+        # Tick 返回对象
+        self.res_ticks: Dict[str, Quote] = {}
+        # 任务运行日期记录，用于每日重启服务
+        self.run_date = fun.datetime_to_str(datetime.datetime.now(), '%Y-%m-%d')
+        # 运行的子进程
+        self.t = threading.Thread(target=self.thread_run_tasks)
+        self.t.start()
+
+    def thread_run_tasks(self):
+        """
+        子进程发送并更新行情请求
+        """
+        print('启动天勤子进程任务-更新K线与tick数据')
+
+        async def get_tick(code):
+            quote = await self.get_api().get_quote(code)
+            self.res_ticks[code] = quote
+            async with self.get_api().register_update_notify() as update_chan:
+                async for _ in update_chan:
+                    if self.get_api().is_changing(quote):
+                        # print(f'Tick {code} 更新信息：', quote)
+                        self.res_ticks[code] = quote
+
+        async def get_kline(code, frequency):
+            kline = await self.get_api().get_kline_serial(code, duration_seconds=frequency, data_length=5000)
+            self.res_klines[f'{code}_{frequency}'] = kline
+            async with self.get_api().register_update_notify() as update_chan:
+                async for _ in update_chan:
+                    if self.get_api().is_changing(kline):
+                        # print(f'Kline {code} {frequency} 更新信息：', len(kline))
+                        self.res_klines[f'{code}_{frequency}'] = kline
+
+        def reset_api(force: bool = False):
+            # 每日重启
+            now_date = fun.datetime_to_str(datetime.datetime.now(), '%Y-%m-%d')
+            if force is False and now_date == self.run_date:
+                return True
+            print('天勤 : 重启服务')
+            try:
+                self.close_api()
+            except Exception:
+                pass
+            self.run_date = now_date
+            self.res_klines = {}
+            self.res_ticks = {}
+            self.past_commands = []
+
+        while True:
+            try:
+                while len(self.command_tasks) > 0:
+                    commands = self.command_tasks.pop()
+                    if commands in self.past_commands:
+                        continue
+                    self.past_commands.append(commands)
+                    commands = commands.split(':')
+                    if commands[0] == 'kline':
+                        print('执行 Kline 命令：', ':'.join(commands))
+                        self.get_api().create_task(get_kline(commands[1], int(commands[2])))
+                    elif commands[0] == 'tick':
+                        print('执行 Tick 命令：', ':'.join(commands))
+                        self.get_api().create_task(get_tick(commands[1]))
+                self.get_api().wait_update(time.time() + 1)
+                reset_api()
+            except Exception as e:
+                print(f'天勤 循环等待更新行情数据异常 {e}，重启')
+                reset_api(force=True)
+                time.sleep(5)
 
     def get_api(self, use_account=False):
         """
@@ -52,11 +125,10 @@ class ExchangeTq(Exchange):
 
     @staticmethod
     def close_api():
-        global g_api, g_klines
+        global g_api
         if g_api is not None:
             g_api.close()
             g_api = None
-            g_klines = {}
         return True
 
     def get_account(self):
@@ -111,49 +183,31 @@ class ExchangeTq(Exchange):
             args = {}
         if 'limit' not in args.keys():
             args['limit'] = 2000
-        global g_look, g_klines
-        try:
-            return self._extracted_from_klines_9(start_date, end_date, code, frequency, args['limit'])
-        except Exception as e:
-            print(f'TQ 获取 {code} - {frequency} 行情异常： {e}')
-            return None
-        finally:
-            g_look.release()
-
-    def _extracted_from_klines_9(self, start_date, end_date, code, frequency, limit=2000):
-        g_look.acquire()
         frequency_maps = {
             'w': 7 * 24 * 60 * 60, 'd': 24 * 60 * 60, '60m': 60 * 60, '30m': 30 * 60, '15m': 15 * 60,
             '10m': 10 * 60, '6m': 6 * 60, '5m': 5 * 60, '3m': 3 * 60, '2m': 2 * 60, '1m': 1 * 60,
             '30s': 30, '10s': 10
         }
-
         if start_date is not None and end_date is not None:
-            # 有专业版权限才可以调用此方法
-            klines = self.get_api().get_kline_data_series(
-                symbol=code,
-                duration_seconds=frequency_maps[frequency],
-                start_dt=fun.str_to_datetime(start_date),
-                end_dt=fun.str_to_datetime(end_date)
-            )
-            # raise Exception('期货行情不支持历史数据查询，因为账号不是专业版，没权限')
-        else:
-            key = f'{code}_{frequency}'
-            if key not in g_klines.keys():
-                try:
-                    g_klines[key] = self.get_api().get_kline_serial(symbol=code,
-                                                                    duration_seconds=frequency_maps[frequency],
-                                                                    data_length=limit)
-                except Exception:
-                    # 异常重新关闭后进行重试
-                    self.close_api()
-                    g_klines[key] = self.get_api().get_kline_serial(symbol=code,
-                                                                    duration_seconds=frequency_maps[frequency],
-                                                                    data_length=limit)
-            # 等数据更新
-            self.get_api().wait_update(time.time() + 1)
-            klines = g_klines[key].dropna()
+            raise Exception('期货行情不支持历史数据查询，因为账号不是专业版，没权限')
 
+        # 添加命令
+        kline_key = f'{code}_{frequency_maps[frequency]}'
+        self.command_tasks.append(f'kline:{code}:{frequency_maps[frequency]}')
+        # 获取返回的K线
+        klines = None
+        try_nums = 0
+        while True:
+            if kline_key not in self.res_klines.keys():
+                time.sleep(1)
+                try_nums += 1
+                if try_nums > 5:  # 5秒后没有结果直接返回空
+                    return None
+                continue
+            klines = self.res_klines[kline_key]
+            break
+        if klines is None:
+            return None
         klines.loc[:, 'date'] = klines['datetime'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e9))
         klines.loc[:, 'code'] = code
 
@@ -165,20 +219,35 @@ class ExchangeTq(Exchange):
         :param codes:
         :return:
         """
+        # 循环增加命令
+        for code in codes:
+            self.command_tasks.append(f'tick:{code}')
+        time.sleep(1)
+        # 循环获取更新后的 tick
         res_ticks = {}
-        for _code in codes:
-            tick = self.get_api().get_tick_serial(_code, data_length=1)
-            self.get_api().wait_update(time.time() + 1)
-            res_ticks[_code] = Tick(
-                code=_code,
-                last=tick.iloc[-1]['last_price'],
-                buy1=tick.iloc[-1]['bid_price1'],
-                sell1=tick.iloc[-1]['ask_price1'],
-                high=tick.iloc[-1]['highest'],
-                low=tick.iloc[-1]['lowest'],
-                open=0,
-                volume=tick.iloc[-1]['volume']
-            )
+        for code in codes:
+            try_nums = 0
+            while True:
+                if code not in self.res_ticks.keys():
+                    time.sleep(1)
+                    try_nums += 1
+                    if try_nums > 3:
+                        break
+                    continue
+                tick = self.res_ticks[code]
+                res_ticks[code] = Tick(
+                    code=code,
+                    last=0 if math.isnan(tick['last_price']) else tick['last_price'],
+                    buy1=0 if math.isnan(tick['bid_price1']) else tick['bid_price1'],
+                    sell1=0 if math.isnan(tick['ask_price1']) else tick['ask_price1'],
+                    high=0 if math.isnan(tick['highest']) else tick['highest'],
+                    low=0 if math.isnan(tick['lowest']) else tick['lowest'],
+                    open=0 if math.isnan(tick['open']) else tick['open'],
+                    volume=0 if math.isnan(tick['volume']) else tick['volume'],
+                    rate=0 if math.isnan(tick['pre_settlement']) else round(
+                        (tick['last_price'] - tick['pre_settlement']) / tick['pre_settlement'] * 100, 2)
+                )
+                break
         return res_ticks
 
     def stock_info(self, code: str) -> [Dict, None]:

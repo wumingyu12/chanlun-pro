@@ -66,6 +66,9 @@ urlpatterns = [
     path('zixuan/opt', views.zixuan_operation_json),
     path('search_code', views.search_code_json),
 
+    # tick
+    path('ticks', views.ticks),
+
     # 添加订单记录
     path('add_order', views.add_order_json),
     path('clean_order', views.clean_order_json),

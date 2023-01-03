@@ -1,4 +1,5 @@
 .sidebar {
+    width: 240px;
     float: right;
 }
 
@@ -34,7 +35,7 @@
 
 .sidebar + .main-content {
     margin-left: 0;
-    margin-right: 190px;
+    margin-right: 240px;
 }
 
 .nav-list li a {
@@ -45,4 +46,9 @@
     max-width: 600px;
     max-height: 800px;
     overflow: auto;
+}
+
+.menu-rate {
+    float: right;
+    font-size: 12px;
 }

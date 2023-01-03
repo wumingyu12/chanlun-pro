@@ -1,16 +1,13 @@
-import datetime
-
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 from django.shortcuts import render, redirect
 
-from chanlun.exchange import get_exchange, Market
+from chanlun import zixuan
 from chanlun.cl_utils import *
-from chanlun import zixuan, config, rd
+from chanlun.exchange import get_exchange, Market
 from . import tasks
 from . import utils
 from .apps import login_required
-from . import task_gm
 
 """
 异步执行后台定时任务
@@ -101,6 +98,26 @@ def zixuan_operation_json(request):
         zx.del_stock(zx_name, code)
 
     return utils.json_response('OK')
+
+
+@login_required
+def ticks(request):
+    """
+    获取 ticks 信息
+    """
+    market = request.POST.get('market')
+    codes = request.POST.get('codes')
+    codes = json.loads(codes)
+    # print(codes)
+    ex = get_exchange(Market(market))
+    ticks = ex.ticks(codes)
+
+    try:
+        now_trading = ex.now_trading()
+        res_ticks = [{'code': _c, 'rate': round(float(_t.rate), 2)} for _c, _t in ticks.items()]
+        return utils.json_response({'now_trading': now_trading, 'ticks': res_ticks})
+    except Exception as e:
+        return utils.json_response({'now_trading': False, 'ticks': []})
 
 
 # 搜索股票代码
