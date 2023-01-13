@@ -90,6 +90,8 @@ US_ZX = [{'name': '我的持仓', 'short_name': '持'}, {'name': '今日关注',
 # 自己根据实际情况，根据经验自行设置
 enable_kchart_low_to_high = False
 
+# 段内中枢超过几段进行拆分（单数，最小 9，包括中枢连接段）
+xd_zs_max_lines_split = 11
 # 特殊情况，拆分线段时，是否允许单笔成段
 allow_split_one_line_to_xd = True
 

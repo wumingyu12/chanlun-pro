@@ -328,7 +328,7 @@ class ExchangeTDX(Exchange):
             else:
                 return 'SZ.' + _code
 
-        return [self.stock_info(code_to_tdx(c)) for c in stock_codes]
+        return [self.stock_info(code_to_tdx(c)) for c in stock_codes if self.stock_info(code_to_tdx(c)) is not None]
 
     def balance(self):
         raise Exception('交易所不支持')

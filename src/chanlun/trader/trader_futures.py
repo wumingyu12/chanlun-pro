@@ -18,7 +18,7 @@ class TraderFutures(BackTestTrader):
 
     def __init__(self, name, log=None):
         super().__init__(name=name, mode='real', is_stock=False, is_futures=True, log=log)
-        self.ex = ExchangeTq(use_simulate_account=True)
+        self.ex = ExchangeTq(use_account=True)
 
         self.zx = zixuan.ZiXuan('futures')
 

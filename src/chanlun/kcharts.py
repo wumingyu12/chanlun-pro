@@ -707,19 +707,19 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                 series_name="BOLL",
                 is_symbol_show=False,
                 y_axis=boll_up,
-                linestyle_opts=opts.LineStyleOpts(width=1, color='#99CC99'),
+                linestyle_opts=opts.LineStyleOpts(width=1, type_='dashed', color='#99CC99'),
                 label_opts=opts.LabelOpts(is_show=False),
             ).add_yaxis(
                 series_name="BOLL",
                 is_symbol_show=False,
                 y_axis=boll_mid,
-                linestyle_opts=opts.LineStyleOpts(width=1, color='#FF6D00'),
+                linestyle_opts=opts.LineStyleOpts(width=1, type_='dashed', color='#FF6D00'),
                 label_opts=opts.LabelOpts(is_show=False),
             ).add_yaxis(
                 series_name="BOLL",
                 is_symbol_show=False,
                 y_axis=boll_low,
-                linestyle_opts=opts.LineStyleOpts(width=1, color='#99CC99'),
+                linestyle_opts=opts.LineStyleOpts(width=1, type_='dashed', color='#99CC99'),
                 label_opts=opts.LabelOpts(is_show=False),
             ).set_global_opts()
         ))

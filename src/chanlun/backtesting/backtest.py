@@ -268,7 +268,7 @@ class BackTest:
 
             BT.log.info(f'回测{new_cl_setting} : {new_save_file} 结果：{balance}')
         except Exception:
-            BT.log.errow(f'执行回测异常：{new_cl_setting} : {new_save_file}')
+            BT.log.error(f'执行回测异常：{new_cl_setting} : {new_save_file}')
             BT.log.error(traceback.format_exc())
 
         return {'end_balance': balance, 'params': new_cl_setting, 'save_file': new_save_file}

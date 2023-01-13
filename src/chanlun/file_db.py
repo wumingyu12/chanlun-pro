@@ -7,7 +7,7 @@ from typing import Union
 
 import pandas as pd
 
-from chanlun import cl, fun, rd
+from chanlun import cl, fun, rd, config
 from chanlun.cl_interface import ICL
 from chanlun.exchange import Exchange
 
@@ -32,6 +32,7 @@ class FileCacheDB(object):
         if os.path.isdir(self.klines_path) is False:
             os.mkdir(self.klines_path)
 
+        # 如果内部有值变动，则会重新计算
         self.config_keys = [
             'kline_type', 'fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_qj', 'bi_fx_cgd',
             'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx',
@@ -83,9 +84,9 @@ class FileCacheDB(object):
         """
         获取web缓存的的缠论数据对象
         """
-        key = hashlib.md5(
-            f'{[f"{k}:{v}" for k, v in cl_config.items() if k in self.config_keys]}'.encode('UTF-8')
-        ).hexdigest()
+        unique_md5_str = f'{[f"{k}:{v}" for k, v in cl_config.items() if k in self.config_keys]}'
+        unique_md5_str += f'{config.xd_zs_max_lines_split}_{config.allow_split_one_line_to_xd}_{config.allow_bi_fx_strict}'
+        key = hashlib.md5(unique_md5_str.encode('UTF-8')).hexdigest()
         # 加分布式锁，避免同时访问一个文件造成异常
         lock_name = f'{market}_{code}_{frequency}'
         lock_id = rd.acquire_lock(lock_name)
