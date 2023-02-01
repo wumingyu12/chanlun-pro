@@ -9,6 +9,7 @@ from tqsdk.objs import Account, Position, Order
 from chanlun import config
 from chanlun.exchange.exchange import *
 import random
+import time
 
 
 class ExchangeTq(Exchange):

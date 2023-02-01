@@ -1,5 +1,5 @@
 import os
-
+import time
 import alpaca_trade_api as tradeapi
 from alpaca_trade_api.rest import TimeFrame, TimeFrameUnit
 

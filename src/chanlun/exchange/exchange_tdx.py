@@ -1,4 +1,4 @@
-import json
+import json, time
 from typing import Union
 
 from pytdx.hq import TdxHq_API
@@ -10,6 +10,7 @@ from chanlun.exchange.exchange import *
 from chanlun.file_db import FileCacheDB
 from chanlun.exchange.exchange_futu import ExchangeFutu, CTX
 from chanlun.exchange.stocks_bkgn import StocksBKGN
+from chanlun import fun
 
 g_all_stocks = []
 g_trade_days = None

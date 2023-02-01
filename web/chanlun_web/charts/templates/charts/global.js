@@ -242,25 +242,19 @@ function stock_update_rates() {
     $('#my_stocks').find('.code').each(function () {
         codes.push($(this).data('code'))
     });
-    console.log(market);
-    console.log(codes);
     $.ajax({
         type: "POST",
         url: "/ticks",
         data: {'market': market, 'codes': JSON.stringify(codes)},
         dataType: 'json',
         success: function (result) {
-            console.log(result);
             if (result['code'] === 200) {
                 for (let i = 0; i < result['data']['ticks'].length; i++) {
                     let tick = result['data']['ticks'][i];
-                    console.log(tick);
                     let color = tick['rate'] > 0 ? 'red' : 'green';
                     let obj_span_rate = $('#my_stocks .code[data-code="' + tick['code'] + '"]').find('.menu-rate');
                     obj_span_rate.html(tick['rate'] + '%');
                     obj_span_rate.css('color', color);
-                    console.log(obj_span_rate);
-                    console.log('-------');
                 }
                 let now_trading = result['data']['now_trading'];
                 if (now_trading !== true) {

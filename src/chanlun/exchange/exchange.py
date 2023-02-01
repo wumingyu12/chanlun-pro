@@ -1,11 +1,11 @@
 import datetime
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Dict
-from chanlun import fun
 
 import pandas as pd
+
+from chanlun.fun import datetime_to_str, str_to_timeint, datetime_to_int, str_to_datetime, timeint_to_datetime
 
 
 @dataclass
@@ -152,15 +152,15 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
         # 后对其的，最后一个k线的时间不是未来的结束时间，需要特殊处理一下
         # 周期是 d、w、m，只保留年月日
         if to_f in ['d', 'w', 'm']:
-            period_klines['date'] = period_klines['date'].map(lambda d: fun.datetime_to_str(d, '%Y-%m-%d'))
+            period_klines['date'] = period_klines['date'].map(lambda d: datetime_to_str(d, '%Y-%m-%d'))
             period_klines['date'] = pd.to_datetime(period_klines['date'])
         elif to_f in ['5m', '10m', '15m', '30m']:
             def lts_time(d: datetime.datetime):
-                dt_int = fun.datetime_to_int(d)
+                dt_int = datetime_to_int(d)
                 seconds = int(to_f.replace('m', '')) * 60
                 if dt_int % seconds == 0:
                     return d
-                return fun.timeint_to_datetime(dt_int - (dt_int % seconds) + seconds)
+                return timeint_to_datetime(dt_int - (dt_int % seconds) + seconds)
 
             period_klines['date'] = period_klines['date'].map(lts_time)
             period_klines['date'] = pd.to_datetime(period_klines['date'])
@@ -186,12 +186,12 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
         """
         将时间转换成合并后的时间值
         """
-        date_str = fun.datetime_to_str(dt, '%Y-%m-%d')
+        date_str = datetime_to_str(dt, '%Y-%m-%d')
         for new_time, range_time in config.items():
-            range_start = fun.str_to_timeint(f'{date_str} {range_time[0]}')
-            range_end = fun.str_to_timeint(f'{date_str} {range_time[1]}')
-            if range_start <= fun.datetime_to_int(dt) <= range_end:
-                return fun.str_to_datetime(f'{date_str} {new_time}')
+            range_start = str_to_timeint(f'{date_str} {range_time[0]}')
+            range_end = str_to_timeint(f'{date_str} {range_time[1]}')
+            if range_start <= datetime_to_int(dt) <= range_end:
+                return str_to_datetime(f'{date_str} {new_time}')
         return None
 
     new_kline = {}
@@ -359,12 +359,12 @@ def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataF
         """
         将时间转换成合并后的时间值
         """
-        date_str = fun.datetime_to_str(dt, '%Y-%m-%d')
+        date_str = datetime_to_str(dt, '%Y-%m-%d')
         for new_time, range_time in config.items():
-            range_start = fun.str_to_timeint(f'{date_str} {range_time[0]}')
-            range_end = fun.str_to_timeint(f'{date_str} {range_time[1]}')
-            if range_start <= fun.datetime_to_int(dt) <= range_end:
-                return fun.str_to_datetime(f'{date_str} {new_time}')
+            range_start = str_to_timeint(f'{date_str} {range_time[0]}')
+            range_end = str_to_timeint(f'{date_str} {range_time[1]}')
+            if range_start <= datetime_to_int(dt) <= range_end:
+                return str_to_datetime(f'{date_str} {new_time}')
         return None
 
     new_kline = {}

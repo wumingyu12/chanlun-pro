@@ -227,8 +227,8 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                 point_di['index'].append(fx.k.date)
                 point_di['val'].append([fx.val, '强分型' if fx.ld() >= 5 else ''])
         # 转换x坐标的时间周期
-        point_ding['index'] = datetime_convect_frequency(point_ding['index'], target_dates)
-        point_di['index'] = datetime_convect_frequency(point_di['index'], target_dates)
+        point_ding['index'] = datetime_convert_frequency(point_ding['index'], target_dates)
+        point_di['index'] = datetime_convert_frequency(point_di['index'], target_dates)
 
     # 画 笔 (如果有转高级别图标，就不展示笔了)
     if config['chart_show_bi']:
@@ -252,14 +252,14 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
         line_qsds = line_xu_qsds = {'index': [], 'val': []}
 
     # 转换x坐标的时间周期
-    line_bis['index'] = datetime_convect_frequency(line_bis['index'], target_dates)
-    line_xu_bis['index'] = datetime_convect_frequency(line_xu_bis['index'], target_dates)
-    line_xds['index'] = datetime_convect_frequency(line_xds['index'], target_dates)
-    line_xu_xds['index'] = datetime_convect_frequency(line_xu_xds['index'], target_dates)
-    line_zsds['index'] = datetime_convect_frequency(line_zsds['index'], target_dates)
-    line_xu_zsds['index'] = datetime_convect_frequency(line_xu_zsds['index'], target_dates)
-    line_qsds['index'] = datetime_convect_frequency(line_qsds['index'], target_dates)
-    line_xu_qsds['index'] = datetime_convect_frequency(line_xu_qsds['index'], target_dates)
+    line_bis['index'] = datetime_convert_frequency(line_bis['index'], target_dates)
+    line_xu_bis['index'] = datetime_convert_frequency(line_xu_bis['index'], target_dates)
+    line_xds['index'] = datetime_convert_frequency(line_xds['index'], target_dates)
+    line_xu_xds['index'] = datetime_convert_frequency(line_xu_xds['index'], target_dates)
+    line_zsds['index'] = datetime_convert_frequency(line_zsds['index'], target_dates)
+    line_xu_zsds['index'] = datetime_convert_frequency(line_xu_zsds['index'], target_dates)
+    line_qsds['index'] = datetime_convert_frequency(line_qsds['index'], target_dates)
+    line_xu_qsds['index'] = datetime_convert_frequency(line_xu_qsds['index'], target_dates)
 
     # 画 笔 中枢 (遍历所有计算的中枢类型)
     line_bi_zss = []
@@ -287,13 +287,13 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
 
     # 转换x坐标的时间周期
     for _zs in line_bi_zss:
-        _zs[0] = datetime_convect_frequency(_zs[0], target_dates)
+        _zs[0] = datetime_convert_frequency(_zs[0], target_dates)
     for _zs in line_xd_zss:
-        _zs[0] = datetime_convect_frequency(_zs[0], target_dates)
+        _zs[0] = datetime_convert_frequency(_zs[0], target_dates)
     for _zs in line_zsd_zss:
-        _zs[0] = datetime_convect_frequency(_zs[0], target_dates)
+        _zs[0] = datetime_convert_frequency(_zs[0], target_dates)
     for _zs in line_qsd_zss:
-        _zs[0] = datetime_convect_frequency(_zs[0], target_dates)
+        _zs[0] = datetime_convert_frequency(_zs[0], target_dates)
 
     # 画最后一笔中枢
     line_last_bi_zs = []
@@ -438,9 +438,9 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
             scatter_sell['val'].append([fx.val, sell_label.strip('/')])
 
     # 转换x坐标的时间周期
-    scatter_bc['i'] = datetime_convect_frequency(scatter_bc['i'], target_dates)
-    scatter_buy['i'] = datetime_convect_frequency(scatter_buy['i'], target_dates)
-    scatter_sell['i'] = datetime_convect_frequency(scatter_sell['i'], target_dates)
+    scatter_bc['i'] = datetime_convert_frequency(scatter_bc['i'], target_dates)
+    scatter_buy['i'] = datetime_convert_frequency(scatter_buy['i'], target_dates)
+    scatter_sell['i'] = datetime_convert_frequency(scatter_sell['i'], target_dates)
 
     # 画订单记录
     scatter_buy_orders = {'i': [], 'val': []}
@@ -937,13 +937,17 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
             bar_width='60%',
         ).set_global_opts(
             legend_opts=opts.LegendOpts(is_show=False),
-            xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=True, color="#9b9da9"),
-                                     type_='category', grid_index=1),
+            xaxis_opts=opts.AxisOpts(
+                axislabel_opts=opts.LabelOpts(is_show=True, color="#9b9da9"),
+                type_='category', grid_index=1,
+                splitline_opts=opts.SplitLineOpts(is_show=False)
+            ),
             yaxis_opts=opts.AxisOpts(
                 position="right",
                 axislabel_opts=opts.LabelOpts(is_show=False),
                 axisline_opts=opts.AxisLineOpts(is_show=False),
                 axistick_opts=opts.AxisTickOpts(is_show=False),
+                splitline_opts=opts.SplitLineOpts(is_show=False)
             )
         )
     )
@@ -985,12 +989,16 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
             ),
         ).set_global_opts(
             legend_opts=opts.LegendOpts(is_show=False),
-            xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
+            xaxis_opts=opts.AxisOpts(
+                axislabel_opts=opts.LabelOpts(is_show=False),
+                splitline_opts=opts.SplitLineOpts(is_show=False)
+            ),
             yaxis_opts=opts.AxisOpts(
                 position="right",
                 axislabel_opts=opts.LabelOpts(is_show=False),
                 axisline_opts=opts.AxisLineOpts(is_show=False),
                 axistick_opts=opts.AxisTickOpts(is_show=False),
+                splitline_opts=opts.SplitLineOpts(is_show=False)
             ),
         )
     )
@@ -1269,7 +1277,7 @@ def zss_to_charts(zss: List[ZS]):
     return zs_charts
 
 
-def datetime_convect_frequency(src_dates, target_dates):
+def datetime_convert_frequency(src_dates, target_dates):
     """
     将图表x轴时间坐标，转换成指定周期的目标时间坐标
     """
@@ -1280,7 +1288,7 @@ def datetime_convect_frequency(src_dates, target_dates):
     for _dt in src_dates:
         _dts = dts[dts <= _dt]
         if len(_dts) == 0:
-            res_dates.append(src_dates)
+            res_dates.append(_dt)
         else:
             res_dates.append(_dts.iloc[-1])
     return res_dates

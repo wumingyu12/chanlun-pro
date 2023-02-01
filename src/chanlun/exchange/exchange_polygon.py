@@ -3,13 +3,13 @@ US Polygon 行情接口
 """
 
 import datetime as dt
+import os
+import pytz
 
 import polygon
-
-import os, pytz
-import pandas as pd
+import time
 from chanlun import config
-from chanlun import fun, rd
+from chanlun import fun
 from chanlun.exchange.exchange import *
 
 g_all_stocks = []
@@ -130,20 +130,21 @@ class ExchangePolygon(Exchange):
                 time_format = '%Y-%m-%d %H:%M:%S'
                 if len(_toDate) == 10:
                     time_format = '%Y-%m-%d'
-                start_date = pd.to_datetime(start_date).strftime(time_format) 
+                start_date = pd.to_datetime(start_date).strftime(time_format)
 
-            resp = self.client.stocks_equities_aggregates(code.upper(), frequency_mult[frequency], frequency_map[frequency],
+            resp = self.client.stocks_equities_aggregates(code.upper(), frequency_mult[frequency],
+                                                          frequency_map[frequency],
                                                           start_date, _toDate, limit=50000)
             df = pd.DataFrame(resp.results)
             df['dt'] = pd.to_datetime(df['t'], unit='ms')
 
-            df = df.set_index('dt') 
-            
+            df = df.set_index('dt')
+
             if frequency != 'd' and frequency != 'w' and frequency != 'm' and frequency != 'y':
                 nyc = pytz.timezone('America/New_York')
                 df.index = df.index.tz_localize(pytz.utc).tz_convert(nyc)
-                df = df.between_time('09:30:00', '16:00:00') 
-                
+                df = df.between_time('09:30:00', '16:00:00')
+
             df = df.reset_index()
 
             klines = self.format_kline_pg(code, df)

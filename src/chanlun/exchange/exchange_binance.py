@@ -1,6 +1,7 @@
 import traceback
 
 import ccxt
+import deprecation
 import pymysql.err
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
@@ -57,9 +58,9 @@ class ExchangeBinance(Exchange):
             return g_all_stocks
 
         markets = self.exchange.load_markets()
-        for s in markets:
-            if '/' in s:
-                g_all_stocks.append({'code': s, 'name': s})
+        for _, s in markets.items():
+            if s['quote'] == 'USDT':
+                g_all_stocks.append({'code': s['base'] + '/' + s['quote'], 'name': s['base'] + '/' + s['quote']})
         return g_all_stocks
 
     @retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5), retry=retry_if_result(lambda _r: _r is None))
@@ -151,7 +152,7 @@ class ExchangeBinance(Exchange):
             try:
                 _t = self.exchange.fetch_ticker(code)
                 res_ticks[code] = Tick(
-                    code=code, last=_t['last'], buy1=_t['bid'], sell1=_t['ask'], high=_t['high'], low=_t['low'],
+                    code=code, last=_t['last'], buy1=_t['last'], sell1=_t['last'], high=_t['high'], low=_t['low'],
                     open=_t['open'], volume=_t['quoteVolume'], rate=_t['percentage'])
             except Exception as e:
                 print(f'{code} 获取 tick 异常 {e}')
@@ -160,6 +161,7 @@ class ExchangeBinance(Exchange):
     def ticker24HrRank(self, num=20):
         """
         获取24小时交易量排行前的交易对儿
+        TODO 废弃了，不用了
         :param num:
         :return:
         """
@@ -207,7 +209,13 @@ class ExchangeBinance(Exchange):
         initialMargin 占用保证金
         percentage 盈亏百分比
         """
-        return [p for p in position if p['entryPrice'] != 0.0]
+        # 替换其中的 symbol ，去除后面的 :USDT
+        res_poss = []
+        for p in position:
+            if p['entryPrice'] != 0.0:
+                p['symbol'] = p['symbol'].replace(':USDT', '')
+                res_poss.append(p)
+        return res_poss
 
     # 撤销所有挂单
     def cancel_all_order(self, code):
@@ -222,8 +230,7 @@ class ExchangeBinance(Exchange):
             'close_short': {'side': 'BUY', 'positionSide': 'SHORT'},
         }
         if 'open' in o_type:
-            self.exchange.fapiPrivate_post_leverage(
-                params={'symbol': code.replace('/', ''), 'leverage': args['leverage']})
+            self.exchange.set_leverage(args['leverage'], symbol=code)
         return self.exchange.create_order(
             symbol=code, type='MARKET',
             side=trade_maps[o_type]['side'],

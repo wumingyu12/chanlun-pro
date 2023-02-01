@@ -2,6 +2,19 @@
 
 ---
 
+### 2023-02-01
+
+> 包升级
+> 
+> pip install -U numpy pandas pyecharts
+> 
+> pip install ccxt==2.7.12
+> 
+
+* `install_windows.bat` 安装脚本，将 `python` 版本修改为 3.10
+* 升级 `pyecharts` 、 `ccxt` 包为最新版本
+
+
 ### 2023-01-13
 
 > 新增配置项 config.py
