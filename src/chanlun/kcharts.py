@@ -725,7 +725,7 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
         ))
     if config['chart_show_ma']:
         # 计算ma线
-        ma_colors = ['rgb(255,141,30)', 'rgb(12,174,230)', 'rgb(233,112,220)', 'rgb(0,128,250)', 'rgb(34,197,126)']
+        ma_colors = ['rgb(255,255,255)', 'rgb(255,255,11)', 'rgb(255,128,255)', 'rgb(0,230,0)', 'rgb(2,226,244)']
         ma_periods = config['chart_idx_ma_period'].split(',')[0:5]
         for i in range(len(ma_periods)):
             ma_period = ma_periods[i]
@@ -735,7 +735,7 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                     series_name=f"MA{ma_period}",
                     is_symbol_show=False,
                     y_axis=ma,
-                    linestyle_opts=opts.LineStyleOpts(width=1, color=ma_colors[i]),
+                    linestyle_opts=opts.LineStyleOpts(width=2, color=ma_colors[i]),
                     label_opts=opts.LabelOpts(is_show=False),
                 ).set_global_opts()
             ))

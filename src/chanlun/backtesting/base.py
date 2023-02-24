@@ -357,6 +357,32 @@ class Strategy(ABC):
         return None
 
     @staticmethod
+    def get_max_loss_rate(win_rate: float, wlr: float):
+        """
+        获取最大亏损比例，通过凯利公式计算，并将结果除以2，取一半
+        @param win_rate: 胜率 比如 0.5 为 50%的胜率
+        @param wlf:亏损比
+        @return : 返回最优的固定亏损比例
+        """
+        return round((win_rate - (1 - win_rate) / wlr) * 100 / 2, 2)
+
+    @staticmethod
+    def get_open_pos_rate(max_loss_rate: float, open_price: float, loss_price: float):
+        """
+        获取开仓的比例，根据可运行的最大亏损本金，与开仓平仓价格进行计算
+
+        @param max_loss_rate: 最大的固定亏损百分比
+        @param open_price: 开仓价格
+        @param loss_price: 止损价格
+        """
+        balance = 100000  # 信号模式下，回测每次开仓的金额
+        open_balance = (max_loss_rate / 100 * balance) / abs(open_price - loss_price) * open_price
+        pos_rate = round(open_balance / balance, 2)
+        if pos_rate > 1:
+            pos_rate = 1
+        return pos_rate
+
+    @staticmethod
     def last_done_bi(bis: List[BI]):
         """
         获取最后一个 完成笔
@@ -389,6 +415,28 @@ class Strategy(ABC):
         elif bi.type == 'down' and last_k.c > last_k.o and last_k.c > bi.end.klines[-1].h:
             return True
 
+        return False
+
+    @staticmethod
+    def bi_mean_zz(bi: BI, cd: ICL):
+        """
+        平均K线，笔转折判断
+        """
+        cl_config = cd.get_config()
+        if cl_config['kline_type'] != Config.KLINE_TYPE_HEIKIN_ASHI.value:
+            return False
+        # 笔要完成
+        if bi.is_done() is False:
+            return False
+        mean_klines = cd.get_klines()
+        # 如果笔向上，k线要变绿，进行转折
+        if bi.type == 'up' and mean_klines[-2].o > mean_klines[-2].c and \
+                mean_klines[-1].h < bi.end.val and mean_klines[-1].c < mean_klines[-2].o:
+            return True
+        # 如果笔向下，k线要变红，进行转折
+        if bi.type == 'down' and mean_klines[-2].o < mean_klines[-2].c and \
+                mean_klines[-1].l > bi.end.val and mean_klines[-1].c > mean_klines[-2].o:
+            return True
         return False
 
     @staticmethod

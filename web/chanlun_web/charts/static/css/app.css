@@ -52,3 +52,7 @@
     float: right;
     font-size: 12px;
 }
+
+.ace-settings-box .form-horizontal .form-group {
+    margin-bottom: 2px !important;
+}

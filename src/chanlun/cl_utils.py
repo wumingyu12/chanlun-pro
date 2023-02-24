@@ -281,6 +281,12 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'idx_macd_fast': 12,
         'idx_macd_slow': 26,
         'idx_macd_signal': 9,
+        # 缠论高级配置
+        'fx_qy': Config.FX_QY_THREE.value,
+        'xd_zs_max_lines_split': 11,
+        'allow_split_one_line_to_xd': '1',
+        'allow_bi_fx_strict': '0',
+        'enable_kchart_low_to_high': '0',
         # 画图默认配置
         'chart_show_infos': '1',
         'chart_show_fx': '1',
@@ -375,9 +381,6 @@ def kcharts_frequency_h_l_map(market: str, frequency) -> Tuple[Union[None, str],
 
     返回两个值，第一个是需要获取的低级别周期值，第二个是 kcharts 画图指定的 to_frequency 值
     """
-    if config.enable_kchart_low_to_high is False:
-        # 没有开启，直接返回 None，使用原周期计算并展示
-        return None, None
     # 高级别对应的低级别关系
     market_frequencs_map = {
         'a': {

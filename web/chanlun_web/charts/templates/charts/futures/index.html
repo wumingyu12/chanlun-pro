@@ -120,6 +120,7 @@
             <div class="btn-group btn-group-vertical btn-group-xs btn-corner" role="group" id="zq_high">
                 <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="d">Day</button>
+                <button type="button" class="btn btn-xs btn-default" data-zq="120m">120M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="60m">60M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="30m">30M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="15m">15M</button>
@@ -142,6 +143,7 @@
             <div class="btn-group btn-group-vertical btn-group-xs btn-corner" role="group" id="zq_low">
                 <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="d">Day</button>
+                <button type="button" class="btn btn-xs btn-default" data-zq="120m">120M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="60m">60M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="30m">30M</button>
                 <button type="button" class="btn btn-xs btn-default" data-zq="15m">15M</button>
@@ -186,6 +188,7 @@
                 var chart_low = echarts.init(document.getElementById('kline_low'), 'dark', {renderer: 'canvas'});
 
                 // 全局js
+                {% include 'charts/fun.js' %}
                 {% include 'charts/global.js' %}
 
                 // 缠论配置项
@@ -199,7 +202,7 @@
                 query_cl_chart_config(market, code);
                 fetchKlinesData(chart_high, market, code, frequency_high, true);
                 fetchKlinesData(chart_low, market, code, frequency_low, true);
-                zixuan_code_query_zx_names(code);
+                zixuan_code_query_zx_names(market, code);
                 // 机会列表
                 jhs_list_show();
                 setInterval(jhs_list_show, 60000);

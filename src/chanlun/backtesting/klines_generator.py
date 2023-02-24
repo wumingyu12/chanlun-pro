@@ -67,7 +67,7 @@ class KlinesGenerator:
         if self.to_klines is None:
             self.to_klines = kline_pd
         else:
-            self.to_klines = self.to_klines.append(kline_pd)
+            self.to_klines = pd.concat([self.to_klines, kline_pd], ignore_index=True)
             self.to_klines = self.to_klines.drop_duplicates(['date'], keep='last').sort_values('date')
 
         if self.to_cl_data is None:

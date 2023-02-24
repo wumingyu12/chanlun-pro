@@ -110,7 +110,8 @@ class BackTestTrader(object):
             'positions': self.positions,
             'positions_history': self.positions_history,
             'hold_profit_history': self.hold_profit_history,
-            'balance_history': self.balance_history
+            'balance_history': self.balance_history,
+            'orders': self.orders,
         }
         p_obj = pickle.dumps(save_infos)
         rd.save_byte(key, p_obj)
@@ -128,6 +129,7 @@ class BackTestTrader(object):
         self.positions_history = save_infos['positions_history']
         self.hold_profit_history = save_infos['hold_profit_history']
         self.balance_history = save_infos['balance_history']
+        self.orders = save_infos['orders']
         return True
 
     def get_price(self, code):

@@ -16,9 +16,11 @@ from chanlun import kcharts, fun
 from chanlun.backtesting.backtest_klines import BackTestKlines
 from chanlun.backtesting.backtest_trader import BackTestTrader
 from chanlun.backtesting.base import POSITION
-from chanlun.backtesting.optimize import OptimizationSetting
 from chanlun.backtesting.klines_generator import KlinesGenerator
+from chanlun.backtesting.optimize import OptimizationSetting
 from chanlun.cl_interface import *
+from chanlun.exchange.exchange import convert_stock_kline_frequency, convert_currency_kline_frequency, \
+    convert_futures_kline_frequency
 
 
 class BackTest:
@@ -195,6 +197,74 @@ class BackTest:
         self.log.info(f'运行完成，执行时间：{_et - _st}')
         return True
 
+    def run_by_code(self, code: str):
+        # 修改回测类中的属性，进行回测
+        # 保存文件更改
+        new_file = self.save_file.split('.pkl')[0] + '_' + code.lower().replace('.', '_') + '.pkl'
+        # TODO 如果之前的回测文件还有保存，可以直接返回
+        # return new_file
+
+        self.save_file = new_file
+        # 运行币种修改为参数指定的
+        self.base_code = code
+        self.codes = [code]
+        # 开始运行
+        self.run(self.next_frequency)
+        # 结果保存
+        self.save()
+        # 运行完成，返回回测保存的地址
+        return self.save_file
+
+    def run_process(self, next_frequency: str = None, max_workers: int = None):
+        """
+        多进程执行回测模式
+        """
+        if self.mode != 'signal':
+            raise Exception(f'多进程回测，不支持 {self.mode} 回测模式')
+
+        if next_frequency is None:
+            next_frequency = self.frequencys[-1]
+        self.next_frequency = next_frequency
+
+        start = time.time()
+        with ProcessPoolExecutor(
+                max_workers,
+                mp_context=get_context("spawn")
+        ) as executor:
+            results = list(executor.map(self.run_by_code, self.codes))
+            end = time.time()
+            cost: int = int(end - start)
+            self.log.info(f"多进程回测完成，耗时{cost}秒")
+
+            # 记录 资金变动历史
+            balance_history = {}
+            # 回测结果合并
+            for f in results:
+                BT = BackTest()
+                BT.load(f)
+                # 汇总结果
+                for mmd, res in BT.trader.results.items():
+                    for _k, _v in res.items():
+                        self.trader.results[mmd][_k] += _v
+                # 历史持仓合并
+                for _code, _poss in BT.trader.positions_history.items():
+                    self.trader.positions_history[_code] = _poss
+                # 持仓盈亏合并
+                for _code, _hold_profits in BT.trader.hold_profit_history.items():
+                    self.trader.hold_profit_history[_code] = _hold_profits
+                # 合并订单记录
+                for _code, _orders in BT.trader.orders.items():
+                    self.trader.orders[_code] = _orders
+                # 资金历史记录
+                balance_history[BT.base_code] = BT.trader.balance_history
+
+            # 整理并汇总资金变动历史 TODO 因为时间对其的问题，最终结果不一定准确
+            bh_df = pd.DataFrame(balance_history.values())
+            bh_df = bh_df.T.fillna(0)
+            self.trader.balance_history = bh_df.sum(axis=1)
+            self.log.info('合并回测结果完成，可调用 save 方法进行保存')
+        return True
+
     def run_params(self, new_cl_setting: dict):
         """
         参数优化，执行不同的参数配置
@@ -322,10 +392,24 @@ class BackTest:
         return results
 
     def show_charts(self, code, frequency,
-                    to_minutes: int = None, to_frequency: str = None, to_dt_align_type: str = 'bob',
-                    change_cl_config=None, chart_config=None):
+                    merge_kline_freq: str = None,
+                    to_minutes: int = None,
+                    to_dt_align_type: str = 'bob',
+                    to_frequency: str = None,
+                    change_cl_config=None,
+                    chart_config=None
+                    ):
         """
         显示指定代码指定周期的图表
+
+        @param code: 要展示的代码
+        @param frequency: 要展示的数据周期
+        @param merge_kline_freq: 使用 exchange.py 中的周期转换，转换成指定市场的周期，例如 a:30m  futures:60m
+        @param to_minutes: 使用 K线合成的方法，合成分钟基本的K线
+        @param to_dt_align_type: 使用K线合成的方法，时间对其方式  bob 前对其 eob后对其
+        @param to_frequency: 展示图表时，可以将低周期转换成高周期数据
+        @param change_cl_config: 覆盖回测的缠论配置项
+        @param chart_config: 覆盖画图配置项
         """
         # 根据配置中指定的缠论配置进行展示图表
         if code in self.cl_config.keys():
@@ -348,6 +432,8 @@ class BackTest:
         show_cl_config = copy.deepcopy(cl_config)
         for _i, _v in change_cl_config.items():
             show_cl_config[_i] = _v
+        for _i, _v in chart_config.items():
+            show_cl_config[_i] = _v
 
         # 获取行情数据（回测周期内所有的）
         bk = BackTestKlines(
@@ -360,13 +446,23 @@ class BackTest:
             kg = KlinesGenerator(to_minutes, show_cl_config, to_dt_align_type)
             cd: ICL = kg.update_klines(klines)
             title = '%s - (%s to %s)' % (code, frequency, to_minutes)
+        elif merge_kline_freq is not None:
+            m_freq_info = merge_kline_freq.split(':')
+            if m_freq_info[0] == 'a':
+                klines = convert_stock_kline_frequency(klines, m_freq_info[1])
+            elif m_freq_info[0] == 'futures':
+                klines = convert_futures_kline_frequency(klines, m_freq_info[1])
+            else:
+                klines = convert_currency_kline_frequency(klines, m_freq_info[1])
+            cd: ICL = cl.CL(code, m_freq_info[1], show_cl_config).process_klines(klines)
+            title = '%s - %s' % (code, 'Merge ' + m_freq_info[1])
         else:
             cd: ICL = cl.CL(code, frequency, show_cl_config).process_klines(klines)
         orders = self.trader.orders[code] if code in self.trader.orders else []
         # 是否屏蔽锁仓订单
-        if 'not_show_lock_order' in chart_config and chart_config['not_show_lock_order'] == True:
+        if 'not_show_lock_order' in show_cl_config and show_cl_config['not_show_lock_order']:
             orders = [o for o in orders if '锁仓' not in o['info']]
-        render = kcharts.render_charts(title, cd, to_frequency=to_frequency, orders=orders, config=chart_config)
+        render = kcharts.render_charts(title, cd, to_frequency=to_frequency, orders=orders, config=show_cl_config)
         return render
 
     def result(self, is_print=True):

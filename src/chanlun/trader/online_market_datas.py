@@ -40,7 +40,7 @@ class OnlineMarketDatas(MarketDatas):
         key = f'{code}_{frequency}'
         if self.use_cache and key in self.cache_klines.keys():
             return self.cache_klines[key]
-        klines = self.ex.klines(code, frequency, args={'pages': 12})  # TDX 接口尽量返回数据多一些
+        klines = self.ex.klines(code, frequency, args={'pages': 15})  # TDX 接口尽量返回数据多一些
         self.cache_klines[key] = klines
         return klines
 

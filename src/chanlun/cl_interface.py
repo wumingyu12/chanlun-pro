@@ -22,7 +22,10 @@ class Config(Enum):
     # K 线类型
     KLINE_TYPE_DEFAULT = 'kline_default'  # 默认K线
     KLINE_TYPE_HEIKIN_ASHI = 'kline_heikin_ashi'  # 平均K线
+    KLINE_TYPE_CHANLUN = 'kline_chanlun'  # 包含处理后的缠论K线
     # 分型配置项
+    FX_QY_MIDDLE = 'fx_qy_middle'  # 分型区间所算的区域，使用分型中间的k线作为分型区间
+    FX_QY_THREE = 'fx_qy_three'  # 分型区间所算的区域，使用分型三根缠论k线作为区间
     FX_QJ_CK = 'fx_qj_ck'  # 用顶底的缠论K线，获取分型区间
     FX_QJ_K = 'fx_qj_k'  # 用顶底的原始k线，获取分型区间
     FX_BH_YES = 'fx_bh_yes'  # 不判断顶底关系，即接受所有关系
@@ -187,46 +190,37 @@ class FX:
                 ld += 1
         return ld
 
-    def high(self, qj_type: str) -> float:
+    def high(self, qj_type: str, qy_type: str) -> float:
         """
         获取分型最高点
         """
         if qj_type == Config.FX_QJ_CK.value:
             # （获取缠论K线的最高点）
-            high = self.klines[0].h
-            for k in self.klines:
-                if k is not None:
-                    high = max(high, k.h)
+            if qy_type == Config.FX_QY_MIDDLE.value:
+                return self.k.h
+            return max([_ck.h for _ck in self.klines if _ck is not None])
         elif qj_type == Config.FX_QJ_K.value:
             # （获取原始K线的最高点）
-            high = self.klines[0].klines[0].h
-            for ck in self.klines:
-                if ck is not None:
-                    for k in ck.klines:
-                        high = max(high, k.h)
+            if qy_type == Config.FX_QY_MIDDLE.value:
+                return max([_k.h for _k in self.k.klines])
+            return max([_k.h for _ck in self.klines if _ck is not None for _k in _ck.klines])
         else:
             raise Exception(f'获取分型高点的区间类型错误 {qj_type}')
 
-        return high
-
-    def low(self, qj_type: str) -> float:
+    def low(self, qj_type: str, qy_type: str) -> float:
         """
         获取分型的最低点（取原始K线的最低点）
         """
         if qj_type == Config.FX_QJ_CK.value:
-            low = self.klines[0].l
-            for k in self.klines:
-                if k is not None:
-                    low = min(low, k.l)
+            if qy_type == Config.FX_QY_MIDDLE.value:
+                return self.k.l
+            return min([_ck.l for _ck in self.klines if _ck is not None])
         elif qj_type == Config.FX_QJ_K.value:
-            low = self.klines[0].klines[0].l
-            for ck in self.klines:
-                if ck is not None:
-                    for k in ck.klines:
-                        low = min(low, k.l)
+            if qy_type == Config.FX_QY_MIDDLE.value:
+                return min([_k.l for _k in self.k.klines])
+            return min([_k.l for _ck in self.klines if _ck is not None for _k in _ck.klines])
         else:
             raise Exception(f'获取分型低点的区间类型错误 {qj_type}')
-        return low
 
     def __str__(self):
         return f'index: {self.index} type: {self.type} date : {self.k.date} val: {self.val} done: {self.done}'
@@ -1127,6 +1121,8 @@ def user_custom_mmd(cd: ICL, line: Union[BI, XD], lines: List[Union[BI, XD]], zs
     @param lines：要计算线类型的列表
     @param zs_type: 中枢类型 ，参考中枢类型配置项 取值 zs_type_bz、zs_type_dn、zs_type_fx
     """
+    # 清空买卖点与背驰情况，重新计算
+
     if len(lines) < 4 or len(zss) == 0:
         return False
 

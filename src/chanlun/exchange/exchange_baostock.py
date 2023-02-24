@@ -133,7 +133,7 @@ class ExchangeBaostock(Exchange):
                     return self.__run_date
 
                 dk['date'] = dk['date'].apply(append_time)
-                new_kline = new_kline.append(dk)
+                new_kline = pd.concat([new_kline, dk], ignore_index=True)
             kline = new_kline.sort_values('date')
 
         return kline[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]

@@ -188,6 +188,7 @@
                 var chart_low = echarts.init(document.getElementById('kline_low'), 'dark', {renderer: 'canvas'});
 
                 // 全局js
+                {% include 'charts/fun.js' %}
                 {% include 'charts/global.js' %}
 
                 // 缠论配置项
@@ -201,7 +202,7 @@
                 query_cl_chart_config(market, code);
                 fetchKlinesData(chart_high, market, code, frequency_high, true);
                 fetchKlinesData(chart_low, market, code, frequency_low, true);
-                zixuan_code_query_zx_names(code);
+                zixuan_code_query_zx_names(market, code);
                 // 机会列表
                 jhs_list_show();
                 setInterval(jhs_list_show, 60000);

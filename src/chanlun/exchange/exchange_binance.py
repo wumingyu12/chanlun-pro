@@ -98,7 +98,7 @@ class ExchangeBinance(Exchange):
                 self.db_exchange.insert_klines(code, frequency, online_klines)
                 return online_klines
 
-            klines = db_klines.append(online_klines)
+            klines = pd.concat([db_klines, online_klines], ignore_index=True)
             klines.drop_duplicates(subset=['date'], keep='last', inplace=True)
             return klines[-10000::]
         except pymysql.err.ProgrammingError:
@@ -131,8 +131,8 @@ class ExchangeBinance(Exchange):
             end_date = int(
                 datetime.datetime.timestamp(datetime.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S'))) * 1000
 
-        kline = self.exchange.fetchOHLCV(symbol=code, timeframe=frequency_map[frequency], limit=1500,
-                                         params={'startTime': start_date, 'endTime': end_date})
+        kline = self.exchange.fetch_ohlcv(symbol=code, timeframe=frequency_map[frequency], limit=1500,
+                                          params={'startTime': start_date, 'endTime': end_date})
         kline_pd = pd.DataFrame(kline, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
         # kline_pd.loc[:, 'code'] = code
         # kline_pd.loc[:, 'date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))

@@ -1,17 +1,16 @@
 # 回放行情所需
-import datetime
 import hashlib
 import json
 import time
+from typing import Dict
 
+from tqdm.auto import tqdm
+
+from chanlun import cl
 from chanlun import fun
 from chanlun.backtesting.base import MarketDatas
 from chanlun.cl_interface import *
 from chanlun.exchange.exchange_db import ExchangeDB
-from tqdm.auto import tqdm
-from chanlun import cl
-
-from typing import Dict
 
 
 class BackTestKlines(MarketDatas):
@@ -240,7 +239,9 @@ class BackTestKlines(MarketDatas):
                 continue
             new_kline = self.ex.convert_kline_frequency(klines[min_f][-120::], max_f)
             if len(klines[max_f]) > 0 and len(new_kline) > 0:
-                klines[max_f] = klines[max_f].append(new_kline).drop_duplicates(subset=['date'], keep='last')
+                klines[max_f] = pd.concat(
+                    [klines[max_f], new_kline], ignore_index=True
+                ).drop_duplicates(subset=['date'], keep='last')
                 # 删除大周期中，日期大于最小周期的未来数据
                 klines[max_f] = klines[max_f].drop(
                     klines[max_f][klines[max_f]['date'] > klines[min_f].iloc[-1]['date']].index

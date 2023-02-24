@@ -4,7 +4,7 @@ import time
 
 from chanlun import zixuan
 from chanlun.cl_interface import *
-from chanlun.cl_utils import web_batch_get_cl_datas
+from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config
 from chanlun.exchange.exchange_tdx import ExchangeTDX
 from chanlun.xuangu import xuangu
 
@@ -162,32 +162,12 @@ codes = ["SZ.000001", "SZ.000002", "SZ.000009", "SZ.000012", "SZ.000016", "SZ.00
 """
 运行的周期，根据自己的选股方法，来设置周期参数
 """
-frequencys = ['d', '30m']
+frequencys = ['d']
 
 """
 这里设置选股缠论计算的参数，要与前台展示的配置一致，不然这里选出的股票符合条件，前台页面有可能看不到
 """
-cl_config = {
-    # 分型默认配置
-    'fx_qj': Config.FX_QJ_K.value,
-    'fx_bh': Config.FX_BH_YES.value,
-    # 笔默认配置
-    'bi_type': Config.BI_TYPE_NEW.value,
-    'bi_bzh': Config.BI_BZH_NO.value,
-    'bi_fx_cgd': Config.BI_FX_CHD_YES.value,
-    'bi_qj': Config.BI_QJ_CK.value,
-    # 线段默认配置
-    'xd_bzh': Config.XD_BZH_NO.value,
-    'xd_qj': Config.XD_QJ_DD.value,
-    # 走势段默认配置
-    'zsd_bzh': Config.ZSD_BZH_YES.value,
-    'zsd_qj': Config.ZSD_QJ_DD.value,
-    # 中枢默认配置
-    'zs_bi_type': Config.ZS_TYPE_DN.value,  # 笔中枢类型
-    'zs_xd_type': Config.ZS_TYPE_DN.value,  # 走势中枢类型
-    'zs_qj': Config.ZS_QJ_DD.value,
-    'zs_wzgx': Config.ZS_WZGX_ZGD.value,
-}
+cl_config = query_cl_chart_config('a', 'SH.000001')
 
 print('运行股票数量：', len(codes))
 
@@ -213,7 +193,7 @@ for code in codes:
         """
         *** 这里使用自己需要的选股条件方法进行判断 ***
         """
-        msg = xuangu.xg_multiple_xd_bi_mmd(cds)
+        msg = xuangu.xg_single_find_3buy_by_zhuanzhe(cds)
         if msg is not None:
             stocks = ex.stock_info(code)
             print('【%s - %s 】 出现机会：%s' % (stocks['code'], stocks['name'], msg))

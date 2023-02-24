@@ -163,7 +163,7 @@ my_**.ipynb
 /src/cl_vnpy/.vntrader
 /src/cl_myquant/gmcache
 # 无用的排除
-/my_debuy
+/my_debug
 /web/currency
 /web/stock
 __del_codes
@@ -171,3 +171,4 @@ src/zs_cl_core
 
 /web/chanlun_web/charts/static/datafeeds/udf/node_modules/
 
+web/chanlun_web/.qiniu_pythonsdk_hostscache.json

@@ -75,21 +75,27 @@ def kline_chart(request):
     code = request.POST.get('code')
     frequency = request.POST.get('frequency')
 
-    # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
-    frequency_low, kchart_to_frequency = kcharts_frequency_h_l_map('a', frequency)
-    frequency_new = frequency_low if frequency_low else frequency
-    pages = 12 if frequency_low else 8  # 如果用低级别大数据合并高级别，就获取多些数据
-
-    cl_chart_config = query_cl_chart_config('a', code)
     ex = get_exchange(Market.A)
-    klines = ex.klines(code, frequency=frequency_new, args={'pages': pages})
-    cd = web_batch_get_cl_datas('a', code, {frequency_new: klines}, cl_chart_config, )[0]
     stock_info = ex.stock_info(code)
     orders = rd.order_query('a', code)
-    title = stock_info['code'] + ':' + stock_info['name'] + ':' + (
-        f'{frequency_low}->{frequency}' if frequency_low else frequency)
-    chart = kcharts.render_charts(
-        title, cd, to_frequency=kchart_to_frequency, orders=orders, config=cl_chart_config)
+
+    cl_chart_config = query_cl_chart_config('a', code)
+    frequency_low, kchart_to_frequency = kcharts_frequency_h_l_map('a', frequency)
+    if cl_chart_config['enable_kchart_low_to_high'] == '1' and kchart_to_frequency is not None:
+        # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
+        klines = ex.klines(code, frequency=frequency_low, args={'pages': 12})
+        cd = web_batch_get_cl_datas('a', code, {frequency_low: klines}, cl_chart_config, )[0]
+        title = f'{code}-{stock_info["name"]}:{frequency_low}->{frequency}'
+        chart = kcharts.render_charts(
+            title, cd, to_frequency=kchart_to_frequency, orders=orders, config=cl_chart_config
+        )
+    else:
+        klines = ex.klines(code, frequency=frequency)
+        cd = web_batch_get_cl_datas('a', code, {frequency: klines}, cl_chart_config, )[0]
+        title = f'{code}-{stock_info["name"]}:{frequency}'
+        chart = kcharts.render_charts(
+            title, cd, orders=orders, config=cl_chart_config
+        )
     return HttpResponse(chart)
 
 

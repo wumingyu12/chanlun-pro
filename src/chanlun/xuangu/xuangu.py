@@ -297,3 +297,93 @@ def xg_single_pre_bi_tk_and_3buy(cl_datas: List[ICL]):
         if mmd.name == '3buy' and pre_bi.high >= mmd.zs.gg:
             return f'三买前一笔出现 {up_qk_num} 缺口，可重点关注'
     return None
+
+
+def xg_single_find_3buy_by_1buy(cl_datas: List[ICL]):
+    """
+    找三买点，前提是前面中枢内有一类买卖点
+    （不同的中枢配置，筛选的条件会有差异）
+    周期：单周期
+    使用市场：沪深A股
+    作者：WX
+    """
+    cd = cl_datas[0]
+    if len(cd.get_bis()) <= 5:
+        return None
+
+    if len(cd.get_bi_zss()) < 2:
+        return None
+
+    # 前面有一买有以下几种情况
+    # 三买出现在一个大的中枢上方，在中枢内部有一买 （标准中枢情况会出现）
+    # 在三买中枢与前一个中枢之间，有个一买（段内中枢有可能出现）
+    # ......
+
+    bi = cd.get_bis()[-1]
+    if bi.mmd_exists(['3buy']) is False:
+        return None
+    zss = cd.get_bi_zss()
+    exists_1buy = False
+    # 第一种情况，中枢内部有一买
+    for _zsbi in zss[-1].lines:
+        if _zsbi.mmd_exists(['1buy']):
+            exists_1buy = True
+            break
+    # 第二种情况，与前一个中枢之间有一买
+    zs_qj_bis = [_bi for _bi in cd.get_bis() if zss[-2].lines[-1].index <= _bi.index <= zss[-1].lines[0].index]
+    for _zsbi in zs_qj_bis:
+        if _zsbi.mmd_exists(['1buy']):
+            exists_1buy = True
+            break
+    if exists_1buy:
+        return f'出现三买，并且之前有出现一买'
+
+
+def xg_single_find_3buy_by_zhuanzhe(cl_datas: List[ICL]):
+    """
+    找三买点，之前段内要有是一个下跌趋势，后续下跌趋势结束，出现转折中枢的三买
+    （缠论的笔中枢配置要是段内中枢）
+    周期：单周期
+    使用市场：沪深A股
+    作者：WX
+    """
+    cd = cl_datas[0]
+    if len(cd.get_bis()) <= 5 or len(cd.get_xds()) <= 2 or len(cd.get_bi_zss()) < 3:
+        return None
+    # 在三买中枢之前的两个中枢，要是趋势下跌
+    bi = cd.get_bis()[-1]
+    if bi.mmd_exists(['3buy']) is False:
+        return None
+    # 倒数第二个线段是下跌线段
+    xd = cd.get_xds()[-2]
+    if xd.type != 'down':
+        return None
+    zss = cd.get_bi_zss()
+    zs1 = zss[-3]
+    zs2 = zss[-2]
+    # 两个中枢都在线段内部 (这个比较严格，去掉会有比较多的不太合适的)
+    if xd.start_line.index <= zs1.lines[0].index and zs2.lines[-1].index <= xd.end_line.index:
+        pass
+    else:
+        return None
+    # 非严格的趋势比较，用 zg/zd，严格的趋势比较用 gg/dd
+    if zs2.level == zs1.level and zs2.zg < zs1.zd:
+        return '出现三买，并且之前有下跌趋势'
+
+
+if __name__ == '__main__':
+    from chanlun.exchange.exchange_tdx import ExchangeTDX
+    from chanlun.cl_utils import query_cl_chart_config, web_batch_get_cl_datas
+
+    market = 'a'
+    code = 'SZ.000001'
+    freq = 'd'
+
+    ex = ExchangeTDX()
+    cl_config = query_cl_chart_config(market, code)
+
+    klines = ex.klines(code, freq)
+    cds = web_batch_get_cl_datas(market, market, {freq: klines}, cl_config)
+
+    res = xg_single_find_3buy_by_zhuanzhe(cds)
+    print(res)

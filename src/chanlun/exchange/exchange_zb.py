@@ -65,7 +65,7 @@ class ExchangeZB(Exchange):
                 self.db_exchange.insert_klines(code, frequency, online_klines)
                 return online_klines
 
-            klines = db_klines.append(online_klines)
+            klines = pd.concat([db_klines, online_klines], ignore_index=True)
             klines.drop_duplicates(subset=['date'], keep='last', inplace=True)
             return klines[-1000::]
         except pymysql.err.ProgrammingError:

@@ -43,21 +43,26 @@ def kline_show(request):
     """
     code = request.POST.get('code')
     frequency = request.POST.get('frequency')
+    ex = get_exchange(Market.CURRENCY)
+    orders = rd.order_query('currency', code)
 
     cl_chart_config = query_cl_chart_config('currency', code)
-    # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
     frequency_low, kchart_to_frequency = kcharts_frequency_h_l_map('currency', frequency)
-    frequency_new = frequency_low if frequency_low else frequency
-
-    ex = get_exchange(Market.CURRENCY)
-    klines = ex.klines(code, frequency=frequency_new)
-    cd = web_batch_get_cl_datas('currency', code, {frequency_new: klines}, cl_chart_config, )[0]
-
-    orders = rd.order_query('currency', code)
-    title = f'{code}:{frequency_low}->{frequency}' if frequency_low else f'{code}:{frequency}'
-    chart = kcharts.render_charts(
-        title, cd, to_frequency=kchart_to_frequency, orders=orders, config=cl_chart_config
-    )
+    if cl_chart_config['enable_kchart_low_to_high'] == '1' and kchart_to_frequency is not None:
+        # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
+        klines = ex.klines(code, frequency=frequency_low)
+        cd = web_batch_get_cl_datas('currency', code, {frequency_low: klines}, cl_chart_config, )[0]
+        title = f'{code}:{frequency_low}->{frequency}'
+        chart = kcharts.render_charts(
+            title, cd, to_frequency=kchart_to_frequency, orders=orders, config=cl_chart_config
+        )
+    else:
+        klines = ex.klines(code, frequency=frequency)
+        cd = web_batch_get_cl_datas('currency', code, {frequency: klines}, cl_chart_config, )[0]
+        title = f'{code}:{frequency}'
+        chart = kcharts.render_charts(
+            title, cd, orders=orders, config=cl_chart_config
+        )
 
     return HttpResponse(chart)
 

@@ -155,7 +155,7 @@ class ExchangeTDX(Exchange):
                         _ks.sort_values('date', inplace=True)
                         new_start_dt = _ks.iloc[0]['date']
                         old_end_dt = klines.iloc[-1]['date']
-                        klines = klines.append(_ks)
+                        klines = pd.concat([klines, _ks], ignore_index=True)
                         # 如果请求的第一个时间大于缓存的最后一个时间，退出
                         if old_end_dt >= new_start_dt:
                             break

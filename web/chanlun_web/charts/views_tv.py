@@ -3,7 +3,8 @@ import re
 
 from django.shortcuts import render
 
-from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config, cl_date_to_tv_chart, kcharts_frequency_h_l_map
+from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config, cl_date_to_tv_chart, \
+    kcharts_frequency_h_l_map
 from .apps import login_required
 from .utils import *
 from chanlun.exchange import *
@@ -18,7 +19,7 @@ TradingView 行情图表
 frequency_maps = {
     '10s': '10S', '30s': '30S',
     '1m': '1', '2m': '2', '3m': '3', '5m': '5', '10m': '10', '15m': '15', '30m': '30', '60m': '60', '120m': '120',
-    '2h': '120', '4h': '240',
+    '4h': '240',
     'd': '1D', '2d': '2D',
     'w': '1W', 'm': '1M', 'y': '12M'
 }
@@ -221,20 +222,20 @@ def history(request):
         return response_as_json({'s': 'no_data', 'errmsg': '非交易时间', 'nextTime': now_time + (10 * 60)})
 
     frequency = resolution_maps[resolution]
-    # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
+    cl_config = query_cl_chart_config(market, code)
     frequency_low, kchart_to_frequency = kcharts_frequency_h_l_map(market, frequency)
-    frequency_new = frequency_low if frequency_low else frequency
-    klines = ex.klines(code, frequency_new)
-
-    # 记录最开始的一根k线时间
-    load_old_kline_times[_symbol_res_old_k_time_key] = fun.datetime_to_int(klines.iloc[0]['date'])
-
-    cl_chart_config = query_cl_chart_config(market, code)
-    cd = web_batch_get_cl_datas(market, code, {frequency_new: klines}, cl_chart_config, )[0]
+    if cl_config['enable_kchart_low_to_high'] == '1' and kchart_to_frequency is not None:
+        # 如果开启并设置的该级别的低级别数据，获取低级别数据，并在转换成高级图表展示
+        klines = ex.klines(code, frequency_low)
+        cd = web_batch_get_cl_datas(market, code, {frequency_low: klines}, cl_config, )[0]
+    else:
+        klines = ex.klines(code, frequency)
+        cd = web_batch_get_cl_datas(market, code, {frequency: klines}, cl_config, )[0]
 
     # 将缠论数据，转换成 tv 画图的坐标数据
-    cl_chart_data = cl_date_to_tv_chart(cd, cl_chart_config, to_frequency=kchart_to_frequency)
-
+    cl_chart_data = cl_date_to_tv_chart(cd, cl_config, to_frequency=kchart_to_frequency)
+    # 记录最开始的一根k线时间
+    load_old_kline_times[_symbol_res_old_k_time_key] = fun.datetime_to_int(klines.iloc[0]['date'])
     # 将计算好的背驰 marks 保存起来
     # load_bc_marks_cache[resolution] = cl_chart_data['bc_marks']
 

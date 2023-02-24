@@ -10,28 +10,108 @@
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}"/>
     <script src="{% static 'js/jquery-2.1.4.min.js' %}"></script>
     <script src="{% static 'js/jquery.cookie.min.js' %}"></script>
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/message.js' %}"></script>
     <script type="text/javascript" src="{% static 'charting_library/charting_library.standalone.js' %}"></script>
     <script type="text/javascript" src="{% static 'datafeeds/udf/dist/bundle.js' %}"></script>
 
-    <script type="text/javascript">
 
-        var widget, udf_datafeed;
-
-        var obj_bis = [];
-        var obj_xds = [];
-        var obj_zsds = [];
-        var obj_bi_zss = [];
-        var obj_xd_zss = [];
-        var obj_zsd_zss = [];
-        var obj_bcs = [];
-        var obj_mmds = [];
-
-        function getParameterByName(name) {
-            name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-            var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-                results = regex.exec(location.search);
-            return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    <style>
+        .menu-rate {
+            float: right;
         }
+
+        #my_stocks .active {
+            background-color: mintcream;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container-fluid" style="padding: 0;">
+    <div class="row-fluid">
+        <div id="tv_chart_container"
+             class="{% if is_mobile %}col-xs-12 col-sm-12 col-md-12 col-lg-12{% else %}col-xs-11 col-sm-11 col-md-11 col-lg-11{% endif %}"
+             style="padding: 0;margin: 0;"></div>
+        <div class="{% if is_mobile %}col-xs-12 col-sm-12 col-md-12 col-lg-12{% else %}col-xs-1 col-sm-1 col-md-1 col-lg-1{% endif %}"
+             style="padding: 0;margin: 0;">
+            <h4>自选列表</h4>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-pink dropdown-toggle" type="button" id="add_zixuan_menu"
+                        data-toggle="dropdown"
+                        aria-haspopup="true" aria-expanded="true">
+                    <i class="ace-icon fa fa-heart"></i>
+                    自选操作
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" id="zixuan_zx_names" aria-labelledby="add_zixuan_menu"
+                    style="padding-left: 5px;">
+                    <li>
+                        <div class="checkbox">
+                            <label>
+                                <input name="form-field-checkbox" type="checkbox" class="ace">
+                                <span class="lbl">我的持仓</span>
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <hr/>
+
+            <form class="form-inline">
+                <div class="form-group">
+                    <label for="market">
+                        <select name="market" class="form-control" id="market">
+                            <option value="a">沪深A股</option>
+                            <option value="hk">港股</option>
+                            <option value="us">美股</option>
+                            <option value="futures">期货</option>
+                            <option value="currency">数字货币</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="zx_group">
+                        <select name="zx_group" class="form-control" id="zx_group">
+                            <option value="我的持仓">我的持仓</option>
+                        </select>
+                    </label>
+                </div>
+            </form>
+            <ul class="nav nav-list" id="my_stocks" style="height: 600px; overflow: auto; font-size: 12px;">
+            </ul>
+        </div>
+        <div>
+            <p>行业信息：<span class="hy_list"></span></p>
+            <p>概念信息：<span class="gn_list"></span></p>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    var market = 'a';
+    var zx_group = '我的持仓';
+
+    var widget, udf_datafeed;
+    var obj_bis = [];
+    var obj_xds = [];
+    var obj_zsds = [];
+    var obj_bi_zss = [];
+    var obj_xd_zss = [];
+    var obj_zsd_zss = [];
+    var obj_bcs = [];
+    var obj_mmds = [];
+
+    function getParameterByName(name) {
+        name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+        var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+            results = regex.exec(location.search);
+        return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    }
+
+    $(function () {
+        {% include 'charts/fun.js' %}
 
         function initOnReady() {
             var datafeedUrl = "/tv";
@@ -72,9 +152,9 @@
                 saved_data_meta_info: {
                     'uid': 1, 'name': 'default', 'description': 'default'
                 },
-{#                {% if is_mobile %}#}
-{#                    preset: "mobile",#}
-{#                {% endif %}#}
+                {#                {% if is_mobile %}#}
+                {#                    preset: "mobile",#}
+                {#                {% endif %}#}
 
                 charts_storage_url: '/tv',
                 charts_storage_api_version: "1.1",
@@ -83,7 +163,6 @@
                 load_last_chart: true,
             });
 
-
             widget.onChartReady(function () {
                 let chart = widget.activeChart();
                 let visible_min_from = 9999999999;
@@ -91,6 +170,7 @@
                     visible_min_from = 9999999999;
                     $.cookie('tv_symbol', symbol['ticker']);
                     console.log('标的变化：' + symbol['ticker']);
+                    zixuan_code_query_zx_names(symbol['ticker'].split(':')[0], symbol['ticker'].split(':')[1])
                 });
                 chart.onIntervalChanged().subscribe(null, function (interval) {
                     visible_min_from = 9999999999;
@@ -343,50 +423,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', initOnReady, false);
-    </script>
 
-</head>
-
-<body>
-<div class="container-fluid" style="padding: 0;">
-    <div class="row-fluid">
-        <div id="tv_chart_container"
-             class="{% if is_mobile %}col-xs-12 col-sm-12 col-md-12 col-lg-12{% else %}col-xs-11 col-sm-11 col-md-11 col-lg-11{% endif %}"
-             style="padding: 0;margin: 0;"></div>
-        <div class="{% if is_mobile %}col-xs-12 col-sm-12 col-md-12 col-lg-12{% else %}col-xs-1 col-sm-1 col-md-1 col-lg-1{% endif %}"
-             style="padding: 0;margin: 0;">
-            <h4>自选列表</h4>
-            <hr/>
-            <form class="form-inline">
-                <div class="form-group">
-                    <label for="market">
-                        <select name="market" class="form-control" id="market">
-                            <option value="a">沪深A股</option>
-                            <option value="hk">港股</option>
-                            <option value="us">美股</option>
-                            <option value="futures">期货</option>
-                            <option value="currency">数字货币</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label for="zx_group">
-                        <select name="zx_group" class="form-control" id="zx_group">
-                            <option value="我的持仓">我的持仓</option>
-                        </select>
-                    </label>
-                </div>
-            </form>
-            <ul class="nav nav-list" id="my_stocks" style="height: 600px; overflow: auto;">
-            </ul>
-        </div>
-    </div>
-</div>
-</body>
-<script>
-    $(function () {
-        var market = 'a';
-        var zx_group = '我的持仓';
 
         $('#market').change(function () {
             // 市场选择变化
@@ -420,11 +457,12 @@
                         for (var i = 0; i < result['data'].length; i++) {
                             var stock = result['data'][i];
                             if (market === 'currency') {
-                                $('#my_stocks').append('<li class="code" data-market="' + market + '" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="javascript:void(0);"><span class="menu-text">' + stock['code'] + '</span></a></li>');
+                                $('#my_stocks').append('<li class="code" data-market="' + market + '" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="javascript:void(0);"><span class="menu-text">' + stock['code'] + '</span><span class="menu-rate">--</span></a></li>');
                             } else {
-                                $('#my_stocks').append('<li class="code" data-market="' + market + '" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="javascript:void(0);"><span class="menu-text">' + stock['code'] + ' / ' + stock['name'] + '</span></a></li>');
+                                $('#my_stocks').append('<li class="code" data-market="' + market + '" data-code="' + stock['code'] + '" data-name="' + stock['name'] + '"><a href="javascript:void(0);"><span class="menu-text">' + stock['code'] + ' / ' + stock['name'] + '</span><span class="menu-rate">--</span></a></li>');
                             }
                         }
+                        stock_update_rates();
                     }
                 }
             });
@@ -436,11 +474,20 @@
             code = $(this).attr('data-code');
             name = $(this).attr('data-name');
             widget.activeChart().setSymbol(market + ':' + code);
+            if (market === 'a' || market === 'hk') {
+                stock_plate(code);
+            }
+            {#zixuan_code_query_zx_names(market, code);#}
         });
+
+        // 自选列表的涨跌幅获取 每60s更新涨跌幅
+        let interval_update_rates = setInterval(stock_update_rates, 60000);
 
         // 初始化
         $('#market').change();
     });
+
+
 </script>
 
 </html>

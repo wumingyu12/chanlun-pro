@@ -22,6 +22,9 @@
                 <option value="kline_heikin_ashi" {% if kline_type == 'kline_heikin_ashi' %} selected {% endif %}>
                     平均K线
                 </option>
+                <option value="kline_chanlun" {% if kline_type == 'kline_chanlun' %} selected {% endif %}>
+                    缠论K线
+                </option>
             </select>
         </div>
     </div>
@@ -214,6 +217,59 @@
             </select>
         </div>
     </div>
+    <hr style="clear:both;"/>
+    <h4>缠论高级配置</h4>
+    <div class="form-group">
+        <label class="col-sm-3 control-label no-padding-right">低转高级别</label>
+        <div class="col-sm-9 show-tooltips"
+             title="是否开启低级别数据转高级别图表展示功能，不支持港股与美股">
+            <select type="select" class="form-control" id="enable_kchart_low_to_high">
+                <option value="0" {% if enable_kchart_low_to_high == '0' %} selected {% endif %}>关闭</option>
+                <option value="1" {% if enable_kchart_low_to_high == '1' %} selected {% endif %}>开启</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label no-padding-right">拆分单笔成段</label>
+        <div class="col-sm-9 show-tooltips"
+             title="特殊情况，拆分线段时，是否允许单笔成段">
+            <select type="select" class="form-control" id="allow_split_one_line_to_xd">
+                <option value="0" {% if allow_split_one_line_to_xd == '0' %} selected {% endif %}>关闭</option>
+                <option value="1" {% if allow_split_one_line_to_xd == '1' %} selected {% endif %}>开启</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label no-padding-right">分型严格处理</label>
+        <div class="col-sm-9 show-tooltips"
+             title="笔分型是否严格处理">
+            <select type="select" class="form-control" id="allow_bi_fx_strict">
+                <option value="0" {% if allow_bi_fx_strict == '0' %} selected {% endif %}>关闭</option>
+                <option value="1" {% if allow_bi_fx_strict == '1' %} selected {% endif %}>开启</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label no-padding-right">分型高低区域</label>
+        <div class="col-sm-9 show-tooltips"
+             title="分型高低区域">
+            <select type="select" class="form-control" id="fx_qy">
+                <option value="fx_qy_three" {% if fx_qy == 'fx_qy_three' %} selected {% endif %}>分型三根K线
+                </option>
+                <option value="fx_qy_middle" {% if fx_qy == 'fx_qy_middle' %} selected {% endif %}>分型中间K线
+                </option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label no-padding-right">段内中枢拆分</label>
+        <div class="col-sm-9 show-tooltips" title="段内中枢超几段进行拆分（包括进入离开段）">
+            <input type="text" class="form-control" placeholder="段内中枢超几段进行拆分（包括进入离开段）"
+                   id="xd_zs_max_lines_split"
+                   value="{{ xd_zs_max_lines_split }}"/>
+        </div>
+    </div>
+
     <hr style="clear:both;"/>
     <h4>画图配置</h4>
     <div class="controls col-xs-12">
