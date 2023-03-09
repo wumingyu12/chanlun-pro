@@ -11,7 +11,7 @@
 [在线文档](http://docs.chanlun-trader.com/)
 
 [在线 Demo 展示](http://www.chanlun-trader.com/)  
-_在线Demo只做上证指数的缠论示例_
+_在线Demo只做上证指数的缠论示例（速度较慢，想要有好的体验，请申请试用，本地部署）_
 
 [缠论解盘 - 善缘版本 Windows](http://docs.chanlun-trader.com/#/WINDOWS_VERSION)
 

@@ -287,6 +287,7 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'allow_split_one_line_to_xd': '1',
         'allow_bi_fx_strict': '0',
         'enable_kchart_low_to_high': '0',
+        'bi_split_k_cross_nums': '20,1',
         # 画图默认配置
         'chart_show_infos': '1',
         'chart_show_fx': '1',
@@ -513,7 +514,7 @@ def prices_jiaodu(prices):
     return j if prices[-1] > prices[0] else -j
 
 
-def cl_date_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
+def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
     """
     将缠论数据，转换成 tv 画图的坐标数据
     """

@@ -3,7 +3,7 @@ import re
 
 from django.shortcuts import render
 
-from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config, cl_date_to_tv_chart, \
+from chanlun.cl_utils import web_batch_get_cl_datas, query_cl_chart_config, cl_data_to_tv_chart, \
     kcharts_frequency_h_l_map
 from .apps import login_required
 from .utils import *
@@ -233,7 +233,7 @@ def history(request):
         cd = web_batch_get_cl_datas(market, code, {frequency: klines}, cl_config, )[0]
 
     # 将缠论数据，转换成 tv 画图的坐标数据
-    cl_chart_data = cl_date_to_tv_chart(cd, cl_config, to_frequency=kchart_to_frequency)
+    cl_chart_data = cl_data_to_tv_chart(cd, cl_config, to_frequency=kchart_to_frequency)
     # 记录最开始的一根k线时间
     load_old_kline_times[_symbol_res_old_k_time_key] = fun.datetime_to_int(klines.iloc[0]['date'])
     # 将计算好的背驰 marks 保存起来

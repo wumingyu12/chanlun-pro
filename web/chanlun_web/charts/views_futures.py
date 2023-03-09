@@ -21,13 +21,17 @@ def index_show(request):
     :return:
     """
     ex = get_exchange(Market.FUTURES)
-    codes = ex.all_stocks()
     zx = zixuan.ZiXuan(market_type='futures')
+    default_code = ex.default_code()
+    support_frequencys = ex.support_frequencys()
     return render(request, 'charts/futures/index.html',
-                  {'codes': codes,
-                   'nav': 'futures',
-                   'show_level': ['high', 'low'],
-                   'zx_list': zx.zixuan_list})
+                  {
+                      'default_code': default_code,
+                      'support_frequencys': support_frequencys,
+                      'nav': 'futures',
+                      'show_level': ['high', 'low'],
+                      'zx_list': zx.zixuan_list
+                  })
 
 
 @login_required

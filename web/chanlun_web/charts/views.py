@@ -196,7 +196,7 @@ def cl_chart_config_save(request):
             'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx',
             'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
             'fx_qy', 'xd_zs_max_lines_split', 'allow_split_one_line_to_xd', 'allow_bi_fx_strict',
-            'enable_kchart_low_to_high',
+            'enable_kchart_low_to_high', 'bi_split_k_cross_nums',
             'chart_show_infos', 'chart_show_fx',
             'chart_show_bi', 'chart_show_xd', 'chart_show_zsd', 'chart_show_qsd',
             'chart_show_bi_zs', 'chart_show_xd_zs', 'chart_show_zsd_zs', 'chart_show_qsd_zs',

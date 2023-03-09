@@ -29,14 +29,26 @@
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label no-padding-right">分型区间</label>
-        <div class="col-sm-9 show-tooltips" title="顶底分型区间计算依据">
-            <select type="select" class="form-control" id="fx_qj">
-                <option value="fx_qj_k" {% if fx_qj == 'fx_qj_k' %} selected {% endif %}>分型内原始K线高低区间</option>
-                <option value="fx_qj_ck" {% if fx_qj == 'fx_qj_ck' %} selected {% endif %}>分型内缠论K线高低区间
-                </option>
-            </select>
+        <label class="col-sm-3 control-label no-padding-right">分型区域高低</label>
+        <div>
+            <div class="col-sm-4 show-tooltips" title="分型高低区域">
+                <select type="select" class="form-control" id="fx_qy">
+                    <option value="fx_qy_three" {% if fx_qy == 'fx_qy_three' %} selected {% endif %}>分型三根K线
+                    </option>
+                    <option value="fx_qy_middle" {% if fx_qy == 'fx_qy_middle' %} selected {% endif %}>分型中间K线
+                    </option>
+                </select>
+            </div>
+            <div class="col-sm-5 show-tooltips" title="顶底分型区间计算依据">
+                <select type="select" class="form-control" id="fx_qj">
+                    <option value="fx_qj_k" {% if fx_qj == 'fx_qj_k' %} selected {% endif %}>分型内原始K线高低区间
+                    </option>
+                    <option value="fx_qj_ck" {% if fx_qj == 'fx_qj_ck' %} selected {% endif %}>分型内缠论K线高低区间
+                    </option>
+                </select>
+            </div>
         </div>
+
     </div>
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">分型包含关系</label>
@@ -60,26 +72,25 @@
     </div>
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">笔类型</label>
-        <div class="col-sm-9 show-tooltips"
-             title="成笔条件，老笔顶底至少5跟缠论K线；新笔顶底至少4跟缠论K线，5跟原始K线；简单笔3跟原始K线即可成笔；顶底成笔，只要有分型即可成笔">
-            <select type="select" class="form-control" id="bi_type">
-                <option value="bi_type_old" {% if bi_type == 'bi_type_old' %} selected {% endif %}>老笔</option>
-                <option value="bi_type_new" {% if bi_type == 'bi_type_new' %} selected {% endif %}>新笔</option>
-                <option value="bi_type_jdb" {% if bi_type == 'bi_type_jdb' %} selected {% endif %}>简单笔</option>
-                <option value="bi_type_dd" {% if bi_type == 'bi_type_dd' %} selected {% endif %}>顶底成笔</option>
-            </select>
-        </div>
-    </div>
-    <div class="form-group">
-        <label class="col-sm-3 control-label no-padding-right">笔标准化</label>
-        <div class="col-sm-9 show-tooltips"
-             title="笔的标准化，是否将笔的起始端点，画在笔内的最高最低之上">
-            <select type="select" class="form-control" id="bi_bzh">
-                <option value="bi_bzh_yes" {% if bi_bzh == 'bi_bzh_yes' %} selected {% endif %}>标准化（画在高低点）
-                </option>
-                <option value="bi_bzh_no" {% if bi_bzh == 'bi_bzh_no' %} selected {% endif %}>不标准化（按照分型来）
-                </option>
-            </select>
+        <div>
+            <div class="col-sm-4 show-tooltips"
+                 title="成笔条件，老笔顶底至少5跟缠论K线；新笔顶底至少4跟缠论K线，5跟原始K线；简单笔3跟原始K线即可成笔；顶底成笔，只要有分型即可成笔">
+                <select type="select" class="form-control" id="bi_type">
+                    <option value="bi_type_old" {% if bi_type == 'bi_type_old' %} selected {% endif %}>老笔</option>
+                    <option value="bi_type_new" {% if bi_type == 'bi_type_new' %} selected {% endif %}>新笔</option>
+                    <option value="bi_type_jdb" {% if bi_type == 'bi_type_jdb' %} selected {% endif %}>简单笔</option>
+                    <option value="bi_type_dd" {% if bi_type == 'bi_type_dd' %} selected {% endif %}>顶底成笔</option>
+                </select>
+            </div>
+            <div class="col-sm-5 show-tooltips"
+                 title="笔的标准化，是否将笔的起始端点，画在笔内的最高最低之上">
+                <select type="select" class="form-control" id="bi_bzh">
+                    <option value="bi_bzh_yes" {% if bi_bzh == 'bi_bzh_yes' %} selected {% endif %}>标准化（画在高低点）
+                    </option>
+                    <option value="bi_bzh_no" {% if bi_bzh == 'bi_bzh_no' %} selected {% endif %}>不标准化（按照分型来）
+                    </option>
+                </select>
+            </div>
         </div>
     </div>
     <div class="form-group">
@@ -105,18 +116,6 @@
             </select>
         </div>
     </div>
-    {#    <div class="form-group">#}
-    {#        <label class="col-sm-3 control-label no-padding-right">线段标准化</label>#}
-    {#        <div class="col-sm-9 show-tooltips"#}
-    {#             title="影响线段的起始端点，标准化会导致一笔成段的出现">#}
-    {#            <select type="select" class="form-control" id="xd_bzh">#}
-    {#                <option value="xd_bzh_no" {% if xd_bzh == 'xd_bzh_no' %} selected {% endif %}>严格按照特征序列顶底端点#}
-    {#                </option>#}
-    {#                <option value="xd_bzh_yes" {% if xd_bzh == 'xd_bzh_yes' %} selected {% endif %}>标准化线段画在高低端点#}
-    {#                </option>#}
-    {#            </select>#}
-    {#        </div>#}
-    {#    </div>#}
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">线段区间</label>
         <div class="col-sm-9 show-tooltips"
@@ -128,20 +127,6 @@
             </select>
         </div>
     </div>
-    {#    <div class="form-group">#}
-    {#        <label class="col-sm-3 control-label no-padding-right">走势段标准化</label>#}
-    {#        <div class="col-sm-9 show-tooltips"#}
-    {#             title="影响走势段的起始端点，标准化会导致一段成走势段的出现">#}
-    {#            <select type="select" class="form-control" id="zsd_bzh">#}
-    {#                <option value="zsd_bzh_no" {% if zsd_bzh == 'zsd_bzh_no' %} selected {% endif %}>#}
-    {#                    严格按照特征序列顶底端点#}
-    {#                </option>#}
-    {#                <option value="zsd_bzh_yes" {% if zsd_bzh == 'zsd_bzh_yes' %} selected {% endif %}>#}
-    {#                    标准化走势画在高低端点#}
-    {#                </option>#}
-    {#            </select>#}
-    {#        </div>#}
-    {#    </div>#}
     <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">走势段区间</label>
         <div class="col-sm-9 show-tooltips"
@@ -250,23 +235,20 @@
         </div>
     </div>
     <div class="form-group">
-        <label class="col-sm-3 control-label no-padding-right">分型高低区域</label>
-        <div class="col-sm-9 show-tooltips"
-             title="分型高低区域">
-            <select type="select" class="form-control" id="fx_qy">
-                <option value="fx_qy_three" {% if fx_qy == 'fx_qy_three' %} selected {% endif %}>分型三根K线
-                </option>
-                <option value="fx_qy_middle" {% if fx_qy == 'fx_qy_middle' %} selected {% endif %}>分型中间K线
-                </option>
-            </select>
-        </div>
-    </div>
-    <div class="form-group">
         <label class="col-sm-3 control-label no-padding-right">段内中枢拆分</label>
         <div class="col-sm-9 show-tooltips" title="段内中枢超几段进行拆分（包括进入离开段）">
             <input type="text" class="form-control" placeholder="段内中枢超几段进行拆分（包括进入离开段）"
                    id="xd_zs_max_lines_split"
                    value="{{ xd_zs_max_lines_split }}"/>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label no-padding-right">笔内重叠K线拆分</label>
+        <div class="col-sm-9 show-tooltips"
+             title="笔内重叠K线超过N后进行拆分，20,2 表示笔内重叠K线>=20（允许2根不连续重叠）进行笔拆分；99,0 则表示不进行拆分，最小 13 根">
+            <input type="text" class="form-control" placeholder="20,2 表示笔内重叠K线>=20（允许2根不连续重叠）进行笔拆分"
+                   id="bi_split_k_cross_nums"
+                   value="{{ bi_split_k_cross_nums }}"/>
         </div>
     </div>
 

@@ -37,6 +37,16 @@ class ExchangeBinance(Exchange):
 
         self.db_exchange = ExchangeDB('currency')
 
+    def default_code(self):
+        return 'BTC/USDT'
+
+    def support_frequencys(self):
+        return {
+            'w': 'Week', 'd': 'Day', '4h': '4H', '60m': '1H',
+            '30m': '30m', '15m': '15m', '10m': '5m', '5m': '5m',
+            '3m': '1m', '2m': '1m', '1m': '1m'
+        }
+
     def now_trading(self):
         """
         返回交易时间，数字货币 24 小时可交易

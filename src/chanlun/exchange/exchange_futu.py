@@ -51,6 +51,15 @@ class ExchangeFutu(Exchange):
     def __init__(self):
         SysConfig.set_all_thread_daemon(True)
 
+    def default_code(self):
+        return 'HK.00700'
+
+    def support_frequencys(self):
+        return {
+            'y': 'Year', 'm': 'Month', 'w': 'Week', 'd': 'Day', '120m': '2H', '60m': '1H', '30m': '30m', '15m': '15m',
+            '10m': '10m', '5m': '5m', '1m': '1m',
+        }
+
     def all_stocks(self):
         global g_all_stocks
         if len(g_all_stocks) > 0:

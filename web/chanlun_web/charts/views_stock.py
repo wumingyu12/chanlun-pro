@@ -20,9 +20,13 @@ def index_show(request):
     :return:
     """
     zx = zixuan.ZiXuan(market_type='a')
-
+    ex = get_exchange(Market.A)
+    default_code = ex.default_code()
+    support_frequencys = ex.support_frequencys()
     return render(request, 'charts/stock/index.html', {
         'nav': 'stock',
+        'default_code': default_code,
+        'support_frequencys': support_frequencys,
         'show_level': ['high', 'low'],
         'zx_list': zx.zixuan_list
     })

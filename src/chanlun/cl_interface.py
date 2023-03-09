@@ -391,6 +391,9 @@ class BI(LINE):
         self.zs_type_mmds: Dict[str, List[MMD]] = {}
         self.zs_type_bcs: Dict[str, List[BC]] = {}
 
+        # 记录是否是拆分笔
+        self.is_split = ''
+
     @deprecation.deprecated(details='弃用，请使用 Strategy.bi_td 方法进行判断')
     @property
     def td(self):

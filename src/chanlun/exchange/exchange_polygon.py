@@ -27,6 +27,15 @@ class ExchangePolygon(Exchange):
 
         self.trade_days = None
 
+    def default_code(self):
+        return 'AAPL'
+
+    def support_frequencys(self):
+        return {
+            'y': 'Year', 'q': 'Quarter', 'm': 'Month', 'w': 'Week', 'd': 'Day', '120m': '2H', '60m': '1H',
+            '30m': '30m', '15m': '15m', '5m': '5m', '1m': '1m'
+        }
+
     def all_stocks(self):
         """
         使用 Polygono 的方式获取所有股票代码

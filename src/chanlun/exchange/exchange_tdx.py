@@ -41,6 +41,15 @@ class ExchangeTDX(Exchange):
         # 文件缓存
         self.fdb = FileCacheDB()
 
+    def default_code(self):
+        return 'SH.000001'
+
+    def support_frequencys(self):
+        return {
+            'y': 'Y', 'q': 'Q', 'm': 'M', 'w': 'W', 'd': 'D',
+            '120m': '120m', '60m': '60m', '30m': '30m', '15m': '15m', '5m': '5m', '1m': '1m'
+        }
+
     def all_stocks(self):
         """
         使用 通达信的方式获取所有股票代码
@@ -205,25 +214,42 @@ class ExchangeTDX(Exchange):
         使用 富途 的接口会很快，日线则很慢
         获取日线的k线，并返回最后一根k线的数据
         """
-        if CTX() is not None:
-            return self.futu_ex.ticks(codes)
         ticks = {}
-        for code in codes:
-            try:
-                klines = self.klines(code, 'd')
-                close = klines.iloc[-1]['close']
-                open = klines.iloc[-1]['open']
-                high = klines.iloc[-1]['high']
-                low = klines.iloc[-1]['low']
-                volume = klines.iloc[-1]['volume']
-                rate = round((close - klines.iloc[-2]['close']) / klines.iloc[-2]['close'] * 100, 2)
-                tick = Tick(
-                    code=code, last=close, buy1=close, sell1=close, high=high, low=low, open=open, volume=volume,
-                    rate=rate
+        query_stocks = []
+        for _c in codes:
+            _m, _c, _t = self.to_tdx_code(_c)
+            if _m is not None:
+                query_stocks.append((_m, _c))
+        client = TdxHq_API(raise_exception=True, auto_retry=True)
+        with client.connect(self.connect_ip['ip'], self.connect_ip['port']):
+            quotes = client.get_security_quotes(query_stocks)
+            # ('market', 0), ('code', '000001'), ('active1', 4390), ('price', 14.29), ('last_close', 14.24), ('open', 14.35),
+            # ('high', 14.37), ('low', 14.14), ('servertime', '14:59:55.939'), ('reversed_bytes0', 14998872),
+            # ('reversed_bytes1', -1429), ('vol', 690954), ('cur_vol', 11982), ('amount', 985552128.0), ('s_vol', 339925),
+            # ('b_vol', 351029), ('reversed_bytes2', -1), ('reversed_bytes3', 45188), ('bid1', 14.28), ('ask1', 14.29),
+            # ('bid_vol1', 2617), ('ask_vol1', 2391), ('bid2', 14.27), ('ask2', 14.3), ('bid_vol2', 1853),
+            # ('ask_vol2', 4075), ('bid3', 14.26), ('ask3', 14.31), ('bid_vol3', 2164), ('ask_vol3', 3421), ('bid4', 14.25),
+            # ('ask4', 14.32), ('bid_vol4', 2512), ('ask_vol4', 8679), ('bid5', 14.24), ('ask5', 14.33), ('bid_vol5', 889),
+            # ('ask_vol5', 5191), ('reversed_bytes4', (2518,)), ('reversed_bytes5', 0), ('reversed_bytes6', 0),
+            # ('reversed_bytes7', 0), ('reversed_bytes8', 0), ('reversed_bytes9', 0.0), ('active2', 4390)])
+            for _q in quotes:
+                if _q['code'] == '999999':
+                    _code = 'SH.000001'
+                else:
+                    _code = [_c for _c in codes if _c[-6:] == _q['code']]
+                    if len(_code) == 0:
+                        continue
+                    _code = _code[0]
+                ticks[_code] = Tick(
+                    code=_code, last=_q['price'],
+                    buy1=_q['bid1'], sell1=_q['ask1'],
+                    low=_q['low'], high=_q['high'],
+                    volume=_q['vol'], open=_q['open'],
+                    rate=round(
+                        (_q['price'] - _q['last_close']) / _q['price'] * 100, 2
+                    )
                 )
-                ticks[code] = tick
-            except Exception as e:
-                print(f'{code} 获取 tick 异常 {e}')
+
         return ticks
 
     def now_trading(self):
@@ -430,5 +456,8 @@ if __name__ == '__main__':
     # xdxr = ex.xdxr(0, '000014')
     # print(xdxr)
 
-    klines = ex.klines('SH.688289', 'd', args={'fq': 'qfq'})
-    print(klines)
+    # klines = ex.klines('SH.688289', 'd', args={'fq': 'qfq'})
+    # print(klines)
+
+    ticks = ex.ticks(['SH.000001'])
+    print(ticks)

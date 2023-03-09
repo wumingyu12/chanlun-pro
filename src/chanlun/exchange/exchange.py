@@ -27,6 +27,21 @@ class Exchange(ABC):
     """
 
     @abstractmethod
+    def default_code(self) -> str:
+        """
+        返回WEB默认展示的代码
+        """
+
+    @abstractmethod
+    def support_frequencys(self) -> dict:
+        """
+        返回交易所支持的周期对照关系
+
+        内部使用代码 ： WEB端展示名称
+        例如 ：{'d': 'Day'}  # 内部使用的周期是 d，在web端展示  Day
+        """
+
+    @abstractmethod
     def all_stocks(self):
         """
         获取支持的所有股票列表

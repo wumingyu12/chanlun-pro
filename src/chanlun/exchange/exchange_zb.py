@@ -27,6 +27,15 @@ class ExchangeZB(Exchange):
 
         self.db_exchange = ExchangeDB('currency')
 
+    def default_code(self):
+        return 'BTC/USD'
+
+    def support_frequencys(self):
+        return {
+            'w': 'W', 'd': 'D', '4h': '4H', '60m': '1H',
+            '30m': '30m', '15m': '15m', '5m': '5m', '1m': '1m'
+        }
+
     def all_stocks(self):
         global g_all_stocks
         if len(g_all_stocks) > 0:
@@ -94,8 +103,8 @@ class ExchangeZB(Exchange):
             end_date = int(
                 datetime.datetime.timestamp(datetime.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S'))) * 1000
 
-        kline = self.exchange.fetchOHLCV(symbol=code, timeframe=frequency_map[frequency], limit=1000,
-                                         params={'startTime': start_date, 'endTime': end_date})
+        kline = self.exchange.fetch_ohlcv(symbol=code, timeframe=frequency_map[frequency], limit=1000,
+                                          params={'startTime': start_date, 'endTime': end_date})
         kline_pd = pd.DataFrame(kline, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
         kline_pd['code'] = code
         kline_pd['date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))

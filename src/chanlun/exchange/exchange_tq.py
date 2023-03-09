@@ -30,6 +30,17 @@ class ExchangeTq(Exchange):
         self.t = threading.Thread(target=self.thread_run_update)
         self.t.start()
 
+    def default_code(self):
+        return 'KQ.m@SHFE.rb'
+
+    def support_frequencys(self):
+        return {
+            'w': 'W', 'd': 'D', '120m': '2H', '60m': '1H', '30m': '30m',
+            '15m': '15m',
+            '10m': '10m', '6m': '6m', '5m': '5m', '3m': '3m', '2m': '2m', '1m': '1m',
+            '30s': '30s', '10s': '10s'
+        }
+
     def thread_run_update(self):
         """
         子进程发送并更新行情请求

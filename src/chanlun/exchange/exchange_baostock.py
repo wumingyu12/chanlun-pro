@@ -15,6 +15,14 @@ class ExchangeBaostock(Exchange):
     def __init__(self):
         bs.login()
 
+    def default_code(self):
+        return 'SH.000001'
+
+    def support_frequencys(self):
+        return {
+            'm': 'Month', 'w': 'Week', 'd': 'Day', '60m': '1H', '30m': '30m', '15m': '15m', '5m': '5m'
+        }
+
     def all_stocks(self):
         """
         获取支持的所有股票列表

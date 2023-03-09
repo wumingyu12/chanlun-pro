@@ -33,6 +33,12 @@ class ExchangeDB(Exchange):
         self.exchange = None
         self.online_ex = None
 
+    def default_code(self):
+        return ''
+
+    def support_frequencys(self):
+        return {}
+
     def table(self, code):
         """
         根据 code  获取对应的数据表名称
@@ -141,19 +147,24 @@ class ExchangeDB(Exchange):
         db = g_pool_db.connection()
         cursor = db.cursor()
         table = self.table(code)
+        if self.market in ['a', 'us']:
+            sql = f"replace into `{table}`(`code`, `dt`, `f`, `h`, `l`, `o`, `c`, `v`) values (%s, %s, %s, %s, %s, %s, %s, %s)"
+        else:
+            sql = f"replace into `{table}`(`dt`, `f`, `h`, `l`, `o`, `c`, `v`) values (%s, %s, %s, %s, %s, %s, %s)"
+        data_all = []
         for kline in klines.iterrows():
             k = kline[1]
             if self.market in ['a', 'us']:
-                sql = "replace into %s(code, dt, f, h, l, o, c, v) values ('%s', '%s', '%s', %f, %f, %f, %f, %f)" % (
-                    table, code, k['date'].strftime('%Y-%m-%d %H:%M:%S'), frequency, k['high'], k['low'], k['open'],
-                    k['close'],
-                    k['volume'])
+                data_all.append((
+                    code, k['date'].strftime('%Y-%m-%d %H:%M:%S'), frequency,
+                    k['high'], k['low'], k['open'], k['close'], k['volume']
+                ))
             else:
-                sql = "replace into %s(dt, f, h, l, o, c, v) values ('%s', '%s', %f, %f, %f, %f, %f)" % (
-                    table, k['date'].strftime('%Y-%m-%d %H:%M:%S'), frequency, k['high'], k['low'], k['open'],
-                    k['close'],
-                    k['volume'])
-            cursor.execute(sql)
+                data_all.append((
+                    k['date'].strftime('%Y-%m-%d %H:%M:%S'), frequency,
+                    k['high'], k['low'], k['open'], k['close'], k['volume']
+                ))
+        cursor.executemany(sql, data_all)
         db.commit()
         return
 
