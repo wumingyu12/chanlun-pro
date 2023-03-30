@@ -9,6 +9,14 @@
 > pip install alpaca-py ib_insync
 > 
 > pip install -U polygon-api-client
+> 
+> config.py 配置文件内容新增
+> 
+>     # 盈透证券 TWS 设置
+>     IB_HOST = '127.0.0.1'
+>     IB_PORT = 7497
+>     IB_CLIENT_ID = 1
+>     IB_ACCOUNT = 'DU6941075'
 
 * 新增 美股盈透证券 交易所接口，正常使用需要单独启动 （`script/crontab/script_ib_taksk.py`）脚本，用来转发 API 数据
 * 新增同步美股数据脚本（`script/crontab/reboot_sync_us_klines.py`），数据来源：盈透证券

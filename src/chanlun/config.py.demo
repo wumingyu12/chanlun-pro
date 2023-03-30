@@ -28,12 +28,12 @@ REDIS_PORT = 6379
 # 港股市场支持：tdx_hk / futu
 # 期货市场支持：tq / tdx_futures
 # 数字货币支持： binance / zb
-# 美股市场支持： alpaca / polygon
+# 美股市场支持： alpaca / polygon / ib
 EXCHANGE_A = 'tdx'
 EXCHANGE_HK = 'tdx_hk'
 EXCHANGE_FUTURES = 'tdx_futures'
 EXCHANGE_CURRENCY = 'binance'
-EXCHANGE_US = 'polygon'
+EXCHANGE_US = 'ib'
 
 # 富途API配置（不使用请将 FUTU_HOST 留空）
 FUTU_HOST = ''
@@ -61,6 +61,12 @@ POLYGON_APIKEY = ''
 # 美股 Alpaca API 配置（申请网址 https://alpaca.markets/）
 ALPACA_APIKEY = ''
 ALPACA_SECRET = ''
+
+# 盈透证券 TWS 设置
+IB_HOST = '127.0.0.1'
+IB_PORT = 7497
+IB_CLIENT_ID = 1
+IB_ACCOUNT = 'DU6941075'
 
 # 钉钉消息配置
 DINGDING_KEY_A = {'token': '', 'secret': ''}
