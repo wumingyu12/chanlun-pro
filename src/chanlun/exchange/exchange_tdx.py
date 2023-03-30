@@ -1,6 +1,9 @@
+import copy
 import json, time
+import traceback
 from typing import Union
 
+import pytz
 from pytdx.hq import TdxHq_API
 from pytdx.util import best_ip
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
@@ -26,6 +29,7 @@ class ExchangeTDX(Exchange):
 
         # 选择最优的服务器，并保存到 redis 中
         connect_ip = rd.Robj().get('tdx_connect_ip')
+        # connect_ip = None # 手动重新选择最优服务器
         if connect_ip is None:
             connect_ip = best_ip.select_best_ip('stock')
             connect_ip = connect_ip['ip'] + ':' + str(connect_ip['port'])
@@ -40,6 +44,9 @@ class ExchangeTDX(Exchange):
 
         # 文件缓存
         self.fdb = FileCacheDB()
+
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
 
     def default_code(self):
         return 'SH.000001'
@@ -176,6 +183,9 @@ class ExchangeTDX(Exchange):
             klines.loc[:, 'code'] = code
             klines.loc[:, 'volume'] = klines['vol']
 
+            # 转换时区
+            klines['date'] = klines['date'].dt.tz_localize(self.tz)
+
             if frequency in {'y', 'q', 'm', 'w', 'd'}:
                 klines['date'] = klines['date'].apply(self.__convert_date)
 
@@ -190,6 +200,7 @@ class ExchangeTDX(Exchange):
             return klines
         except Exception as e:
             print(f'tdx 获取行情异常 {code} Exception ：{str(e)}')
+            print(traceback.format_exc())
         finally:
             pass
             # print(f'tdx 请求行情用时：{time.time() - _s_time}')
@@ -246,8 +257,8 @@ class ExchangeTDX(Exchange):
                     low=_q['low'], high=_q['high'],
                     volume=_q['vol'], open=_q['open'],
                     rate=round(
-                        (_q['price'] - _q['last_close']) / _q['price'] * 100, 2
-                    )
+                        (_q['price'] - _q['last_close']) / _q['last_close'] * 100, 2
+                    ) if _q['price'] != 0 else 0
                 )
 
         return ticks
@@ -370,7 +381,7 @@ class ExchangeTDX(Exchange):
         """
         读取除权除息信息
         """
-        key = f'xdxr_{market}_{code}'
+        key = f'new_xdxr_{market}_{code}'
         now_day = fun.datetime_to_str(datetime.datetime.now(), '%Y-%m-%d')
         redis_data = rd.Robj().hget('tdx_xdxr', key)
         if redis_data is None or json.loads(redis_data)['date'] != now_day:
@@ -380,7 +391,6 @@ class ExchangeTDX(Exchange):
             if len(data) > 0:
                 data.loc[:, 'date'] = data['year'].map(str) + '-' + data['month'].map(str) + '-' + data['day'].map(str)
                 data['date'] = pd.to_datetime(data['date'])
-                data.set_index('date', inplace=True)
             redis_new_data = {
                 'date': now_day,
                 'data': data.to_json(date_format='epoch', orient='split')
@@ -396,20 +406,23 @@ class ExchangeTDX(Exchange):
         else:
             # print('直接读取缓存')
             data = pd.read_json(json.loads(redis_data)['data'], orient='split')
-            data.index.name = 'date'
 
         return data
 
-    @staticmethod
-    def klines_fq(fq_klines: pd.DataFrame, xdxr_data, fq_type: str):
+    def klines_fq(self, fq_klines: pd.DataFrame, xdxr_data, fq_type: str):
         """
         对行情进行复权处理
         """
         if len(xdxr_data) == 0:
             return fq_klines
-        info = xdxr_data.query('category==1')
+        info = copy.deepcopy(xdxr_data.query('category==1'))
+        if len(info) == 0:
+            return fq_klines
+        info.loc[:, 'idx_date'] = info['date'].dt.tz_localize(self.tz).dt.tz_convert('UTC')
+        info.set_index('idx_date', inplace=True)
+
         fq_klines = fq_klines.assign(if_trade=1)
-        fq_klines.loc[:, 'idx_date'] = fq_klines['date']
+        fq_klines.loc[:, 'idx_date'] = fq_klines['date'].dt.tz_convert('UTC')
         fq_klines.set_index('idx_date', inplace=True)
 
         if len(info) > 0:
@@ -456,8 +469,11 @@ if __name__ == '__main__':
     # xdxr = ex.xdxr(0, '000014')
     # print(xdxr)
 
-    # klines = ex.klines('SH.688289', 'd', args={'fq': 'qfq'})
-    # print(klines)
+    # klines = ex.klines('SH.600498', '30m')
+    # print(klines[['date', 'close']].tail())
+    #
+    # klines = ex.klines('SH.600498', '5m')
+    # print(klines[['date', 'close']].tail())
 
-    ticks = ex.ticks(['SH.000001'])
+    ticks = ex.ticks(['SZ.300474'])
     print(ticks)

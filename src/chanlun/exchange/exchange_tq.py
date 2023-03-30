@@ -2,6 +2,7 @@ import math
 import threading
 from typing import Union
 
+import pytz
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 from tqsdk import TqApi, TqAuth, TqAccount, TqKq
 from tqsdk.objs import Account, Position, Order
@@ -29,6 +30,9 @@ class ExchangeTq(Exchange):
         # 运行的子进程
         self.t = threading.Thread(target=self.thread_run_update)
         self.t.start()
+
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
 
     def default_code(self):
         return 'KQ.m@SHFE.rb'
@@ -159,6 +163,7 @@ class ExchangeTq(Exchange):
             return None
 
         klines.loc[:, 'date'] = klines['datetime'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e9))
+        klines['date'] = klines['date'].dt.tz_localize(self.tz)
         klines.loc[:, 'code'] = code
 
         return klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
@@ -372,3 +377,13 @@ class ExchangeTq(Exchange):
 
     def plate_stocks(self, code: str):
         raise Exception('交易所不支持')
+
+
+if __name__ == '__main__':
+    ex = ExchangeTq()
+
+    klines = ex.klines(ex.default_code(), '30m')
+
+    print(klines.tail())
+
+    ex.close_api()

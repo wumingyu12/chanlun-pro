@@ -6,7 +6,7 @@
 
 通过 getmac / ifconfig 等命令获取网卡地址会获取多个，不清楚到底哪一个是正确的，可使用一下命令获取
 
-    pip install pyarmor
+    pip install pyarmor==7.7.4
     pyarmor hdinfo
 
 输出中 Default Mac address 后面的就是默认的网卡地址

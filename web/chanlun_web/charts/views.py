@@ -126,11 +126,15 @@ def search_code_json(request):
     market = request.GET.get('market')
     search = request.GET.get('query')
     ex = get_exchange(Market(market))
-    all_stocks = ex.all_stocks()
-    res = [
-        stock for stock in all_stocks
-        if search.lower() in stock['code'].lower() or search.lower() in stock['name'].lower()
-    ]
+    if hasattr(ex, 'search_stocks'):
+        # 如果交易所对象有提供 搜索 的功能，直接调用搜索的功能
+        res = ex.search_stocks(search)
+    else:
+        all_stocks = ex.all_stocks()
+        res = [
+            stock for stock in all_stocks
+            if search.lower() in stock['code'].lower() or search.lower() in stock['name'].lower()
+        ]
 
     res_json = [{'code': r['code'], 'name': r['name']} for r in res]
 

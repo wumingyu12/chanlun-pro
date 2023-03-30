@@ -1,11 +1,14 @@
 import contextlib
 import pymysql
+import pytz
 from dbutils.pooled_db import PooledDB
 import pandas as pd
 from typing import List, Dict
 
 from chanlun import config
-from chanlun.exchange.exchange import Exchange, convert_futures_kline_frequency, convert_stock_kline_frequency, \
+from chanlun.exchange.exchange import Exchange, convert_futures_kline_frequency, \
+    convert_stock_kline_frequency, \
+    convert_us_kline_frequency, \
     convert_currency_kline_frequency, Tick
 
 if config.DB_HOST != '':
@@ -33,6 +36,11 @@ class ExchangeDB(Exchange):
         self.exchange = None
         self.online_ex = None
 
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
+        if self.market == 'us':
+            self.tz = pytz.timezone('US/Eastern')
+
     def default_code(self):
         return ''
 
@@ -50,7 +58,7 @@ class ExchangeDB(Exchange):
         elif self.market == 'a':
             return 'a_stock_klines_' + code.replace('.', '_').lower()[:7]
         elif self.market == 'us':
-            return 'us_klines'
+            return 'us_klines_' + code.lower()[0]
         elif self.market == 'currency':
             return 'futures_klines_' + code.replace('/', '_').lower()
         elif self.market == 'futures':
@@ -99,7 +107,7 @@ class ExchangeDB(Exchange):
             with contextlib.suppress(Exception):
                 # 删除并重新创建
                 # cursor.execute(f'drop table {table}')
-                create_sql = code_sql % table if self.market in ['a', 'us'] else no_code_sql % table
+                create_sql = code_sql % table if self.market in ['a', 'us', 'hk'] else no_code_sql % table
 
                 cursor.execute(create_sql)
         cursor.close()
@@ -117,7 +125,7 @@ class ExchangeDB(Exchange):
         db = g_pool_db.connection()
         cursor = db.cursor()
         table = self.table(code)
-        if self.market in ['a', 'us']:
+        if self.market in ['a', 'hk', 'us']:
             cursor.execute("select dt from %s where code = '%s' and f = '%s' order by dt desc limit 1"
                            % (table, code, frequency))
         else:
@@ -147,14 +155,14 @@ class ExchangeDB(Exchange):
         db = g_pool_db.connection()
         cursor = db.cursor()
         table = self.table(code)
-        if self.market in ['a', 'us']:
+        if self.market in ['a', 'hk', 'us']:
             sql = f"replace into `{table}`(`code`, `dt`, `f`, `h`, `l`, `o`, `c`, `v`) values (%s, %s, %s, %s, %s, %s, %s, %s)"
         else:
             sql = f"replace into `{table}`(`dt`, `f`, `h`, `l`, `o`, `c`, `v`) values (%s, %s, %s, %s, %s, %s, %s)"
         data_all = []
         for kline in klines.iterrows():
             k = kline[1]
-            if self.market in ['a', 'us']:
+            if self.market in ['a', 'hk', 'us']:
                 data_all.append((
                     code, k['date'].strftime('%Y-%m-%d %H:%M:%S'), frequency,
                     k['high'], k['low'], k['open'], k['close'], k['volume']
@@ -177,7 +185,7 @@ class ExchangeDB(Exchange):
         db = g_pool_db.connection()
         cursor = db.cursor()
         table = self.table(code)
-        if self.market in ['a', 'us']:
+        if self.market in ['a', 'hk', 'us']:
             sql = "delete from %s where code='%s' and f = '%s' and dt='%s'" % (
                 table, code, frequency, _datetime.strftime('%Y-%m-%d %H:%M:%S'))
         else:
@@ -201,7 +209,7 @@ class ExchangeDB(Exchange):
             args['limit'] = 5000
 
         table = self.table(code)
-        if self.market in ['a', 'us']:
+        if self.market in ['a', 'hk', 'us']:
             sql = "select dt, f, h, l, o, c, v from %s where code='%s' and f='%s'" % (table, code, frequency)
         else:
             sql = "select dt, f, h, l, o, c, v from %s where f='%s'" % (table, frequency)
@@ -224,7 +232,7 @@ class ExchangeDB(Exchange):
         kline_pd = pd.DataFrame(klines, columns=['date', 'f', 'high', 'low', 'open', 'close', 'volume'])
         kline_pd = kline_pd.iloc[::-1]
         kline_pd['code'] = code
-        kline_pd['date'] = pd.to_datetime(kline_pd['date'])  # .map(lambda d: d.to_pydatetime())
+        kline_pd['date'] = pd.to_datetime(kline_pd['date']).dt.tz_localize(self.tz)  # .map(lambda d: d.to_pydatetime())
         kline_pd['open'] = kline_pd['open'].astype('float')
         kline_pd['close'] = kline_pd['close'].astype('float')
         kline_pd['high'] = kline_pd['high'].astype('float')
@@ -239,12 +247,13 @@ class ExchangeDB(Exchange):
     def convert_kline_frequency(self, klines: pd.DataFrame, to_f: str) -> pd.DataFrame:
         """
         转换K线周期
-        TODO 美股的没有设置
         """
         if self.market == 'currency':
             return convert_currency_kline_frequency(klines, to_f)
         elif self.market == 'futures':
             return convert_futures_kline_frequency(klines, to_f)
+        elif self.market == 'us':
+            return convert_us_kline_frequency(klines, to_f)
         else:
             return convert_stock_kline_frequency(klines, to_f)
 
@@ -255,7 +264,17 @@ class ExchangeDB(Exchange):
         pass
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
-        pass
+        ticks = {}
+        for _code in codes:
+            klines = self.klines(_code, 'd', args={'limit': 1})
+            if len(klines) == 0:
+                continue
+            ticks[_code] = Tick(
+                _code, klines.iloc[-1]['close'], klines.iloc[-1]['close'], klines.iloc[-1]['close'],
+                klines.iloc[-1]['high'], klines.iloc[-1]['low'], klines.iloc[-1]['open'],
+                klines.iloc[-1]['volume'], 0
+            )
+        return ticks
 
     def stock_info(self, code: str) -> [Dict, None]:
         pass
@@ -274,3 +293,12 @@ class ExchangeDB(Exchange):
 
     def order(self, code: str, o_type: str, amount: float, args=None):
         pass
+
+
+if __name__ == '__main__':
+    ex = ExchangeDB('us')
+    # ticks = ex.ticks(['SHSE.000001'])
+    # print(ticks)
+
+    klines = ex.klines('AAPL', '60m')
+    print(klines.tail())

@@ -1,4 +1,5 @@
 import baostock as bs
+import pytz
 
 from chanlun.exchange.exchange import *
 
@@ -14,6 +15,9 @@ class ExchangeBaostock(Exchange):
 
     def __init__(self):
         bs.login()
+
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
 
     def default_code(self):
         return 'SH.000001'
@@ -112,6 +116,7 @@ class ExchangeBaostock(Exchange):
             data_list.append(rs.get_row_data())
         kline = pd.DataFrame(data_list, columns=rs.fields)
         kline['date'] = pd.to_datetime(kline['date'])
+        kline['date'] = kline['date'].dt.tz_localize(self.tz)
         kline['open'] = pd.to_numeric(kline['open'])
         kline['close'] = pd.to_numeric(kline['close'])
         kline['high'] = pd.to_numeric(kline['high'])
@@ -140,7 +145,8 @@ class ExchangeBaostock(Exchange):
                                 minutes=int(frequency_map[frequency]))
                     return self.__run_date
 
-                dk['date'] = dk['date'].apply(append_time)
+                dk.loc[:, 'date'] = dk['date'].apply(append_time)
+                dk.loc[:, 'date'] = dk['date'].dt.tz_localize(self.tz)
                 new_kline = pd.concat([new_kline, dk], ignore_index=True)
             kline = new_kline.sort_values('date')
 
@@ -210,3 +216,9 @@ class ExchangeBaostock(Exchange):
         :return:
         """
         raise Exception('账户资产接口不支持')
+
+
+if __name__ == '__main__':
+    ex = ExchangeBaostock()
+    klines = ex.klines('SZ.000001', '30m')
+    print(klines.tail())

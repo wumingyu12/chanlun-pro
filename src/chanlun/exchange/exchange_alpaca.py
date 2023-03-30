@@ -1,7 +1,10 @@
 import os
 import time
-import alpaca_trade_api as tradeapi
-from alpaca_trade_api.rest import TimeFrame, TimeFrameUnit
+
+from alpaca.data import StockBarsRequest, StockLatestQuoteRequest, StockSnapshotRequest, DataFeed
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+import pytz
 
 import datetime as dt
 from chanlun import config
@@ -16,19 +19,24 @@ class ExchangeAlpaca(Exchange):
     def __init__(self):
         super().__init__()
 
-        self.api = tradeapi.REST(
-            key_id=config.ALPACA_APIKEY,
-            secret_key=config.ALPACA_SECRET,
-            api_version='v2'
+        self.client = StockHistoricalDataClient(
+            api_key=config.ALPACA_APIKEY,
+            secret_key=config.ALPACA_SECRET
         )
+
+        # 设置时区
+        self.tz = pytz.timezone('US/Eastern')
+
+        # is vip 如果是付费的，可以查询最新的数据，否则只能查询历史
+        self.is_vip = False
 
     def default_code(self):
         return 'AAPL'
 
     def support_frequencys(self):
         return {
-            'y': 'Year', 'm': 'Month', 'w': 'Week', 'd': 'Day',
-            '120m': '2H', '60m': '1H', '30m': '30m',
+            'm': 'Month', 'w': 'Week', 'd': 'Day',
+            '60m': '1H', '30m': '30m', '10m': '10m',
             '15m': '15m', '5m': '5m', '1m': '1m'
         }
 
@@ -58,22 +66,6 @@ class ExchangeAlpaca(Exchange):
         #
         # return g_all_stocks
 
-    @staticmethod
-    def format_kline_pg(symbol, sym_df):
-        df = sym_df
-        df.rename(columns={'Unnamed: 0': 'date'}, inplace=True)
-        df.rename(columns={
-            "timestamp": "date",
-            "dt": "date", "v": "volume",
-            "h": "high", "c": "close", "o": "open", "l": "low"
-        }, inplace=True)
-        # df.index.name = 'dt'
-        # df['dt'] = df.index
-        df.reset_index(level=0, inplace=True)
-
-        df['code'] = symbol
-        return df[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
-
     def klines(self, code: str, frequency: str,
                start_date: str = None, end_date: str = None,
                args=None) -> [pd.DataFrame, None]:
@@ -81,59 +73,60 @@ class ExchangeAlpaca(Exchange):
         if args is None:
             args = {}
         frequency_map = {
-            'y': TimeFrameUnit.Month, 'q': TimeFrameUnit.Month, 'm': TimeFrameUnit.Month, 'w': TimeFrameUnit.Week,
-            'd': TimeFrameUnit.Day,
-            '120m': TimeFrameUnit.Hour, '60m': TimeFrameUnit.Hour, '30m': TimeFrameUnit.Minute,
-            '15m': TimeFrameUnit.Minute, '5m': TimeFrameUnit.Minute, '1m': TimeFrameUnit.Minute
+            'm': TimeFrame.Month, 'w': TimeFrame.Week,
+            'd': TimeFrame.Day, '60m': TimeFrame.Hour, '30m': TimeFrame(30, TimeFrameUnit.Minute),
+            '10m': TimeFrame(10, TimeFrameUnit.Minute),
+            '15m': TimeFrame(15, TimeFrameUnit.Minute), '5m': TimeFrame(5, TimeFrameUnit.Minute),
+            '1m': TimeFrame(1, TimeFrameUnit.Minute)
         }
-
-        frequency_mult = {
-            'y': 1, 'q': 1, 'm': 1, 'w': 1, 'd': 1, '120m': 2, '60m': 1, '30m': 30, '15m': 15, '5m': 5, '1m': 1
-        }
-
-        timeframe = TimeFrame(frequency_mult[frequency], frequency_map[frequency])
+        timeframe = frequency_map[frequency]
         try:
-            now_date = time.strftime('%Y-%m-%d')
             if end_date is None:
-                _toDate = now_date
+                end_date = datetime.datetime.now()
+                end_date = end_date + dt.timedelta(days=1) if self.is_vip else end_date - dt.timedelta(days=1)
+                end_date = fun.str_to_datetime(fun.datetime_to_str(end_date, '%Y-%m-%d'), '%Y-%m-%d')
             else:
-                _toDate = end_date
+                if len(end_date) == 10:
+                    end_date = fun.str_to_datetime(end_date, '%Y-%m-%d')
+                else:
+                    end_date = fun.str_to_datetime(end_date)
             if start_date is None:
-                time_format = '%Y-%m-%d %H:%M:%S'
-                if len(_toDate) == 10:
-                    time_format = '%Y-%m-%d'
-                end_datetime = dt.datetime(*time.strptime(_toDate, time_format)[:6])
                 if frequency == '1m':
-                    start_date = (end_datetime - dt.timedelta(days=15)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=15))
                 elif frequency == '5m':
-                    start_date = (end_datetime - dt.timedelta(days=15)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=15))
                 elif frequency == '30m':
-                    start_date = (end_datetime - dt.timedelta(days=75)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=75))
                 elif frequency == '60m':
-                    start_date = (end_datetime - dt.timedelta(days=150)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=150))
                 elif frequency == '120m':
-                    start_date = (end_datetime - dt.timedelta(days=300)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=150))
                 elif frequency == 'd':
-                    start_date = (end_datetime - dt.timedelta(days=750)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=5000))
                 elif frequency == 'w':
-                    start_date = (end_datetime - dt.timedelta(days=1200)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=7800))
                 elif frequency == 'y':
-                    start_date = (end_datetime - dt.timedelta(days=10000)).strftime(time_format)
-
-            bars = self.api.get_bars(code.upper(), timeframe, start=start_date, limit=2400)
-            if len(bars) != 0:
-                df = bars.df
-                # df['dt'] = pd.to_datetime(df['timestamp'], unit='ms')
-                # df = df.set_index('dt')
-                df = df.reset_index()
-                klines = self.format_kline_pg(code, df)
-                if frequency in {'y', 'q', 'm', 'w'}:
-                    klines['date'] = klines['date'].apply(self.__convert_date)
-                # klines = klines.sort_values('date')
-                # klines = klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
-                return klines
+                    start_date = (end_date - dt.timedelta(days=15000))
+            else:
+                if len(end_date) == 10:
+                    start_date = fun.str_to_datetime(start_date, '%Y-%m-%d')
+                else:
+                    start_date = fun.str_to_datetime(start_date)
+            req = StockBarsRequest(
+                symbol_or_symbols=code.upper(), timeframe=timeframe, start=start_date, end=end_date, limit=5000
+            )
+            bars = self.client.get_stock_bars(req)
+            klines = []
+            for _b in bars.data[code.upper()]:
+                klines.append({
+                    'code': code,
+                    'date': _b.timestamp,
+                    'open': _b.open, 'close': _b.close, 'high': _b.high, 'low': _b.low, 'volume': _b.volume
+                })
+            klines = pd.DataFrame(klines)
+            return klines
         except Exception as e:
-            print(f'polygon.io 获取行情异常 {code} Exception ：{str(e)}')
+            print(f'alpaca 获取行情异常 {code} Exception ：{str(e)}')
         return None
 
     def stock_info(self, code: str) -> [Dict, None]:
@@ -142,32 +135,25 @@ class ExchangeAlpaca(Exchange):
         """
         stocks = self.all_stocks()
         return next((s for s in stocks if s['code'] == code.upper()), None)
-        # try:
-        #     asset = self.api.get_asset(code)
-        #     return {
-        #         'code': asset.symbol,
-        #         'name': asset.name
-        #     }
-        # except:
-        #     return None
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         """
         获取行情Tick数据
         """
         code_ticks = {}
-        for code in codes:
-            _tick = self.api.get_snapshot(code)
-            code_ticks[code] = Tick(
-                code=code,
-                last=_tick.latest_trade.p,
-                buy1=_tick.latest_quote.bp,
-                sell1=_tick.latest_quote.ap,
-                high=_tick.daily_bar.h,
-                low=_tick.daily_bar.l,
-                open=_tick.daily_bar.o,
-                volume=_tick.daily_bar.v,
-                rate=round((_tick.daily_bar.c - _tick.prev_daily_bar.c) / _tick.prev_daily_bar.c * 100, 2),
+        req = StockSnapshotRequest(symbol_or_symbols=codes, feed=DataFeed.IEX)
+        res = self.client.get_stock_snapshot(req)
+        for _c, _t in res.items():
+            code_ticks[_c] = Tick(
+                code=_c,
+                last=_t.latest_trade.price,
+                buy1=_t.latest_quote.bid_price,
+                sell1=_t.latest_quote.ask_price,
+                high=_t.daily_bar.high,
+                low=_t.daily_bar.low,
+                open=_t.daily_bar.open,
+                volume=_t.daily_bar.volume,
+                rate=round((_t.daily_bar.close - _t.previous_daily_bar.close) / _t.previous_daily_bar.close * 100, 2),
             )
         return code_ticks
 
@@ -175,12 +161,14 @@ class ExchangeAlpaca(Exchange):
         """
         返回当前是否是交易时间
         """
-        try:
-            clock = self.api.get_clock()
-            if clock.is_open:
-                return True
-        except Exception:
-            return False
+        tz = pytz.timezone('US/Eastern')
+        now = datetime.datetime.now(tz)
+        weekday = now.weekday()
+        hour = now.hour
+        minute = now.minute
+        if weekday in [0, 1, 2, 3, 4] and ((10 <= hour < 16) or (hour == 9 and minute >= 30)):
+            return True
+        return False
 
     @staticmethod
     def __convert_date(_dt):
@@ -201,3 +189,13 @@ class ExchangeAlpaca(Exchange):
 
     def order(self, code: str, o_type: str, amount: float, args=None):
         raise Exception('交易所不支持')
+
+
+if __name__ == '__main__':
+    ex = ExchangeAlpaca()
+
+    # klines = ex.klines(ex.default_code(), '30m')
+    # print(klines.tail())
+
+    ticks = ex.ticks([ex.default_code()])
+    print(ticks)

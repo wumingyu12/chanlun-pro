@@ -81,6 +81,9 @@ def get_exchange(market: Market) -> Exchange:
         elif config.EXCHANGE_US == 'polygon':
             from chanlun.exchange.exchange_polygon import ExchangePolygon
             g_exchange_obj[market.value] = ExchangePolygon()
+        elif config.EXCHANGE_US == 'ib':
+            from chanlun.exchange.exchange_ib import ExchangeIB
+            g_exchange_obj[market.value] = ExchangeIB()
         else:
             raise Exception(f'不支持的美股交易所 {config.EXCHANGE_US}')
 

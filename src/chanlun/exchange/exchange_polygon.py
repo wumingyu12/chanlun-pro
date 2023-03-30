@@ -1,13 +1,17 @@
 """
 US Polygon 行情接口
 """
-
+import datetime
 import datetime as dt
 import os
 import pytz
 
-import polygon
+from polygon.rest import RESTClient
 import time
+
+from polygon.rest.models import SnapshotMarketType
+from tenacity import retry_if_result, wait_random, stop_after_attempt, retry
+
 from chanlun import config
 from chanlun import fun
 from chanlun.exchange.exchange import *
@@ -23,9 +27,12 @@ class ExchangePolygon(Exchange):
     def __init__(self):
         super().__init__()
 
-        self.client = polygon.RESTClient(config.POLYGON_APIKEY)
+        self.client = RESTClient(config.POLYGON_APIKEY)
 
         self.trade_days = None
+
+        # 设置时区
+        self.tz = pytz.timezone('US/Eastern')
 
     def default_code(self):
         return 'AAPL'
@@ -49,50 +56,7 @@ class ExchangePolygon(Exchange):
             g_all_stocks.append({'code': s[1]['code'], 'name': s[1]['name']})
         return g_all_stocks
 
-        # 以下是从网络获取，免费版本要 3 分钟才可以
-        # g_all_stocks = rd.get_ex('us_stocks_all')
-        # if g_all_stocks is not None:
-        #     return g_all_stocks
-        # g_all_stocks = []
-        # next_url = None
-        # while True:
-        #     try:
-        #         tickers = self.client.reference_tickers_v3(next_url=next_url, limit=1000)
-        #         for _t in tickers.results:
-        #             g_all_stocks.append({'code': _t['ticker'], 'name': _t['name']})
-        #         if len(tickers.results) < 1000:
-        #             break
-        #         next_url = tickers.next_url
-        #         print(next_url)
-        #         if next_url is None or len(next_url) == 0:
-        #             break
-        #     except Exception as e:
-        #         # 免费的有每分钟请求数限制，超过就报错，等一分钟再试试
-        #         print('polygon 免费版本有限速，等一分钟再试试')
-        #         time.sleep(60)
-        #
-        # if len(g_all_stocks) > 0:
-        #     rd.save_ex('us_stocks_all', 10 * 48 * 60 * 60, g_all_stocks)
-        #
-        # return g_all_stocks
-
-    @staticmethod
-    def format_kline_pg(symbol, sym_df):
-
-        df = sym_df
-        df.rename(columns={'Unnamed: 0': 'date'}, inplace=True)
-        df.rename(
-            columns={"time": "date", "dt": "date", "v": "volume", "h": "high", "c": "close", "o": "open",
-                     "l": "low"}, inplace=True)
-        # df.index.name = 'dt'
-        # df['dt'] = df.index
-        df.reset_index(level=0, inplace=True)
-
-        df['code'] = symbol
-        klines = df[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
-
-        return klines
-
+    @retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5), retry=retry_if_result(lambda _r: _r is None))
     def klines(self, code: str, frequency: str,
                start_date: str = None, end_date: str = None,
                args=None) -> [pd.DataFrame, None]:
@@ -109,62 +73,51 @@ class ExchangePolygon(Exchange):
         }
 
         try:
-            now_date = time.strftime('%Y-%m-%d')
             if end_date is None:
-                _toDate = now_date
+                end_date = datetime.datetime.now()
+                end_date = end_date + dt.timedelta(days=1)
+                end_date = fun.str_to_datetime(fun.datetime_to_str(end_date, '%Y-%m-%d'), '%Y-%m-%d')
             else:
-                _toDate = end_date
+                if len(end_date) == 10:
+                    end_date = fun.str_to_datetime(end_date, '%Y-%m-%d')
+                else:
+                    end_date = fun.str_to_datetime(end_date)
             if start_date is None:
-                time_format = '%Y-%m-%d %H:%M:%S'
-                if len(_toDate) == 10:
-                    time_format = '%Y-%m-%d'
-                end_datetime = dt.datetime(*time.strptime(_toDate, time_format)[:6])
                 if frequency == '1m':
-                    start_date = (end_datetime - dt.timedelta(days=15)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=15))
                 elif frequency == '5m':
-                    start_date = (end_datetime - dt.timedelta(days=15)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=15))
                 elif frequency == '30m':
-                    start_date = (end_datetime - dt.timedelta(days=75)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=75))
                 elif frequency == '60m':
-                    start_date = (end_datetime - dt.timedelta(days=150)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=150))
                 elif frequency == '120m':
-                    start_date = (end_datetime - dt.timedelta(days=150)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=150))
                 elif frequency == 'd':
-                    start_date = (end_datetime - dt.timedelta(days=5000)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=5000))
                 elif frequency == 'w':
-                    start_date = (end_datetime - dt.timedelta(days=7800)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=7800))
                 elif frequency == 'y':
-                    start_date = (end_datetime - dt.timedelta(days=15000)).strftime(time_format)
+                    start_date = (end_date - dt.timedelta(days=15000))
             else:
-                time_format = '%Y-%m-%d %H:%M:%S'
-                if len(_toDate) == 10:
-                    time_format = '%Y-%m-%d'
-                start_date = pd.to_datetime(start_date).strftime(time_format)
+                if len(end_date) == 10:
+                    start_date = fun.str_to_datetime(start_date, '%Y-%m-%d')
+                else:
+                    start_date = fun.str_to_datetime(start_date)
 
-            resp = self.client.stocks_equities_aggregates(code.upper(), frequency_mult[frequency],
-                                                          frequency_map[frequency],
-                                                          start_date, _toDate, limit=50000)
-            df = pd.DataFrame(resp.results)
-            df['dt'] = pd.to_datetime(df['t'], unit='ms')
-
-            df = df.set_index('dt')
-
-            if frequency != 'd' and frequency != 'w' and frequency != 'm' and frequency != 'y':
-                nyc = pytz.timezone('America/New_York')
-                df.index = df.index.tz_localize(pytz.utc).tz_convert(nyc)
-                df = df.between_time('09:30:00', '16:00:00')
-
-            df = df.reset_index()
-
-            klines = self.format_kline_pg(code, df)
-
-            if frequency in ['y', 'q', 'm', 'w']:
-                klines['date'] = klines['date'].apply(self.__convert_date)
-
-            klines = klines.sort_values('date')
-
-            klines = klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
-
+            resp = self.client.get_aggs(
+                code.upper(), frequency_mult[frequency], frequency_map[frequency], start_date, end_date, limit=50000
+            )
+            klines = []
+            for r in resp:
+                klines.append({
+                    'code': code.upper(),
+                    'date': fun.timeint_to_datetime(r.timestamp / 1000),
+                    'open': r.open, 'close': r.close, 'high': r.high, 'low': r.low, 'volume': r.volume,
+                })
+            klines = pd.DataFrame(klines)
+            klines.sort_values('date', inplace=True)
+            # klines['date'] = pd.to_datetime(klines).dt.tz_localize(self.tz)
             return klines
         except Exception as e:
             print('polygon.io 获取行情异常 %s Exception ：%s' % (code, str(e)))
@@ -175,35 +128,34 @@ class ExchangePolygon(Exchange):
         """
         获取股票名称
         """
-        resp = self.client.reference_tickers_v3(ticker=code.upper(), market="stocks", active=True)
-        if resp.status == 'OK':
-            stock = resp.results
-            if len(stock) == 0:
-                return None
-            return {
-                'code': stock[0]['ticker'],
-                'name': stock[0]['name']
-            }
+        all_stocks = self.all_stocks()
+        for s in all_stocks:
+            if s['code'].upper() == code.upper():
+                return s
+        return None
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         """
         使用富途的接口获取行情Tick数据
         """
+        # ticks = {}
+        # for _c in codes:
+        #     _t = self.client.get_daily_open_close_agg(_c)
+        #     ticks[_c] = Tick(
+        #         code=_c, last=_t.close, buy1=_t.close, sell1=_t.close,
+        #         high=_t.high, low=_t.low, open=_t.open, volume=_t.volume,
+        #         rate=_t.
+        #     )
         raise Exception('交易所不支持')
 
     def now_trading(self):
         """
         返回当前是否是交易时间
         """
-        resp = self.client.reference_market_status
+        resp = self.client.get_market_status()
         if resp.market != 'closed':
             return True
         return False
-
-    @staticmethod
-    def __convert_date(dt):
-        dt = fun.datetime_to_str(dt, '%Y-%m-%d')
-        return fun.str_to_datetime(dt, '%Y-%m-%d')
 
     def stock_owner_plate(self, code: str):
         raise Exception('交易所不支持')
@@ -219,3 +171,16 @@ class ExchangePolygon(Exchange):
 
     def order(self, code: str, o_type: str, amount: float, args=None):
         raise Exception('交易所不支持')
+
+
+if __name__ == '__main__':
+    ex = ExchangePolygon()
+
+    # is_trading = ex.now_trading()
+    # print(is_trading)
+
+    klines = ex.klines(ex.default_code(), '30m')
+    print(klines.tail(50))
+
+    # ticks = ex.ticks([ex.default_code()])
+    # print(ticks)

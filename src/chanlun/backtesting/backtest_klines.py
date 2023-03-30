@@ -2,8 +2,8 @@
 import hashlib
 import json
 import time
-from typing import Dict
 
+import pytz
 from tqdm.auto import tqdm
 
 from chanlun import cl
@@ -28,15 +28,19 @@ class BackTestKlines(MarketDatas):
         """
         super().__init__(market, frequencys, cl_config)
 
+        self.tz = pytz.timezone('Asia/Shanghai')
+        if market == 'us':
+            self.tz = pytz.timezone('US/Eastern')
+
         self.market = market
         self.base_code = None
         self.frequencys = frequencys
         self.cl_config = cl_config
         if isinstance(start_date, str):
-            start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+            start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S').astimezone(self.tz)
         self.start_date = start_date
         if isinstance(end_date, str):
-            end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+            end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S').astimezone(self.tz)
         self.end_date = end_date
 
         self.now_date: datetime.datetime = start_date
@@ -257,10 +261,10 @@ class BackTestKlines(MarketDatas):
         :return:
         """
         market_days_freq_maps = {
-            'a': {'w': 10000, 'd': 10000, '120m': 500, '4h': 500, '60m': 100, '30m': 700, '15m': 350, '5m': 150,
-                  '1m': 5},
+            'a': {'w': 10000, 'd': 10000, '120m': 500, '4h': 500, '60m': 100, '30m': 700, '15m': 350, '5m': 600,
+                  '1m': 100},
             'hk': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
-            'us': {'d': 5000, '120m': 500, '4h': 500, '60m': 100, '30m': 100, '15m': 50, '5m': 25, '1m': 5},
+            'us': {'d': 5000, '120m': 2000, '60m': 1000, '30m': 500, '15m': 250, '5m': 80, '1m': 15},
             'currency': {'w': 2000, 'd': 2000, '4h': 1000, '120m': 500, '60m': 210, '30m': 105, '15m': 55, '10m': 25,
                          '5m': 18, '1m': 4},
             'futures': {'d': 5000, '120m': 500, '4h': 500, '60m': 500, '30m': 500, '15m': 480, '10m': 240, '5m': 300,

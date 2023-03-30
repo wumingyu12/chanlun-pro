@@ -15,7 +15,7 @@
 
 3. 执行以下命令获取本机 mac 地址，并发送给作者，获取授权许可文件，并放置在项目中的 `src/pytransform` 目录下
 
-          pip install pyarmor
+          pip install pyarmor==7.7.4
           pyarmor hdinfo
           # 将 Default Mac address: "****"  内容发送给作者，获取授权文件
 

@@ -18,7 +18,8 @@ ipywidgets
 tqsdk
 apscheduler
 polygon-api-client
-alpaca-trade-api
+alpaca-py
+ib_insync
 mytt
 protobuf
 tenacity

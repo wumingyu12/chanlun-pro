@@ -109,6 +109,12 @@ class MarketDatas(ABC):
         @return : 缠论数据对象
         """
 
+    def custom_data(self, code, frequency, args=None):
+        """
+        获取自定义数据
+        """
+        return None
+
 
 class Strategy(ABC):
     """

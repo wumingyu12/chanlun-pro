@@ -1,5 +1,6 @@
 import ccxt
 import pymysql.err
+import pytz
 
 from chanlun import config
 from chanlun.exchange.exchange import *
@@ -23,12 +24,15 @@ class ExchangeZB(Exchange):
 
         params["verify"] = False
 
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
+
         self.exchange = ccxt.zb(params)
 
         self.db_exchange = ExchangeDB('currency')
 
     def default_code(self):
-        return 'BTC/USD'
+        return 'BTC/USDT'
 
     def support_frequencys(self):
         return {
@@ -108,6 +112,7 @@ class ExchangeZB(Exchange):
         kline_pd = pd.DataFrame(kline, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
         kline_pd['code'] = code
         kline_pd['date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))
+        kline_pd['date'] = kline_pd['date'].dt.tz_localize(self.tz)
         # kline_pd['date'] = pd.to_datetime(kline_pd['date'].values / 1000, unit='s', utc=True).tz_convert(
         # 'Asia/Shanghai')
         return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
@@ -164,3 +169,13 @@ class ExchangeZB(Exchange):
 
     def plate_stocks(self, code: str):
         raise Exception('交易所不支持')
+
+
+if __name__ == '__main__':
+    ex = ExchangeZB()
+
+    stocks = ex.all_stocks()
+    print(stocks)
+
+    klines = ex.klines(ex.default_code(), '30m')
+    print(klines.tail())

@@ -4,8 +4,12 @@ from dataclasses import dataclass
 from typing import List, Dict
 
 import pandas as pd
+import pytz
 
 from chanlun.fun import datetime_to_str, str_to_timeint, datetime_to_int, str_to_datetime, timeint_to_datetime
+
+# 统一时区设置
+__tz = pytz.timezone('Asia/Shanghai')
 
 
 @dataclass
@@ -168,7 +172,7 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
         # 周期是 d、w、m，只保留年月日
         if to_f in ['d', 'w', 'm']:
             period_klines['date'] = period_klines['date'].map(lambda d: datetime_to_str(d, '%Y-%m-%d'))
-            period_klines['date'] = pd.to_datetime(period_klines['date'])
+            period_klines['date'] = pd.to_datetime(period_klines['date']).dt.tz_localize(__tz)
         elif to_f in ['5m', '10m', '15m', '30m']:
             def lts_time(d: datetime.datetime):
                 dt_int = datetime_to_int(d)
@@ -233,7 +237,7 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
                 'volume': float(k['volume']) if k['volume'] is not None else 0,
             }
     kline_pd = pd.DataFrame(new_kline.values())
-    kline_pd['date'] = pd.to_datetime(kline_pd['date'])
+    kline_pd['date'] = pd.to_datetime(kline_pd['date']).dt.tz_localize(__tz)
     return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
 
@@ -406,5 +410,67 @@ def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataF
                 'volume': float(k['volume']) if k['volume'] is not None else 0,
             }
     kline_pd = pd.DataFrame(new_kline.values())
-    kline_pd['date'] = pd.to_datetime(kline_pd['date'])
+    kline_pd['date'] = pd.to_datetime(kline_pd['date']).dt.tz_localize(__tz)
     return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+
+
+def convert_us_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFrame:
+    """
+    美股k线转换方法
+    基于 IB（盈透证券）行情的K线转换，时间是前对其
+    """
+    period_maps = {
+        '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30min', '60m': '1H',
+        '120m': '2H', 'd': 'D', 'w': 'W', 'm': 'M'
+    }
+    klines.insert(0, column='date_index', value=klines['date'])
+    klines.set_index('date_index', inplace=True)
+    period_type = period_maps[to_f]
+
+    period_klines = klines.resample(period_type, label='right', closed='left').first()
+    period_klines['open'] = klines['open'].resample(period_type, label='right', closed='left').first()
+    period_klines['close'] = klines['close'].resample(period_type, label='right', closed='left').last()
+    period_klines['high'] = klines['high'].resample(period_type, label='right', closed='left').max()
+    period_klines['low'] = klines['low'].resample(period_type, label='right', closed='left').min()
+    period_klines['volume'] = klines['volume'].resample(period_type, label='right', closed='left').sum()
+    period_klines.dropna(inplace=True)
+    period_klines.reset_index(inplace=True)
+    period_klines.drop('date_index', axis=1, inplace=True)
+
+    if to_f in ['d', 'w', 'm']:
+        # 将时间调整成 00:00:00
+        period_klines['date'] = period_klines['date'].map(lambda dt: dt.replace(hour=0, minute=0, second=0))
+
+    return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+
+
+if __name__ == '__main__':
+    from chanlun.exchange.exchange_db import ExchangeDB
+    import pandas as pd
+
+    # 设置显示全部行，不省略
+    pd.set_option('display.max_rows', None)
+    # 设置显示全部列，不省略
+    pd.set_option('display.max_columns', None)
+
+    code = 'AAPL'
+
+    ex = ExchangeDB('us')
+    klines_d = ex.klines(code, 'd', end_date='2023-03-20 00:00:00')
+    klines_60m = ex.klines(code, '60m', end_date='2023-03-20 00:00:00')
+    klines_30m = ex.klines(code, '30m', end_date='2023-03-20 00:00:00')
+
+    convert_klines_d = convert_us_kline_frequency(klines_30m, 'd')
+    print('klines_d')
+    print(klines_d.tail())
+    print('convert_klines_d')
+    print(convert_klines_d.tail())
+
+    convert_klines_60m = convert_us_kline_frequency(klines_30m, '60m')
+    print('klines_60m')
+    print(klines_60m.tail())
+    print('convert_klines_60m')
+    print(convert_klines_60m.tail())
+
+    print('klines_30m')
+    print(klines_30m.tail(30))

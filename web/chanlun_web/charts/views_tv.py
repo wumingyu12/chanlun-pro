@@ -44,11 +44,11 @@ market_session = {
     'currency': '24x7',
 }
 
-# 各个交易所的时区
+# 各个交易所的时区 统一时区
 market_timezone = {
     'a': 'Asia/Shanghai',
-    'hk': 'Asia/Hong_Kong',
-    'us': 'America/New_York',
+    'hk': 'Asia/Shanghai',
+    'us': 'US/Eastern',
     'futures': 'Asia/Shanghai',
     'currency': 'Asia/Shanghai',
 }

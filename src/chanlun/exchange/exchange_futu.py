@@ -1,5 +1,6 @@
 import random
 
+import pytz
 from futu import *
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
@@ -50,6 +51,9 @@ class ExchangeFutu(Exchange):
 
     def __init__(self):
         SysConfig.set_all_thread_daemon(True)
+
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
 
     def default_code(self):
         return 'HK.00700'
@@ -125,7 +129,7 @@ class ExchangeFutu(Exchange):
                 ret, kline, pk = CTX().request_history_kline(code=code, start=start_date, end=end_date, max_count=None,
                                                              ktype=frequency_map[frequency]['ktype'],
                                                              autype=args['fq'])
-            kline['date'] = pd.to_datetime(kline['time_key'])
+            kline['date'] = pd.to_datetime(kline['time_key']).dt.tz_localize(self.tz)
             kline = kline[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
             if frequency == '120m' and len(kline) > 0:
                 kline = convert_stock_kline_frequency(kline, '120m')
@@ -308,3 +312,9 @@ class ExchangeFutu(Exchange):
             print('Order Error : ', data)
 
         return False
+
+
+if __name__ == '__main__':
+    ex = ExchangeFutu()
+    klines = ex.klines('HK.00700', '30m')
+    print(klines.tail())

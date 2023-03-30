@@ -6,6 +6,7 @@ import random
 from typing import Union
 
 import pandas as pd
+import pytz
 
 from chanlun import cl, fun, rd
 from chanlun.cl_interface import ICL
@@ -32,17 +33,21 @@ class FileCacheDB(object):
         if os.path.isdir(self.klines_path) is False:
             os.mkdir(self.klines_path)
 
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
+        # self.us_tz = pytz.timezone('US/Eastern')
+
         # 如果内部有值变动，则会重新计算
         self.config_keys = [
             'kline_type', 'fx_qj', 'fx_bh', 'bi_type', 'bi_bzh', 'bi_qj', 'bi_fx_cgd',
-            'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx',
+            'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx', 'zs_optimize',
             'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
             'fx_qy', 'xd_zs_max_lines_split', 'allow_split_one_line_to_xd', 'allow_bi_fx_strict',
             'bi_split_k_cross_nums'
         ]
 
         # 缠论的更新时间，如果与当前保存不一致，需要清空缓存的计算结果，重新计算
-        self.cl_update_date = '2023-02-28'
+        self.cl_update_date = '2023-03-22'
         rd_cl_update_date = rd.Robj().get('__cl_update_date')
         if rd_cl_update_date != self.cl_update_date:
             rd.Robj().set('__cl_update_date', self.cl_update_date)
@@ -104,6 +109,15 @@ class FileCacheDB(object):
                         'date']:
                         print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 历史数据有错位，重新计算')
                         cd = cl.CL(code, frequency, cl_config)
+                    # 判断缓存中的数据，与给定的K线数据是否有差异，有则表示数据有变（比如复权会产生变化），则重新全量计算
+                    if len(cd.get_src_klines()) > 0 and len(klines) > 0:
+                        first_k = klines.iloc[0]
+                        cd_kline = [_k for _k in cd.get_src_klines() if _k.date == first_k['date']]
+                        # 计算后的数据没有最开始的日期或者 开高低收其中有不同的，则重新计算
+                        if len(cd_kline) == 0 or cd_kline[0].c != first_k['close'] or cd_kline[0].o != first_k['open'] \
+                                or cd_kline[0].h != first_k['high'] or cd_kline[0].l != first_k['low']:
+                            print(f'{market}--{code}--{frequency} {key} 计算前的数据有差异，重新计算')
+                            cd = cl.CL(code, frequency, cl_config)
                 else:
                     pass
                     # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 没有找到缓存，重新计算')
@@ -194,14 +208,28 @@ class FileCacheDB(object):
 if __name__ == '__main__':
     from chanlun.cl_utils import query_cl_chart_config
     from chanlun.exchange.exchange_db import ExchangeDB
+    from chanlun.exchange.exchange_tdx import ExchangeTDX
 
-    market = 'a'
-    code = 'SHSE.000001'
-    frequency = '5m'
-    cl_config = query_cl_chart_config(market, code)
-    ex = ExchangeDB(market)
+    # market = 'a'
+    # code = 'SHSE.000001'
+    # frequency = '5m'
+    # cl_config = query_cl_chart_config(market, code)
+    # ex = ExchangeDB(market)
 
     fdb = FileCacheDB()
-    cd = fdb.get_low_to_high_cl_data(ex, market, code, frequency, cl_config)
-    print(len(cd.get_klines()))
+    # cd = fdb.get_low_to_high_cl_data(ex, market, code, frequency, cl_config)
+    # print(len(cd.get_klines()))
+    # print(cd)
+
+    ex = ExchangeTDX()
+    market = 'a'
+    code = 'SZ.300666'
+    freq = 'd'
+    cl_config = query_cl_chart_config(market, code)
+    klines = ex.klines(code, freq)
+
+    cd = fdb.get_web_cl_data(market, code, freq, cl_config, klines)
+    print(cd)
+    cl_config = query_cl_chart_config(market, code)
+    cd = fdb.get_web_cl_data(market, code, freq, cl_config, klines)
     print(cd)

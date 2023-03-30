@@ -1,6 +1,7 @@
 import time
 from typing import Union
 
+import pytz
 from pytdx.exhq import TdxExHq_API
 from pytdx.util import best_ip
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
@@ -30,6 +31,9 @@ class ExchangeTDXHK(Exchange):
             rd.Robj().set('tdxex_connect_ip', connect_ip)
         print('TDXEX 最优服务器：' + connect_ip)
         self.connect_ip = {'ip': connect_ip.split(':')[0], 'port': int(connect_ip.split(':')[1])}
+
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
 
         # 文件缓存
         self.fdb = FileCacheDB()
@@ -136,7 +140,7 @@ class ExchangeTDXHK(Exchange):
                         )
                         for i in range(1, args['pages'] + 1)
                     ], axis=0, sort=False)
-                    klines.loc[:, 'date'] = pd.to_datetime(klines['datetime'])
+                    klines.loc[:, 'date'] = pd.to_datetime(klines['datetime']).dt.tz_localize(self.tz)
                     klines.sort_values('date', inplace=True)
                 else:
                     for i in range(1, args['pages'] + 1):
@@ -144,7 +148,7 @@ class ExchangeTDXHK(Exchange):
                         _ks = client.to_df(
                             client.get_instrument_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 700, 700)
                         )
-                        _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime'])
+                        _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime']).dt.tz_localize(self.tz)
                         _ks.sort_values('date', inplace=True)
                         new_start_dt = _ks.iloc[0]['date']
                         old_end_dt = klines.iloc[-1]['date']

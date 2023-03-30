@@ -11,7 +11,7 @@ from chanlun.cl_analyse import LinesFormAnalyse
 from chanlun.cl_interface import *
 from chanlun.cl_utils import cl_qstd
 from chanlun.exchange import exchange
-from chanlun.fun import str_to_datetime
+from chanlun.fun import str_to_datetime, datetime_to_str
 
 if "JPY_PARENT_PID" in os.environ:
     from pyecharts.globals import CurrentConfig, NotebookType
@@ -454,10 +454,10 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
         # 处理订单时间坐标
         dts = pd.Series(klines_xaxis)
         for o in orders:
-            if type(o['datetime']) == 'str':
+            if type(o['datetime']) is str:
                 odt = str_to_datetime(o['datetime'])
             else:
-                odt = o['datetime']
+                odt = str_to_datetime(datetime_to_str(o['datetime']))  # 这样转换后，加了个时区
             k_dt = dts[dts <= odt]
             if len(k_dt) == 0:
                 continue

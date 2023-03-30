@@ -3,6 +3,7 @@ import traceback
 import ccxt
 import deprecation
 import pymysql.err
+import pytz
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
 from chanlun import config
@@ -37,6 +38,9 @@ class ExchangeBinance(Exchange):
 
         self.db_exchange = ExchangeDB('currency')
 
+        # 设置时区
+        self.tz = pytz.timezone('Asia/Shanghai')
+
     def default_code(self):
         return 'BTC/USDT'
 
@@ -44,7 +48,7 @@ class ExchangeBinance(Exchange):
         return {
             'w': 'Week', 'd': 'Day', '4h': '4H', '60m': '1H',
             '30m': '30m', '15m': '15m', '10m': '5m', '5m': '5m',
-            '3m': '1m', '2m': '1m', '1m': '1m'
+            '3m': '3m', '2m': '2m', '1m': '1m'
         }
 
     def now_trading(self):
@@ -147,9 +151,9 @@ class ExchangeBinance(Exchange):
         # kline_pd.loc[:, 'code'] = code
         # kline_pd.loc[:, 'date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))
         kline_pd['code'] = code
-        kline_pd['date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))
-        # kline_pd['date'] = pd.to_datetime(kline_pd['date'].values / 1000, unit='s', utc=True).tz_convert(
-        # 'Asia/Shanghai')
+        kline_pd['date'] = kline_pd['date'].apply(
+            lambda x: datetime.datetime.fromtimestamp(x / 1e3)
+        ).dt.tz_localize(self.tz)
         kline_pd = kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
         # 自定义级别，需要进行转换
         if frequency in ['10m', '3m', '2m'] and len(kline_pd) > 0:
@@ -253,3 +257,10 @@ class ExchangeBinance(Exchange):
 
     def plate_stocks(self, code: str):
         raise Exception('交易所不支持')
+
+
+if __name__ == '__main__':
+    ex = ExchangeBinance()
+
+    klines = ex.klines('BTC/USDT', '5m')
+    print(klines.tail())

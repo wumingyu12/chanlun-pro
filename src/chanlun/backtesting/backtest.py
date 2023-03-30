@@ -260,10 +260,12 @@ class BackTest:
                     self.trader.orders[_code] = _orders
                 # 资金历史记录
                 balance_history[BT.base_code] = BT.trader.balance_history
+                # 手续费合并
+                self.trader.fee_total += BT.trader.fee_total
 
-            # 整理并汇总资金变动历史 TODO 因为时间对其的问题，最终结果不一定准确
+            # 整理并汇总资金变动历史
             bh_df = pd.DataFrame(balance_history.values())
-            bh_df = bh_df.T.fillna(0)
+            bh_df = bh_df.T.sort_index().fillna(method='ffill').fillna(0)
             self.trader.balance_history = bh_df.sum(axis=1)
             self.log.info('合并回测结果完成，可调用 save 方法进行保存')
         return True

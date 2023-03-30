@@ -278,6 +278,7 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'zs_xd_type': [Config.ZS_TYPE_BZ.value],
         'zs_qj': Config.ZS_QJ_DD.value,
         'zs_wzgx': Config.ZS_WZGX_ZGGDD.value,
+        'zs_optimize': '0',
         'idx_macd_fast': 12,
         'idx_macd_slow': 26,
         'idx_macd_signal': 9,

@@ -84,6 +84,9 @@ function stock_plate(code) {
 }
 
 function stock_update_rates() {
+    if (market === 'us') {
+        return true;
+    }
     // 获取自选列表中的代码
     let codes = [];
     $('#my_stocks').find('.code').each(function () {

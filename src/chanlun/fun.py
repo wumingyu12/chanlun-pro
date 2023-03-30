@@ -6,10 +6,14 @@ import time
 import urllib.parse
 from datetime import timezone
 
+import pytz
 import requests
 
 from chanlun import config
 from chanlun.cl_interface import *
+
+# 统一时区
+__tz = pytz.timezone('Asia/Shanghai')
 
 
 def get_logger(filename=None, level=logging.INFO) -> logging.Logger:
@@ -129,7 +133,7 @@ def str_to_datetime(_s, _format='%Y-%m-%d %H:%M:%S'):
     :param _format:
     :return:
     """
-    return datetime.datetime.strptime(_s, _format)
+    return datetime.datetime.strptime(_s, _format).astimezone(__tz)
 
 
 def datetime_to_str(_dt: datetime.datetime, _format='%Y-%m-%d %H:%M:%S'):
@@ -148,7 +152,7 @@ def datetime_to_int(_dt: datetime.datetime):
     :param _dt:
     :return:
     """
-    return int(time.mktime(_dt.replace(tzinfo=timezone.utc).timetuple()))
+    return int(time.mktime(_dt.timetuple()))
 
 
 def str_add_seconds_to_str(_s, _seconds, _format='%Y-%m-%d %H:%M:%S'):
@@ -165,4 +169,18 @@ def now_dt():
     """
     返回当前日期字符串
     """
-    return datetime_to_str(datetime.datetime.now())
+    return datetime_to_str(datetime.datetime.now(tz=__tz))
+
+
+if __name__ == '__main__':
+    nowdt = now_dt()
+    print(nowdt)
+
+    print(str_to_datetime(nowdt))
+
+    dtint = str_to_timeint(nowdt)
+    print(dtint)
+
+    print(timeint_to_datetime(dtint))
+
+    print(timeint_to_str(dtint))
