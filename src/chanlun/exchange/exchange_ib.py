@@ -214,7 +214,7 @@ if __name__ == '__main__':
     # ticks = ex.ticks(['JAPAY'])
     # print(ticks)
     #
-    stock_info = ex.stock_info('UTHR')
+    stock_info = ex.stock_info('DOCU')
     print(stock_info)
     #
     # klines = ex.klines('AAPL', '30m')

@@ -1122,11 +1122,17 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                 itemstyle_opts=opts.ItemStyleOpts(color='rgb(233,112,220'),
             ).set_global_opts(
                 legend_opts=opts.LegendOpts(is_show=False),
-                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
-                yaxis_opts=opts.AxisOpts(position="right",
-                                         axislabel_opts=opts.LabelOpts(is_show=False),
-                                         axisline_opts=opts.AxisLineOpts(is_show=False),
-                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+                xaxis_opts=opts.AxisOpts(
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
+                yaxis_opts=opts.AxisOpts(
+                    position="right",
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    axisline_opts=opts.AxisLineOpts(is_show=False),
+                    axistick_opts=opts.AxisTickOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
             )
         )
         futu_charts.append(rsi_line)
@@ -1146,11 +1152,17 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                 itemstyle_opts=opts.ItemStyleOpts(color='rgb(12,174,210'),
             ).set_global_opts(
                 legend_opts=opts.LegendOpts(is_show=False),
-                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
-                yaxis_opts=opts.AxisOpts(position="right",
-                                         axislabel_opts=opts.LabelOpts(is_show=False),
-                                         axisline_opts=opts.AxisLineOpts(is_show=False),
-                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+                xaxis_opts=opts.AxisOpts(
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
+                yaxis_opts=opts.AxisOpts(
+                    position="right",
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    axisline_opts=opts.AxisLineOpts(is_show=False),
+                    axistick_opts=opts.AxisTickOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
             )
         )
         futu_charts.append(atr_line)
@@ -1170,11 +1182,17 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                 itemstyle_opts=opts.ItemStyleOpts(color='rgb(12,174,210'),
             ).set_global_opts(
                 legend_opts=opts.LegendOpts(is_show=False),
-                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
-                yaxis_opts=opts.AxisOpts(position="right",
-                                         axislabel_opts=opts.LabelOpts(is_show=False),
-                                         axisline_opts=opts.AxisLineOpts(is_show=False),
-                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+                xaxis_opts=opts.AxisOpts(
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
+                yaxis_opts=opts.AxisOpts(
+                    position="right",
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    axisline_opts=opts.AxisLineOpts(is_show=False),
+                    axistick_opts=opts.AxisTickOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
             )
         )
         futu_charts.append(cci_line)
@@ -1202,11 +1220,17 @@ def render_charts(title, cl_data: ICL, to_frequency: str = None, orders=None, co
                 itemstyle_opts=opts.ItemStyleOpts(color='rgb(25,201,14'),
             ).set_global_opts(
                 legend_opts=opts.LegendOpts(is_show=False),
-                xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(is_show=False), ),
-                yaxis_opts=opts.AxisOpts(position="right",
-                                         axislabel_opts=opts.LabelOpts(is_show=False),
-                                         axisline_opts=opts.AxisLineOpts(is_show=False),
-                                         axistick_opts=opts.AxisTickOpts(is_show=False)),
+                xaxis_opts=opts.AxisOpts(
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
+                yaxis_opts=opts.AxisOpts(
+                    position="right",
+                    axislabel_opts=opts.LabelOpts(is_show=False),
+                    axisline_opts=opts.AxisLineOpts(is_show=False),
+                    axistick_opts=opts.AxisTickOpts(is_show=False),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
             )
         )
         futu_charts.append(kdj_line)

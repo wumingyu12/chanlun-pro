@@ -2,7 +2,7 @@
 
 ---
 
-!> Python 版本支持 3.7、3.8、3.9、3.10，不然运行会报 RuntimeError 错误
+!> Python 版本支持 3.7、3.8、3.9、3.10 （建议 3.10），不然运行会报 RuntimeError 错误
 
 > 前置条件
 > 已经安装 git、Anaconda、MySQL、Redis
@@ -30,15 +30,19 @@
          pip3 install wheel
          pip3 install package/pytdx-1.72r2-py3-none-any.whl
 
-
-4. 设置 `PYTHONPATH` 环境变量
+3. 设置 `PYTHONPATH` 环境变量
 
          vim ~/.bashrc
          # 在最后一行增加  project_path 替换成项目所在的目录
          export PYTHONPATH=$PYTHONPATH:/project_path/chanlun-pro/src:
          source ~/.bashrc
 
-5. 在 `src/chanlun` 目录， 复制拷贝 `config.py.demo` 文件为 `config.py` 并修改其中的 [配置项](配置文件说明.md)
+4. 在 `src/chanlun` 目录， 复制拷贝 `config.py.demo` 文件为 `config.py` 并修改其中的 [配置项](配置文件说明.md)
+
+5. 运行项目根目录中的 `check_env.py` 文件，检查环境是否OK，如果输出 “环境OK”，则可以继续进行，如果有错误，则安装提示进行修复
+
+         conda activate chanlun
+         python check_env.py
 
 6. 执行以下命令获取本机 mac 地址，并发送给作者，获取授权许可文件，并放置在项目中的 `src/pytransform` 目录下
 

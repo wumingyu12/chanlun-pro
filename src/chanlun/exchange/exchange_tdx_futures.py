@@ -141,6 +141,7 @@ class ExchangeTDXFutures(Exchange):
                         )
                         for i in range(1, args['pages'] + 1)
                     ], axis=0, sort=False)
+                    klines['datetime'] = klines['datetime'].apply(self.fix_yp_date)
                     klines.loc[:, 'date'] = pd.to_datetime(klines['datetime']).dt.tz_localize(self.tz)
                     klines.sort_values('date', inplace=True)
                 else:
@@ -149,6 +150,7 @@ class ExchangeTDXFutures(Exchange):
                         _ks = client.to_df(
                             client.get_instrument_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 700, 700)
                         )
+                        klines['datetime'] = klines['datetime'].apply(self.fix_yp_date)
                         _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime']).dt.tz_localize(self.tz)
                         _ks.sort_values('date', inplace=True)
                         new_start_dt = _ks.iloc[0]['date']
@@ -175,6 +177,15 @@ class ExchangeTDXFutures(Exchange):
             pass
             # print(f'tdx 请求行情用时：{time.time() - _s_time}')
         return None
+
+    def fix_yp_date(self, dt: str):
+        """
+        修复夜盘的时间，tdx将夜盘的时间归类到了第二天，修复为前一天
+        """
+        dt = fun.str_to_datetime(dt, '%Y-%m-%d %H:%M')
+        if dt.hour >= 21:
+            dt = dt - datetime.timedelta(days=1)
+        return fun.datetime_to_str(dt)
 
     def stock_info(self, code: str) -> Union[Dict, None]:
         """

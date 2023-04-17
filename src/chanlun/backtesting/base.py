@@ -636,3 +636,33 @@ class Strategy(ABC):
         if zs.lines[0].type == 'up':
             return max(zs_macd_info.dea_up_cross_num, zs_macd_info.dif_up_cross_num)
         return 0
+
+
+def fee_a(opt: str, price: float, amount: float):
+    """
+    A 股交易所费用计算方法
+    """
+    fee_rate = 0.3  # 单位 %
+    min_fee = 5
+    yhs_rate = 0.1  # 印花税 单位 % 出让方（卖出）收取
+    ghf_rate = 0.02  # 过户费 单位 % 双向收取
+
+    trade_volume = price * amount
+    fee_sum = max([min_fee, trade_volume * fee_rate / 100])
+    if opt == 'sell':
+        fee_sum += trade_volume * yhs_rate / 100
+    fee_sum += trade_volume * ghf_rate / 100
+    return fee_sum
+
+
+def fee_us(opt: str, price: float, amlunt: float):
+    """
+    美股的交易费用计算
+    """
+    pass
+
+
+if __name__ == '__main__':
+    # A 股手续费计算
+    fee_total = fee_a('sell', 100, 100)
+    print(fee_total)

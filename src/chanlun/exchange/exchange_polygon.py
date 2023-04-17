@@ -1,15 +1,10 @@
 """
 US Polygon 行情接口
 """
-import datetime
 import datetime as dt
 import os
-import pytz
 
 from polygon.rest import RESTClient
-import time
-
-from polygon.rest.models import SnapshotMarketType
 from tenacity import retry_if_result, wait_random, stop_after_attempt, retry
 
 from chanlun import config

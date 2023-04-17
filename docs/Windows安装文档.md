@@ -2,7 +2,7 @@
 
 ---
 
-!> Python 版本支持 3.7、3.8、3.9、3.10，不然运行会报 RuntimeError 错误
+!> Python 版本支持 3.7、3.8、3.9、3.10 （建议 3.10），不然运行会报 RuntimeError 错误
 
 > 前置条件
 > 已经安装 GitHub Desktop、 Anaconda、MySQL、Redis
@@ -30,7 +30,12 @@
 
 5. 在 `src/chanlun` 目录， 复制拷贝 `config.py.demo` 文件为 `config.py` 并修改其中的 [配置项](配置文件说明.md)
 
-6. 在 `web/chanlun_web` 目录，双击  `run.bat` 启动
+6. 运行项目根目录中的 `check_env.py` 文件，检查环境是否OK，如果输出 “环境OK”，则可以继续进行，如果有错误，则安装提示进行修复
 
-7. 浏览器访问 http://127.0.0.1:8000/ 即可显示缠论解缠主页
+         conda activate chanlun
+         python check_env.py
+
+7. 在 `web/chanlun_web` 目录，双击  `run.bat` 启动
+
+8. 浏览器访问 http://127.0.0.1:8000/ 即可显示缠论解缠主页
     

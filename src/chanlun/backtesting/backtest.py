@@ -201,7 +201,7 @@ class BackTest:
     def run_by_code(self, code: str):
         # 修改回测类中的属性，进行回测
         # 保存文件更改
-        new_file = self.save_file.split('.pkl')[0] + '_' + code.lower().replace('.', '_') + '.pkl'
+        new_file = self.save_file.split('.pkl')[0] + '_' + code.lower().replace('.', '_') + '_process_.pkl'
         # TODO 如果之前的回测文件还有保存，可以直接返回
         # return new_file
         # if Path(new_file).exists():

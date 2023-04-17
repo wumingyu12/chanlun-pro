@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import *
 
-import deprecation
 import numpy as np
 import pandas as pd
 
@@ -34,6 +33,7 @@ class Config(Enum):
     FX_BH_NO_QBH = 'fx_bh_no_qbh'  # 不允许前一个分型包含后一个分型
     FX_BH_NO_HBQ = 'fx_bh_no_hbq'  # 不允许后一个分型包含前一个分型
     FX_BH_NO = 'fx_bh_no'  # 顶不可以在底中，底不可以在顶中
+    FX_CD_NO = 'fx_cd_no'  # 顶底分型不可重叠
 
     # 笔配置项
     BI_TYPE_OLD = 'bi_type_old'  # 笔类型，使用老笔规则
@@ -329,8 +329,8 @@ class ZS:
         中枢重叠区间占整个中枢区间的百分比，越大说明中枢重叠区域外的波动越小
         """
         zgzd = self.zg - self.zd
-        if zgzd == 0:
-            zgzd = 100
+        if zgzd == 0.:
+            return 0
         return (zgzd / (self.gg - self.dd)) * 100
 
     def zs_mmds(self):
@@ -394,7 +394,6 @@ class BI(LINE):
         # 记录是否是拆分笔
         self.is_split = ''
 
-    @deprecation.deprecated(details='弃用，请使用 Strategy.bi_td 方法进行判断')
     @property
     def td(self):
         """

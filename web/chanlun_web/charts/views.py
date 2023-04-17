@@ -214,7 +214,7 @@ def cl_chart_config_save(request):
     for _k in keys:
         if _k in ['zs_bi_type', 'zs_xd_type']:
             config[_k] = request.POST.getlist(_k)
-            print(f'List value: {request.POST.getlist(_k)}')
+            # print(f'List value: {request.POST.getlist(_k)}')
         else:
             config[_k] = request.POST.get(_k)
         # print(f'{_k} : {config[_k]}')
