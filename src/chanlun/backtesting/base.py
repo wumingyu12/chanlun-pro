@@ -437,11 +437,13 @@ class Strategy(ABC):
         mean_klines = cd.get_klines()
         # 如果笔向上，k线要变绿，进行转折
         if bi.type == 'up' and mean_klines[-2].o > mean_klines[-2].c and \
-                mean_klines[-1].h < bi.end.val and mean_klines[-1].c < mean_klines[-2].o:
+                mean_klines[-1].h < bi.end.val and mean_klines[-1].c < mean_klines[-1].o and \
+                mean_klines[-1].c < mean_klines[-2].o:
             return True
         # 如果笔向下，k线要变红，进行转折
         if bi.type == 'down' and mean_klines[-2].o < mean_klines[-2].c and \
-                mean_klines[-1].l > bi.end.val and mean_klines[-1].c > mean_klines[-2].o:
+                mean_klines[-1].l > bi.end.val and mean_klines[-1].c > mean_klines[-1].o and \
+                mean_klines[-1].c > mean_klines[-2].o:
             return True
         return False
 

@@ -178,11 +178,18 @@ class ExchangeTDXFutures(Exchange):
             # print(f'tdx 请求行情用时：{time.time() - _s_time}')
         return None
 
-    def fix_yp_date(self, dt: str):
+    @staticmethod
+    def fix_yp_date(dt: str):
         """
         修复夜盘的时间，tdx将夜盘的时间归类到了第二天，修复为前一天
         """
-        dt = fun.str_to_datetime(dt, '%Y-%m-%d %H:%M')
+        if len(dt) == 19:
+            _format = '%Y-%m-%d %H:%M:%S'
+        elif len(dt) == 17:
+            _format = '%Y-%m-%d %H:%M'
+        else:
+            _format = '%Y-%m-%d'
+        dt = fun.str_to_datetime(dt, _format)
         if dt.hour >= 21:
             dt = dt - datetime.timedelta(days=1)
         return fun.datetime_to_str(dt)
@@ -275,5 +282,5 @@ if __name__ == '__main__':
 
     # print(ex.to_tdx_code('QS.ZN2306'))
     #
-    klines = ex.klines('QS.RB2305', '5m')
+    klines = ex.klines('QS.RB2306', '30m')
     print(klines.tail())
