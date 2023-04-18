@@ -185,7 +185,7 @@ class ExchangeTDXFutures(Exchange):
         """
         if len(dt) == 19:
             _format = '%Y-%m-%d %H:%M:%S'
-        elif len(dt) == 17:
+        elif len(dt) == 16:
             _format = '%Y-%m-%d %H:%M'
         else:
             _format = '%Y-%m-%d'
@@ -282,5 +282,5 @@ if __name__ == '__main__':
 
     # print(ex.to_tdx_code('QS.ZN2306'))
     #
-    klines = ex.klines('QS.RB2306', '30m')
+    klines = ex.klines('QS.RB2306', 'd')
     print(klines.tail())
