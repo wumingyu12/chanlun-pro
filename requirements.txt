@@ -23,7 +23,6 @@ ib_insync
 mytt
 protobuf
 tenacity
-gm
 qiniu
 akshare
 snapshot_selenium

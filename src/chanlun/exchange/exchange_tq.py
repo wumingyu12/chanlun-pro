@@ -163,7 +163,7 @@ class ExchangeTq(Exchange):
             return None
 
         klines.loc[:, 'date'] = klines['datetime'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e9))
-        klines['date'] = klines['date'].dt.tz_localize(self.tz)
+        klines.loc[:, 'date'] = klines['date'].dt.tz_localize(self.tz)
         klines.loc[:, 'code'] = code
 
         return klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]

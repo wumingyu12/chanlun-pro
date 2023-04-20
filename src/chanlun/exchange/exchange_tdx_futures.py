@@ -150,7 +150,7 @@ class ExchangeTDXFutures(Exchange):
                         _ks = client.to_df(
                             client.get_instrument_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 700, 700)
                         )
-                        klines['datetime'] = klines['datetime'].apply(self.fix_yp_date)
+                        _ks['datetime'] = _ks['datetime'].apply(self.fix_yp_date)
                         _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime']).dt.tz_localize(self.tz)
                         _ks.sort_values('date', inplace=True)
                         new_start_dt = _ks.iloc[0]['date']
@@ -275,12 +275,12 @@ class ExchangeTDXFutures(Exchange):
 
 if __name__ == '__main__':
     ex = ExchangeTDXFutures()
-    print(ex.market_maps)
-    stocks = ex.all_stocks()
-    print(len(stocks))
-    print(stocks)
+    # print(ex.market_maps)
+    # stocks = ex.all_stocks()
+    # print(len(stocks))
+    # print(stocks)
 
     # print(ex.to_tdx_code('QS.ZN2306'))
     #
-    klines = ex.klines('QS.RB2306', 'd')
+    klines = ex.klines('QZ.SA2309', '15m')
     print(klines.tail())
