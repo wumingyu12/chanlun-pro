@@ -43,11 +43,11 @@ class FileCacheDB(object):
             'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx', 'zs_optimize',
             'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
             'fx_qy', 'xd_zs_max_lines_split', 'allow_split_one_line_to_xd', 'allow_bi_fx_strict',
-            'bi_split_k_cross_nums'
+            'bi_split_k_cross_nums', 'fx_check_k_nums'
         ]
 
         # 缠论的更新时间，如果与当前保存不一致，需要清空缓存的计算结果，重新计算
-        self.cl_update_date = '2023-03-22'
+        self.cl_update_date = '2023-04-21'
         rd_cl_update_date = rd.Robj().get('__cl_update_date')
         if rd_cl_update_date != self.cl_update_date:
             rd.Robj().set('__cl_update_date', self.cl_update_date)

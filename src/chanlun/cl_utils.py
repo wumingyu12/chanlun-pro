@@ -289,6 +289,7 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'allow_bi_fx_strict': '0',
         'enable_kchart_low_to_high': '0',
         'bi_split_k_cross_nums': '20,1',
+        'fx_check_k_nums': 13,
         # 画图默认配置
         'chart_show_infos': '1',
         'chart_show_fx': '1',
