@@ -49,7 +49,7 @@ class ZiXuan(object):
         if zx_group not in self.zx_names:
             return False
         # 如果名称为空，则自动进行获取
-        if name == '' or name == 'undefined':
+        if name is None or name == '' or name == 'undefined':
             try:
                 ex = get_exchange(Market(self.market_type))
                 stock_info = ex.stock_info(code)

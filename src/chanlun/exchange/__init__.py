@@ -84,6 +84,9 @@ def get_exchange(market: Market) -> Exchange:
         elif config.EXCHANGE_US == 'ib':
             from chanlun.exchange.exchange_ib import ExchangeIB
             g_exchange_obj[market.value] = ExchangeIB()
+        elif config.EXCHANGE_US == 'tdx_us':
+            from chanlun.exchange.exchange_tdx_us import ExchangeTDXUS
+            g_exchange_obj[market.value] = ExchangeTDXUS()
         else:
             raise Exception(f'不支持的美股交易所 {config.EXCHANGE_US}')
 

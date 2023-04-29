@@ -152,8 +152,8 @@ class ExchangeBinance(Exchange):
         # kline_pd.loc[:, 'date'] = kline_pd['date'].apply(lambda x: datetime.datetime.fromtimestamp(x / 1e3))
         kline_pd['code'] = code
         kline_pd['date'] = kline_pd['date'].apply(
-            lambda x: datetime.datetime.fromtimestamp(x / 1e3)
-        ).dt.tz_localize(self.tz)
+            lambda x: datetime.datetime.fromtimestamp(x / 1e3).astimezone(self.tz)
+        )
         kline_pd = kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
         # 自定义级别，需要进行转换
         if frequency in ['10m', '3m', '2m'] and len(kline_pd) > 0:

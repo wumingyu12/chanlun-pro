@@ -237,7 +237,7 @@ def convert_stock_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFra
                 'volume': float(k['volume']) if k['volume'] is not None else 0,
             }
     kline_pd = pd.DataFrame(new_kline.values())
-    kline_pd['date'] = pd.to_datetime(kline_pd['date']).dt.tz_localize(__tz)
+    kline_pd['date'] = pd.to_datetime(kline_pd['date'])
     return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
 

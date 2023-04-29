@@ -124,14 +124,6 @@ class Strategy(ABC):
     def __init__(self):
         pass
 
-    def on_bt_loop_start(self, bt):
-        """
-        回测专用，每次每个代码回测循环都会执行这个方法
-
-        @param bt: 回测 BackTest 对象
-        """
-        pass
-
     @abstractmethod
     def open(self, code, market_data: MarketDatas, poss: Dict[str, POSITION]) -> List[Operation]:
         """
@@ -152,6 +144,20 @@ class Strategy(ABC):
         :param market_data:
         :return:
         """
+
+    def on_bt_loop_start(self, bt):
+        """
+        回测专用，每次每个代码回测循环都会执行这个方法
+
+        @param bt: 回测 BackTest 对象
+        """
+        pass
+
+    def clear(self):
+        """
+        回测专用，回测结束后，清理一些不需要的变量，避免被 pickle 保存
+        """
+        pass
 
     @staticmethod
     def idx_ma(cd: ICL, period=5, is_all_prices=False):

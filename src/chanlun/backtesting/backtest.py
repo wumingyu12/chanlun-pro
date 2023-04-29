@@ -193,6 +193,8 @@ class BackTest:
         # 清空持仓
         self.trader.end()
         self.trader.datas = None
+        # 调用策略的清理方法
+        self.strategy.clear()
         _et = time.time()
 
         self.log.info(f'运行完成，执行时间：{_et - _st}')

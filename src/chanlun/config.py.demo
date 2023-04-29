@@ -28,12 +28,12 @@ REDIS_PORT = 6379
 # 港股市场支持：tdx_hk / futu
 # 期货市场支持：tq / tdx_futures
 # 数字货币支持： binance / zb
-# 美股市场支持： alpaca / polygon / ib
+# 美股市场支持： alpaca / polygon / ib / tdx_us
 EXCHANGE_A = 'tdx'
 EXCHANGE_HK = 'tdx_hk'
 EXCHANGE_FUTURES = 'tdx_futures'
 EXCHANGE_CURRENCY = 'binance'
-EXCHANGE_US = 'ib'
+EXCHANGE_US = 'tdx_us'
 
 # 富途API配置（不使用请将 FUTU_HOST 留空）
 FUTU_HOST = ''
