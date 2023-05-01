@@ -193,7 +193,7 @@ class Strategy(ABC):
         return rsi
 
     @staticmethod
-    def idx_atr(cd: ICL, period=14):
+    def idx_atr(cd: ICL, period=14, end_datetime=None):
         # 原理：
         # （1）
         #     A=最高价-最低价
@@ -206,9 +206,15 @@ class Strategy(ABC):
         # 用法：
         #     在上升通道中，ATR真实波幅向上时，且TR黄线上穿ATR蓝线，此时K线收阴者可买入。下降通道中不买。
 
-        close_prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
-        high_prices = np.array([k.h for k in cd.get_klines()[-(period + 120):]])
-        low_prices = np.array([k.l for k in cd.get_klines()[-(period + 120):]])
+        close_prices = np.array(
+            [k.c for k in cd.get_klines()[-(period + 500):] if end_datetime is None or k.date <= end_datetime]
+        )
+        high_prices = np.array(
+            [k.h for k in cd.get_klines()[-(period + 500):] if end_datetime is None or k.date <= end_datetime]
+        )
+        low_prices = np.array(
+            [k.l for k in cd.get_klines()[-(period + 500):] if end_datetime is None or k.date <= end_datetime]
+        )
         atr = talib.ATR(high_prices, low_prices, close_prices, timeperiod=period)
         return atr
 
@@ -226,7 +232,7 @@ class Strategy(ABC):
         return cci
 
     @staticmethod
-    def idx_kdj(cd: ICL, period=9, M1=3, M2=3):
+    def idx_kdj(cd: ICL, period=9, M1=3, M2=3, end_datetime=None):
         # 指标说明：
         # KDJ，其综合动量观念、强弱指标及移动平均线的优点，早年应用在期货投资方面，功能颇为显著，目前为股市中最常被使用的指标之一。买卖原则：
         # 1. K线由右边向下交叉D值做卖，K线由右边向上交叉D值做买。
@@ -235,9 +241,12 @@ class Strategy(ABC):
         # 4. KD值于50 % 左右徘徊或交叉时，无意义。
         # 5. 投机性太强的个股不适用。
         # 6. 可观察KD值同股价的背离，以确认高低点。
-        close_prices = np.array([k.c for k in cd.get_klines()[-(period + 120):]])
-        high_prices = np.array([k.h for k in cd.get_klines()[-(period + 120):]])
-        low_prices = np.array([k.l for k in cd.get_klines()[-(period + 120):]])
+        close_prices = np.array(
+            [k.c for k in cd.get_klines()[-(period + 500):] if end_datetime is None or k.date <= end_datetime])
+        high_prices = np.array(
+            [k.h for k in cd.get_klines()[-(period + 500):] if end_datetime is None or k.date <= end_datetime])
+        low_prices = np.array(
+            [k.l for k in cd.get_klines()[-(period + 500):] if end_datetime is None or k.date <= end_datetime])
         k, d, j = MyTT.KDJ(close_prices, high_prices, low_prices, N=period, M1=M1, M2=M2)
         return {'k': k, 'd': d, 'j': j}
 
@@ -373,7 +382,7 @@ class Strategy(ABC):
         """
         获取最大亏损比例，通过凯利公式计算，并将结果除以2，取一半
         @param win_rate: 胜率 比如 0.5 为 50%的胜率
-        @param wlf:亏损比
+        @param wlr:亏损比
         @return : 返回最优的固定亏损比例
         """
         return round((win_rate - (1 - win_rate) / wlr) * 100 / 2, 2)
@@ -468,9 +477,11 @@ class Strategy(ABC):
             return False
         if bi.end.klines[-1].index == last_k.index:
             return False
-        if bi.end.type == 'ding' and last_k.o > last_k.c and last_k.c < bi.end.low(cd.get_config()['fx_qj']):
+        if bi.end.type == 'ding' and last_k.o > last_k.c and last_k.c < bi.end.low(cd.get_config()['fx_qj'],
+                                                                                   cd.get_config()['fx_qy']):
             return True
-        elif bi.end.type == 'di' and last_k.o < last_k.c and last_k.c > bi.end.high(cd.get_config()['fx_qj']):
+        elif bi.end.type == 'di' and last_k.o < last_k.c and last_k.c > bi.end.high(cd.get_config()['fx_qj'],
+                                                                                    cd.get_config()['fx_qy']):
             return True
         return False
 
@@ -496,11 +507,13 @@ class Strategy(ABC):
             return False
         if bi.type == 'up':
             # 笔向上，验证下一个顶分型不高于笔的结束顶分型，并且当前价格要低于顶分型的最低价格
-            if next_fx.done and next_fx.val < bi.end.val and price < bi.end.low(cd.get_config()['fx_qj']):
+            if next_fx.done and next_fx.val < bi.end.val and price < bi.end.low(cd.get_config()['fx_qj'],
+                                                                                cd.get_config()['fx_qy']):
                 return True
         elif bi.type == 'down':
             # 笔向下，验证下一个底分型不低于笔的结束底分型，并且两个分型不能离得太远
-            if next_fx.done and next_fx.val > bi.end.val and price > bi.end.high(cd.get_config()['fx_qj']):
+            if next_fx.done and next_fx.val > bi.end.val and price > bi.end.high(cd.get_config()['fx_qj'],
+                                                                                 cd.get_config()['fx_qy']):
                 return True
         return False
 

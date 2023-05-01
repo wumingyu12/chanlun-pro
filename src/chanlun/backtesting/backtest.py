@@ -206,8 +206,8 @@ class BackTest:
         new_file = self.save_file.split('.pkl')[0] + '_' + code.lower().replace('.', '_') + '_process_.pkl'
         # TODO 如果之前的回测文件还有保存，可以直接返回
         # return new_file
-        # if Path(new_file).exists():
-        #     return new_file
+        if Path(new_file).exists():
+            return new_file
 
         self.save_file = new_file
         # 运行币种修改为参数指定的

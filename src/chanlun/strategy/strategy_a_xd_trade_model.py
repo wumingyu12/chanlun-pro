@@ -158,7 +158,6 @@ class StrategyAXDTradeModel(Strategy):
         # 检查 5M 情况，第一次3买，或第一次一买，进行买入
         is_ok_5m = False
         low_level_5m_msg = ''
-        bi_5m = self.last_done_bi(cd_5m.get_bis())
 
         # 确定只做第一个三买
         if is_ok_5m is False:

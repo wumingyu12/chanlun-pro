@@ -30,13 +30,13 @@ class StrategyA3mmd(Strategy):
         # 第一个条件：中枢要求1，第一个中枢
         # 根据中枢类型的不同，判断是否第一个中枢的方法也不同
         high_config = high_data.get_config()
-        if high_config['zs_bi_type'] == Config.ZS_TYPE_DN.value:
+        if Config.ZS_TYPE_DN.value in high_config['zs_bi_type']:
             # 段内中枢（类同级别分解，和同级别分解还不太一样），判断段内是否只有一个中枢
             high_xd = high_data.get_xds()[-1]
             high_xd_bi_zss = [_zs for _zs in high_data.get_bi_zss() if _zs.start.index > high_xd.start.index]
             if len(high_xd_bi_zss) != 1:
                 return opts
-        elif high_config['zs_bi_type'] == Config.ZS_TYPE_BZ.value:
+        elif Config.ZS_TYPE_BZ.value in high_config['zs_bi_type']:
             # 标准中枢，中枢延伸的做法，判断只要不是连续两个同向的中枢即可
             high_bi_zs_1 = high_data.get_bi_zss()[-1]
             high_bi_zs_2 = high_data.get_bi_zss()[-2]
@@ -108,7 +108,8 @@ class StrategyA3mmd(Strategy):
                             'high_bi': high_bi,
                             'high_zs': high_zs,
                         },
-                        msg='买入条件：本级别买点（%s 笔停顿 %s 验证分型 %s 低级别背驰 %s）,止损价格 %s' % (mmd, btd, yzfx, low_bc, loss_price)
+                        msg='买入条件：本级别买点（%s 笔停顿 %s 验证分型 %s 低级别背驰 %s）,止损价格 %s' % (
+                            mmd, btd, yzfx, low_bc, loss_price)
                     ))
         elif high_zs.done is False:
             # 买入条件：针对本级别中枢的次级别3买卖点
@@ -135,11 +136,11 @@ class StrategyA3mmd(Strategy):
             # 两个买入条件的有些重复了，这里的止损就没有参考最大止损设置里
             # 这里定义为 类3买卖点，与本级别的区分开 TODO 这里还是需要优化
             if high_bi.type == 'up' and high_max_fxs[-1].val > high_zs.zg \
-                    and price > high_max_fxs[-1].high(high_data.get_config()['fx_qj']):
+                    and price > high_max_fxs[-1].high(high_data.get_config()['fx_qj'], high_data.get_config()['fx_qy']):
                 mmd = 'l3buy'
                 loss_price = high_max_fxs[-1].klines[-1].l
             elif high_bi.type == 'down' and high_max_fxs[-1].val < high_zs.zd \
-                    and price < high_max_fxs[-1].low(high_data.get_config()['fx_qj']):
+                    and price < high_max_fxs[-1].low(high_data.get_config()['fx_qj'], high_data.get_config()['fx_qy']):
                 mmd = 'l3sell'
                 loss_price = high_max_fxs[-1].klines[-1].h
             if mmd:
@@ -189,10 +190,12 @@ class StrategyA3mmd(Strategy):
         # 避免被小级别骗出去，在加一个高级别的笔停顿条件
         mla = MultiLevelAnalyse(high_data, low_data)
         low_qs = mla.low_level_qs(high_bi, 'bi')
-        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and (low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
+        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and (
+                low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
             return Operation(opt='sell', mmd=mmd, msg='次级别背驰 %s' % ([low_qs.pz_bc, low_qs.qs_bc]))
 
-        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and (low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
+        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and (
+                low_qs.pz_bc or low_qs.qs_bc) and low_bi.td:
             return Operation(opt='sell', mmd=mmd, msg='次级别背驰 %s' % ([low_qs.pz_bc, low_qs.qs_bc]))
 
         # 卖出条件：根据趋势背驰延伸出来的不标准走势之小转大
@@ -207,9 +210,11 @@ class StrategyA3mmd(Strategy):
 
         # TODO 个人回看图表，考虑新增的平仓条件
         # 高级别笔背驰
-        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['bi', 'pz', 'qs']):
+        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(
+                ['bi', 'pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
-        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['bi', 'pz', 'qs']):
+        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(
+                ['bi', 'pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
 
         # 低级别笔出现一二类买卖点

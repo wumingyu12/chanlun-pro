@@ -44,7 +44,8 @@ class StrategyLastZs3mmd(Strategy):
                 and high_fx.val > high_last_bi_zs.zd \
                 and last_price > high_fx.klines[-1].h:
             opts.append(
-                Operation('buy', 'l3buy', high_fx.val, {'fx_datetime': high_last_done_bi.end.k.date}, '三买后强低分型买入')
+                Operation('buy', 'l3buy', high_fx.val, {'fx_datetime': high_last_done_bi.end.k.date},
+                          '三买后强低分型买入')
             )
 
         if high_fx.type == 'ding' and high_fx.ld() >= 5 \
@@ -52,7 +53,8 @@ class StrategyLastZs3mmd(Strategy):
                 and high_fx.val < high_last_bi_zs.zg \
                 and last_price < high_fx.klines[-1].l:
             opts.append(
-                Operation('buy', 'l3sell', high_fx.val, {'fx_datetime': high_last_done_bi.end.k.date}, '三卖后强顶分型卖出')
+                Operation('buy', 'l3sell', high_fx.val, {'fx_datetime': high_last_done_bi.end.k.date},
+                          '三卖后强顶分型卖出')
             )
 
         # 设置止损价格 (设置为笔结束位置)
@@ -83,7 +85,8 @@ class StrategyLastZs3mmd(Strategy):
                 if exists_qfx is True and exists_sell_mmd is False \
                         and last_price > high_last_done_bi.end.klines[-1].h:
                     opts.append(
-                        Operation('buy', '3buy', loss_price, {'fx_datetime': high_last_done_bi.end.k.date}, '笔中枢三买')
+                        Operation('buy', '3buy', loss_price, {'fx_datetime': high_last_done_bi.end.k.date},
+                                  '笔中枢三买')
                     )
 
         if high_last_done_bi.type == 'up' and high_last_done_bi.high < high_last_bi_zs.zd:
@@ -107,7 +110,8 @@ class StrategyLastZs3mmd(Strategy):
                 if exists_qfx is True and exists_buy_mmd is False \
                         and last_price < high_last_done_bi.end.klines[-1].l:
                     opts.append(
-                        Operation('buy', '3sell', loss_price, {'fx_datetime': high_last_done_bi.end.k.date}, '笔中枢三卖')
+                        Operation('buy', '3sell', loss_price, {'fx_datetime': high_last_done_bi.end.k.date},
+                                  '笔中枢三卖')
                     )
 
         return opts
@@ -144,9 +148,11 @@ class StrategyLastZs3mmd(Strategy):
             return Operation('sell', mmd, msg='高级别笔买点（%s）' % high_bi.line_mmds())
 
         # 高级别笔背驰
-        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['pz', 'qs']):
+        if 'buy' in mmd and high_bi.type == 'up' and self.bi_td(high_bi, high_data) and \
+                high_bi.bc_exists(['pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
-        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and high_bi.bc_exists(['pz', 'qs']):
+        if 'sell' in mmd and high_bi.type == 'down' and self.bi_td(high_bi, high_data) and \
+                high_bi.bc_exists(['pz', 'qs']):
             return Operation('sell', mmd, msg='高级别笔背驰（%s）' % high_bi.line_bcs())
 
         # # 低级别笔出现一二类买卖点

@@ -1,6 +1,6 @@
-from chanlun import fun
-from chanlun.backtesting.base import *
 import talib as ta
+
+from chanlun.backtesting.base import *
 
 
 class StrategyZSTupo(Strategy):
