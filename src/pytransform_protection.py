@@ -24,7 +24,7 @@ def protect_pytransform():
     def check_mod_pytransform():
         def _check_co_key(co, v):
             return (len(co.co_names), len(co.co_consts), len(co.co_code)) == v
-        for k, (v1, v2, v3) in [('dllmethod', ((0, 3, 16), (0, 1, 10), None)), ('init_pytransform', ((0, 1, 10), None, None)), ('init_runtime', ((0, 1, 10), None, None)), ('_load_library', ((33, 22, 700), None, None)), ('get_registration_code', ((0, 1, 10), None, None)), ('get_expired_days', ((0, 1, 10), None, None)), ('get_hd_info', ((12, 10, 124), None, None)), ('get_license_info', ((11, 24, 402), None, None)), ('get_license_code', ((1, 2, 10), None, None)), ('format_platform', ((18, 18, 288), None, None)), ('pyarmor_init', ((3, 1, 22), None, None)), ('pyarmor_runtime', ((12, 5, 128), None, None)), ('_match_features', ((1, 2, 32), None, None))]:
+        for k, (v1, v2, v3) in [('dllmethod', ((0, 3, 16), (0, 1, 14), None)), ('init_pytransform', ((0, 1, 14), None, None)), ('init_runtime', ((0, 1, 14), None, None)), ('_load_library', ((33, 22, 666), None, None)), ('get_registration_code', ((0, 1, 14), None, None)), ('get_expired_days', ((0, 1, 14), None, None)), ('get_hd_info', ((12, 10, 124), None, None)), ('get_license_info', ((11, 24, 394), None, None)), ('get_license_code', ((1, 2, 10), None, None)), ('format_platform', ((18, 18, 278), None, None)), ('pyarmor_init', ((3, 1, 22), None, None)), ('pyarmor_runtime', ((12, 5, 130), None, None)), ('_match_features', ((1, 2, 30), None, None))]:
             co = getattr(pytransform, k).__code__
             if not _check_co_key(co, v1):
                 raise RuntimeError('unexpected pytransform.py')
@@ -57,7 +57,7 @@ def protect_pytransform():
             else:
                 value += 1217
 
-        if value not in [70744453, 50269345, 55158837, 70393714, 47198925, 90456235, 56320210]:
+        if value not in [70790242, 50349072, 55204070, 70510627, 47203504, 90488388, 56366727]:
             raise RuntimeError('unexpected %s' % filename)
 
     assert_builtin(sum)
