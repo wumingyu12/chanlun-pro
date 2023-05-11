@@ -265,30 +265,19 @@ class LINE:
         计算线段与坐标轴呈现的角度（正为上，负为下）
 
         弧度 = dy / dx
-            dy = 终点与起点的差值
-            dx = 固定位 100000
-            dy 如果不足六位数，进行补位
-        不同品种的标的价格有差异，这时计算的角度会有很大的不同，不利于量化，将 dy 固定，变相的将所有标的放在一个尺度进行对比
+            dy = 终点与起点的差值比例
+            dx = 线段之间的k线数量
         """
         if self.end.val == self.start.val:
             return 0
 
-        dy = max(self.end.val, self.start.val) - min(self.end.val, self.start.val)
-        dx = 100000
-        # 对 dy 进行补位
-        while True:
-            dy_len = len(str(int(dy)))
-            if dy_len < 6:
-                dy = dy * (10 ** (6 - dy_len))
-            elif dy_len > 6:
-                dy = dy / (10 ** (dy_len - 6))
-            else:
-                break
+        dy = (self.end.val - self.start.val) / self.start.val * 100
+        dx = self.end.k.k_index - self.start.k.k_index
         # 弧度
         k = math.atan2(dy, dx)
         # 弧度转角度
         j = math.degrees(k)
-        return j if self.end.val > self.start.val else -j
+        return j
 
 
 class ZS:

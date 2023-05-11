@@ -247,9 +247,10 @@ class BackTestKlines(MarketDatas):
                     [klines[max_f], new_kline], ignore_index=True
                 ).drop_duplicates(subset=['date'], keep='last')
                 # 删除大周期中，日期大于最小周期的未来数据
-                klines[max_f] = klines[max_f].drop(
-                    klines[max_f][klines[max_f]['date'] > klines[min_f].iloc[-1]['date']].index
-                )
+                if self.market in ['currency', 'futures']:
+                    klines[max_f] = klines[max_f].drop(
+                        klines[max_f][klines[max_f]['date'] > klines[min_f].iloc[-1]['date']].index
+                    )
         self._use_times['convert_klines'] += time.time() - _time
         return klines
 
@@ -275,3 +276,18 @@ class BackTestKlines(MarketDatas):
                 return (start_date - datetime.timedelta(days=market_days_freq_maps[self.market][_freq])).strftime(
                     self.time_fmt)
         raise Exception(f'不支持的周期 {frequency}')
+
+
+if __name__ == '__main__':
+    market = 'currency'
+    start = '2022-03-30 09:45:00'
+    end = '2022-04-30 09:45:00'
+    code = 'BTC/USDT'
+    frequencys = ['d', '30m', '5m']
+    cl_config = {}
+    bkt = BackTestKlines(market, start, end, frequencys, cl_config)
+    bkt.init(code, frequencys[-1])
+
+    for f in frequencys:
+        k = bkt.klines(code, f)
+        print(f"{code} - {f} : kline last date : {k.iloc[-1]['date']} close: {k.iloc[-1]['close']}")
