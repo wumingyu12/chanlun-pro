@@ -322,13 +322,13 @@ class ZS:
             return 0
         return (zgzd / (self.gg - self.dd)) * 100
 
-    def zs_mmds(self):
+    def zs_mmds(self, zs_type='|'):
         """
         获取中枢内线的所有买点列表
         """
         mmds = []
         for _l in self.lines:
-            mmds += _l.line_mmds()
+            mmds += _l.line_mmds(zs_type)
         return mmds
 
     def __str__(self):

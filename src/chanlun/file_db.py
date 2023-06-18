@@ -43,11 +43,14 @@ class FileCacheDB(object):
             'xd_bzh', 'xd_qj', 'zsd_bzh', 'zsd_qj', 'zs_bi_type', 'zs_xd_type', 'zs_qj', 'zs_wzgx', 'zs_optimize',
             'idx_macd_fast', 'idx_macd_slow', 'idx_macd_signal',
             'fx_qy', 'xd_zs_max_lines_split', 'allow_split_one_line_to_xd', 'allow_bi_fx_strict',
-            'bi_split_k_cross_nums', 'fx_check_k_nums'
+            'bi_split_k_cross_nums', 'fx_check_k_nums',
+            'cl_mmd_cal_qs_1mmd', 'cl_mmd_cal_not_qs_3mmd_1mmd', 'cl_mmd_cal_qs_3mmd_1mmd',
+            'cl_mmd_cal_qs_not_lh_2mmd', 'cl_mmd_cal_qs_bc_2mmd', 'cl_mmd_cal_3mmd_not_lh_bc_2mmd',
+            'cl_mmd_cal_1mmd_not_lh_2mmd', 'cl_mmd_cal_3mmd_xgxd_not_bc_2mmd', 'cl_mmd_cal_not_in_zs_3mmd',
         ]
 
         # 缠论的更新时间，如果与当前保存不一致，需要清空缓存的计算结果，重新计算
-        self.cl_update_date = '2023-04-21'
+        self.cl_update_date = '2023-06-09'
         rd_cl_update_date = rd.Robj().get('__cl_update_date')
         if rd_cl_update_date != self.cl_update_date:
             rd.Robj().set('__cl_update_date', self.cl_update_date)
@@ -60,7 +63,11 @@ class FileCacheDB(object):
         file_pathname = f"{self.klines_path}/{code.replace('.', '_')}_{frequency}.csv"
         if os.path.isfile(file_pathname) is False:
             return None
-        klines = pd.read_csv(file_pathname)
+        try:
+            klines = pd.read_csv(file_pathname)
+        except Exception as e:
+            os.remove(file_pathname)
+            return None
         if len(klines) > 0:
             klines['date'] = pd.to_datetime(klines['date'])
 

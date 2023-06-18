@@ -44,7 +44,7 @@ class ExchangeTDXUS(Exchange):
     def support_frequencys(self):
         return {
             'y': "Y", 'q': 'Q', 'm': 'M', 'w': 'W', 'd': 'D',
-            '60m': '60m', '30m': '30m', '15m': '15m', '5m': '5m', '1m': '1m'
+            '60m': '60m', '30m': '30m', '15m': '15m', '10m': '10m', '5m': '5m', '2m': '2m', '1m': '1m'
         }
 
     def all_stocks(self):
@@ -105,7 +105,7 @@ class ExchangeTDXUS(Exchange):
             args['pages'] = int(args['pages'])
 
         frequency_map = {
-            'y': 11, 'q': 10, 'm': 6, 'w': 5, 'd': 9, '60m': 3, '30m': 2, '15m': 1, '5m': 0, '1m': 8
+            'y': 11, 'q': 10, 'm': 6, 'w': 5, 'd': 9, '60m': 3, '30m': 2, '15m': 1, '10m': 0, '5m': 0, '2m': 8, '1m': 8
         }
         market, tdx_code = self.to_tdx_code(code)
         if market is None or start_date is not None or end_date is not None:
@@ -149,7 +149,11 @@ class ExchangeTDXUS(Exchange):
             klines.loc[:, 'code'] = code
             klines.loc[:, 'volume'] = klines['amount']
 
-            return klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+            klines = klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+            if frequency in ['10m', '2m']:
+                klines = convert_us_tdx_kline_frequency(klines, frequency)
+
+            return klines
         except Exception as e:
             print(f'tdx 获取行情异常 {code} Exception ：{str(e)}')
         finally:
@@ -158,6 +162,13 @@ class ExchangeTDXUS(Exchange):
         return None
 
     def _convert_dt(self, _dt):
+        """
+        将通达信的中国时间，转换成美国东部时间
+        """
+        if len(_dt) == 16 and _dt[-5:] == '15:00':
+            _dt = fun.str_to_datetime(_dt[0:10], '%Y-%m-%d')
+            return _dt.astimezone(self.tz)
+
         if len(_dt) == 19:
             _format = '%Y-%m-%d %H:%M:%S'
         elif len(_dt) == 16:
@@ -255,7 +266,7 @@ if __name__ == '__main__':
     #
     # print(ex.to_tdx_code('KH.00700'))
     #
-    klines = ex.klines(ex.default_code(), '5m')
+    klines = ex.klines('BBVA', '10m')
     print(klines)
 
     # ticks = ex.ticks([ex.default_code()])

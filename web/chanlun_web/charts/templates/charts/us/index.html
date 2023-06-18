@@ -120,21 +120,13 @@
         <div id="kline_high" class="kline_chart"
              style="float:left;width: calc(100% - 56px);height:100px;min-height: 320px;"></div>
         <div class="btn-toolbar" role="toolbar" aria-label="配置选项"
-             style="float:right;margin-top: 40px; width: 55px;height:320px;max-width: 55px;min-width: 55px;">
+             style="float:right; margin-top: 40px;width: 55px;height:320px;max-width: 55px;min-width: 55px;">
             <div class="btn-group btn-group-vertical btn-group-xs btn-corner" role="group" id="zq_high">
-                <button type="button" class="btn btn-xs btn-default" data-zq="y">Year</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="m">Month</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="d">Day</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="120m">120M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="60m">60M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="30m">30M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="15m">15M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="5m">5M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="1m">1M</button>
+                {% for zq, name in support_frequencys.items %}
+                    <button type="button" class="btn btn-xs btn-default" data-zq="{{ zq }}">{{ name }}</button>
+                {% endfor %}
             </div>
         </div>
-
     </div>
     <hr style="margin-top: 2px; margin-bottom: 2px;"/>
     <div class="row" style="margin-left: -4px;">
@@ -143,16 +135,9 @@
         <div class="btn-toolbar" role="toolbar" aria-label="配置选项"
              style="float:right; width: 55px;height:320px;max-width: 55px;min-width: 55px;">
             <div class="btn-group btn-group-vertical btn-group-xs btn-corner" role="group" id="zq_low">
-                <button type="button" class="btn btn-xs btn-default" data-zq="y">Year</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="m">Month</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="w">Week</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="d">Day</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="120m">120M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="60m">60M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="30m">30M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="15m">15M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="5m">5M</button>
-                <button type="button" class="btn btn-xs btn-default" data-zq="1m">1M</button>
+                {% for zq, name in support_frequencys.items %}
+                    <button type="button" class="btn btn-xs btn-default" data-zq="{{ zq }}">{{ name }}</button>
+                {% endfor %}
             </div>
         </div>
 
@@ -173,8 +158,8 @@
                 });
 
                 var market = 'us';
-                var code = 'AAPL';
-                var name = '苹果';
+                var code = '{{default_code}}';
+                var name = '';
                 var frequency_high = 'd';
                 var frequency_low = '30m';
                 var cookie_pre = '_us'

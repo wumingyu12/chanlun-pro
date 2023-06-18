@@ -290,6 +290,25 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'enable_kchart_low_to_high': '0',
         'bi_split_k_cross_nums': '20,1',
         'fx_check_k_nums': 13,
+        # 买卖点配置
+        # 两中枢及以上趋势背驰，产生一类买卖点
+        'cl_mmd_cal_qs_1mmd': '1',
+        # 非趋势，产生三类买卖点，后续创新高/新低且背驰，产生一类买卖点
+        'cl_mmd_cal_not_qs_3mmd_1mmd': '1',
+        # 趋势，产生三类买卖点，后续创新高/新低且背驰，产生一类买卖点
+        'cl_mmd_cal_qs_3mmd_1mmd': '1',
+        # 趋势，不创新高/新低，产生二类买卖点
+        'cl_mmd_cal_qs_not_lh_2mmd': '1',
+        # 趋势，新高/新低后，下一段与新高/新低段比较背驰后，产生二类买卖点
+        'cl_mmd_cal_qs_bc_2mmd': '1',
+        # 趋势，三类买卖点后，后续段不创新高/新低，或者有背驰，产生二类买卖点
+        'cl_mmd_cal_3mmd_not_lh_bc_2mmd': '1',
+        # 之前有一类买卖点，后续不创新高/新低，产生二类买卖点
+        'cl_mmd_cal_1mmd_not_lh_2mmd': '1',
+        # 三类买卖点后创新高/新低且不背驰，后续段不创新高/新低且背驰，产生二类买卖点
+        'cl_mmd_cal_3mmd_xgxd_not_bc_2mmd': '1',
+        # 回调不进入中枢的，产生三类买卖点
+        'cl_mmd_cal_not_in_zs_3mmd': '1',
         # 画图默认配置
         'chart_show_infos': '1',
         'chart_show_fx': '1',

@@ -1,19 +1,19 @@
 import copy
-import json, time
+import json
+import time
 import traceback
 from typing import Union
 
-import pytz
 from pytdx.hq import TdxHq_API
 from pytdx.util import best_ip
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
+from chanlun import fun
 from chanlun import rd
 from chanlun.exchange.exchange import *
-from chanlun.file_db import FileCacheDB
-from chanlun.exchange.exchange_futu import ExchangeFutu, CTX
+from chanlun.exchange.exchange_futu import ExchangeFutu
 from chanlun.exchange.stocks_bkgn import StocksBKGN
-from chanlun import fun
+from chanlun.file_db import FileCacheDB
 
 g_all_stocks = []
 g_trade_days = None
@@ -226,6 +226,8 @@ class ExchangeTDX(Exchange):
         获取日线的k线，并返回最后一根k线的数据
         """
         ticks = {}
+        if len(codes) == 0:
+            return ticks
         query_stocks = []
         for _c in codes:
             _m, _c, _t = self.to_tdx_code(_c)
@@ -233,7 +235,15 @@ class ExchangeTDX(Exchange):
                 query_stocks.append((_m, _c))
         client = TdxHq_API(raise_exception=True, auto_retry=True)
         with client.connect(self.connect_ip['ip'], self.connect_ip['port']):
-            quotes = client.get_security_quotes(query_stocks)
+            # 获取总数据量
+            total_quotes = len(query_stocks)
+            # 分批次获取数据
+            batch_size = 80
+            quotes = []
+            for i in range(0, total_quotes, batch_size):
+                batch_stocks = query_stocks[i:i + batch_size]
+                batch_quotes = client.get_security_quotes(batch_stocks)
+                quotes += batch_quotes
             # ('market', 0), ('code', '000001'), ('active1', 4390), ('price', 14.29), ('last_close', 14.24), ('open', 14.35),
             # ('high', 14.37), ('low', 14.14), ('servertime', '14:59:55.939'), ('reversed_bytes0', 14998872),
             # ('reversed_bytes1', -1429), ('vol', 690954), ('cur_vol', 11982), ('amount', 985552128.0), ('s_vol', 339925),

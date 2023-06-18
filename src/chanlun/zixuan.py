@@ -42,7 +42,7 @@ class ZiXuan(object):
             return []
         return rd.zx_query(self.market_type, zx_group)
 
-    def add_stock(self, zx_group, code, name):
+    def add_stock(self, zx_group, code, name, location='top'):
         """
         添加自选
         """
@@ -59,7 +59,7 @@ class ZiXuan(object):
         # 先删除原来的，如果有的话
         self.del_stock(zx_group, code)
         stocks = self.zx_stocks(zx_group)
-        stocks.insert(0, {'code': code, 'name': name})
+        stocks.insert(0 if location == 'top' else -1, {'code': code, 'name': name})
         rd.zx_save(self.market_type, zx_group, stocks)
         return True
 

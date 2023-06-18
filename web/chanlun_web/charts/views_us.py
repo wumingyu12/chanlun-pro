@@ -15,16 +15,20 @@ from .apps import login_required
 @login_required
 def index_show(request):
     """
-    港股行情首页显示
+    美股行情首页显示
     :param request:
     :return:
     """
     zx = zixuan.ZiXuan(market_type='us')
-
+    ex = get_exchange(Market.US)
+    default_code = ex.default_code()
+    support_frequencys = ex.support_frequencys()
     return render(request, 'charts/us/index.html', {
         'nav': 'us',
         'show_level': ['high', 'low'],
-        'zx_list': zx.zixuan_list
+        'zx_list': zx.zixuan_list,
+        'default_code': default_code,
+        'support_frequencys': support_frequencys,
     })
 
 
@@ -48,15 +52,15 @@ def kline_chart(request):
     """
     code = request.POST.get('code')
     frequency = request.POST.get('frequency')
-    kline_dt = request.POST.get('kline_dt')
-
-    cl_chart_config = query_cl_chart_config('us', code)
 
     ex = get_exchange(Market.US)
-    klines = ex.klines(code, frequency=frequency, end_date=None if kline_dt == '' else kline_dt)
-    cd = web_batch_get_cl_datas('us', code, {frequency: klines}, cl_chart_config, )[0]
     stock_info = ex.stock_info(code)
     orders = rd.order_query('us', code)
+
+    cl_chart_config = query_cl_chart_config('us', code)
+    klines = ex.klines(code, frequency=frequency)
+    cd = web_batch_get_cl_datas('us', code, {frequency: klines}, cl_chart_config, )[0]
+
     chart = kcharts.render_charts(
         stock_info['code'] + ':' + stock_info['name'] + ':' + cd.get_frequency(),
         cd, orders=orders, config=cl_chart_config)

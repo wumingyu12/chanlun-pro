@@ -444,6 +444,40 @@ def convert_us_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFrame:
     return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
 
+def convert_us_tdx_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFrame:
+    """
+    美股k线转换方法
+    基于 通达信行情的K线转换，时间是后对其
+    """
+    period_maps = {
+        '2m': '2min', '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30min', '60m': '1H',
+        '120m': '2H', 'd': 'D', 'w': 'W', 'm': 'M'
+    }
+    klines.insert(0, column='date_index',
+                  value=pd.to_datetime(klines['date'].apply(lambda dt: dt.astimezone(pytz.UTC)))
+                  )
+    klines.set_index('date_index', inplace=True)
+    period_type = period_maps[to_f]
+
+    period_klines = klines.resample(period_type, label='left', closed='right').last()
+    period_klines['open'] = klines['open'].resample(period_type, label='left', closed='right').first()
+    period_klines['close'] = klines['close'].resample(period_type, label='left', closed='right').last()
+    period_klines['high'] = klines['high'].resample(period_type, label='left', closed='right').max()
+    period_klines['low'] = klines['low'].resample(period_type, label='left', closed='right').min()
+    period_klines['volume'] = klines['volume'].resample(period_type, label='left', closed='right').sum()
+    period_klines.dropna(inplace=True)
+    period_klines.reset_index(inplace=True)
+    period_klines.drop('date_index', axis=1, inplace=True)
+
+    if to_f in ['d', 'w', 'm']:
+        # 将时间调整成 00:00:00
+        period_klines['date'] = period_klines['date'].map(lambda dt: dt.replace(hour=0, minute=0, second=0))
+
+    period_klines['date'] = period_klines['date'].apply(lambda dt:dt.astimezone(pytz.timezone('US/Eastern')))
+
+    return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+
+
 if __name__ == '__main__':
     from chanlun.exchange.exchange_db import ExchangeDB
     import pandas as pd

@@ -85,6 +85,8 @@ class BackTest:
         # 参数优化，评价指标字段，默认为最终盈利百分比总和
         self.evaluate = 'profit_rate'
 
+        self._process_re_again = False
+
     def save(self):
         """
         保存回测结果到配置的文件中
@@ -186,7 +188,7 @@ class BackTest:
                     self.strategy.on_bt_loop_start(self)
                     self.trader.run(code)
                 except Exception as e:
-                    self.log.info(f'执行 {code} 异常')
+                    self.log.info(f'执行 {code} : {self.datas.now_date} 异常')
                     self.log.info(traceback.format_exc())
                     # raise e
 
@@ -204,9 +206,8 @@ class BackTest:
         # 修改回测类中的属性，进行回测
         # 保存文件更改
         new_file = self.save_file.split('.pkl')[0] + '_' + code.lower().replace('.', '_') + '_process_.pkl'
-        # TODO 如果之前的回测文件还有保存，可以直接返回
-        # return new_file
-        if Path(new_file).exists():
+        # 默认如果之前的回测文件还有保存，可以直接返回，如果设置 重新运行，则不返回
+        if self._process_re_again is False and Path(new_file).exists():
             return new_file
 
         self.save_file = new_file
@@ -220,7 +221,7 @@ class BackTest:
         # 运行完成，返回回测保存的地址
         return self.save_file
 
-    def run_process(self, next_frequency: str = None, max_workers: int = None):
+    def run_process(self, next_frequency: str = None, max_workers: int = None, re_again=False):
         """
         多进程执行回测模式
         """
@@ -230,6 +231,8 @@ class BackTest:
         if next_frequency is None:
             next_frequency = self.frequencys[-1]
         self.next_frequency = next_frequency
+
+        self._process_re_again = re_again
 
         start = time.time()
         with ProcessPoolExecutor(
