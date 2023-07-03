@@ -26,3 +26,4 @@ tenacity
 qiniu
 akshare
 snapshot_selenium
+pinyin

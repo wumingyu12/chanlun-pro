@@ -1,8 +1,8 @@
 import datetime
 import hashlib
-import os
 import pickle
 import random
+import pathlib
 from typing import Union
 
 import pandas as pd
@@ -22,16 +22,16 @@ class FileCacheDB(object):
         """
         初始化，判断文件并进行创建
         """
-        self.home_path = os.path.expanduser('~')
-        self.project_path = self.home_path + '/.chanlun_pro'
-        if os.path.isdir(self.project_path) is False:
-            os.mkdir(self.project_path)
-        self.data_path = self.project_path + '/data'
-        if os.path.isdir(self.data_path) is False:
-            os.mkdir(self.data_path)
-        self.klines_path = self.project_path + '/klines'
-        if os.path.isdir(self.klines_path) is False:
-            os.mkdir(self.klines_path)
+        self.home_path = pathlib.Path.home()
+        self.project_path = self.home_path / '.chanlun_pro'
+        if self.project_path.is_dir() is False:
+            self.project_path.mkdir()
+        self.data_path = self.project_path / 'data'
+        if self.data_path.is_dir() is False:
+            self.data_path.mkdir()
+        self.klines_path = self.project_path / 'klines'
+        if self.klines_path.is_dir() is False:
+            self.klines_path.mkdir()
 
         # 设置时区
         self.tz = pytz.timezone('Asia/Shanghai')
@@ -60,13 +60,13 @@ class FileCacheDB(object):
         """
         获取缓存在文件中的股票数据
         """
-        file_pathname = f"{self.klines_path}/{code.replace('.', '_')}_{frequency}.csv"
-        if os.path.isfile(file_pathname) is False:
+        file_pathname = self.klines_path / f"{code.replace('.', '_')}_{frequency}.csv"
+        if file_pathname.is_file() is False:
             return None
         try:
             klines = pd.read_csv(file_pathname)
         except Exception as e:
-            os.remove(file_pathname)
+            file_pathname.unlink()
             return None
         if len(klines) > 0:
             klines['date'] = pd.to_datetime(klines['date'])
@@ -80,7 +80,7 @@ class FileCacheDB(object):
         """
         保存通达信k线数据对象到文件中
         """
-        file_pathname = f"{self.klines_path}/{code.replace('.', '_')}_{frequency}.csv"
+        file_pathname = self.klines_path / f"{code.replace('.', '_')}_{frequency}.csv"
         kline.to_csv(file_pathname, index=False)
         return True
 
@@ -89,9 +89,9 @@ class FileCacheDB(object):
         删除七天前的k线数据，不活跃的，减少占用空间
         """
         del_lt_times = fun.datetime_to_int(datetime.datetime.now()) - (7 * 24 * 60 * 60)
-        for filename in os.listdir(self.klines_path):
-            if '.csv' in filename and os.path.getmtime(f"{self.klines_path}/{filename}") < del_lt_times:
-                os.remove(f'{self.klines_path}/{filename}')
+        for filename in self.klines_path.glob('*.csv'):
+            if filename.stat().st_mtime < del_lt_times:
+                filename.unlink()
         return True
 
     def get_web_cl_data(self, market: str, code: str, frequency: str, cl_config: dict, klines: pd.DataFrame) -> ICL:
@@ -104,10 +104,10 @@ class FileCacheDB(object):
         lock_name = f'{market}_{code}_{frequency}'
         lock_id = rd.acquire_lock(lock_name)
         try:
-            file_pathname = f"{self.data_path}/{market}_{code.replace('/', '_').replace('.', '_')}_{frequency}_{key}.pkl"
+            file_pathname = self.data_path / f"{market}_{code.replace('/', '_').replace('.', '_')}_{frequency}_{key}.pkl"
             cd: ICL = cl.CL(code, frequency, cl_config)
             try:
-                if os.path.isfile(file_pathname):
+                if file_pathname.is_file():
                     # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 使用缓存')
                     with open(file_pathname, 'rb') as fp:
                         cd = pickle.load(fp)
@@ -117,23 +117,27 @@ class FileCacheDB(object):
                         print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 历史数据有错位，重新计算')
                         cd = cl.CL(code, frequency, cl_config)
                     # 判断缓存中的数据，与给定的K线数据是否有差异，有则表示数据有变（比如复权会产生变化），则重新全量计算
-                    if len(cd.get_src_klines()) > 0 and len(klines) > 0:
-                        first_k = klines.iloc[0]
-                        cd_kline = [_k for _k in cd.get_src_klines() if _k.date == first_k['date']]
+                    if len(cd.get_src_klines()) >= 2 and len(klines) >= 2:
+                        cd_pre_kline = cd.get_src_klines()[-2]
+                        src_klines = [_k for _, _k in klines.iterrows() if _k['date'] == cd_pre_kline.date]
                         # 计算后的数据没有最开始的日期或者 开高低收其中有不同的，则重新计算
-                        if len(cd_kline) == 0 or cd_kline[0].c != first_k['close'] or cd_kline[0].o != first_k['open'] \
-                                or cd_kline[0].h != first_k['high'] or cd_kline[0].l != first_k['low']:
+                        if len(src_klines) == 0 or src_klines[0]['close'] != cd_pre_kline.c or \
+                                src_klines[0]['high'] != cd_pre_kline.h or \
+                                src_klines[0]['low'] != cd_pre_kline.l or \
+                                src_klines[0]['open'] != cd_pre_kline.o or \
+                                src_klines[0]['volume'] != cd_pre_kline.a:
                             print(f'{market}--{code}--{frequency} {key} 计算前的数据有差异，重新计算')
                             cd = cl.CL(code, frequency, cl_config)
                 else:
                     pass
                     # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 没有找到缓存，重新计算')
             except Exception as e:
-                if os.path.isfile(file_pathname):
+                if file_pathname.is_file():
                     print(f'获取 web 缓存的缠论数据对象异常 {market} {code} {frequency} - {e}，尝试删除缓存文件重新计算')
-                    os.remove(file_pathname)
+                    file_pathname.unlink()
 
             cd.process_klines(klines)
+
             try:
                 with open(file_pathname, 'wb') as fp:
                     pickle.dump(cd, fp)
@@ -152,10 +156,10 @@ class FileCacheDB(object):
         """
         清除指定市场下标的缠论缓存对象
         """
-        for filename in os.listdir(self.data_path):
+        for filename in self.data_path.glob('*.pkl'):
             try:
-                if '.pkl' in filename and f"{market}_{code.replace('/', '_').replace('.', '_')}" in filename:
-                    os.remove(f'{self.data_path}/{filename}')
+                if f"{market}_{code.replace('/', '_').replace('.', '_')}" in str(filename):
+                    filename.unlink()
             except Exception:
                 pass
         return True
@@ -165,10 +169,11 @@ class FileCacheDB(object):
         清除时间超过7天的缓存数据
         """
         del_lt_times = fun.datetime_to_int(datetime.datetime.now()) - (7 * 24 * 60 * 60)
-        for filename in os.listdir(self.data_path):
+        for filename in self.data_path.glob('*.pkl'):
             try:
-                if '.pkl' in filename and os.path.getmtime(f"{self.data_path}/{filename}") < del_lt_times:
-                    os.remove(f'{self.data_path}/{filename}')
+                if filename.stat().st_mtime < del_lt_times:
+                    filename.unlink()
+
             except Exception:
                 pass
         return True
@@ -177,11 +182,10 @@ class FileCacheDB(object):
         """
         删除所有缓存的计算结果文件
         """
-        for filename in os.listdir(self.data_path):
+        for filename in self.data_path.glob('*.pkl'):
             try:
-                if '.pkl' in filename:
-                    os.remove(f'{self.data_path}/{filename}')
-            except Exception:
+                filename.unlink()
+            except Exception as e:
                 pass
         return True
 
@@ -195,9 +199,9 @@ class FileCacheDB(object):
         key = hashlib.md5(
             f'{[f"{k}:{v}" for k, v in cl_config.items() if k in self.config_keys]}'.encode('UTF-8')
         ).hexdigest()
-        filename = f'{self.data_path}/{market}_{code.replace("/", "_")}_{frequency}_{key}.pkl'
+        filename = self.data_path / f'{market}_{code.replace("/", "_")}_{frequency}_{key}.pkl'
         cd: ICL
-        if os.path.isfile(filename) is False:
+        if filename.is_file() is False:
             cd = cl.CL(code, frequency, cl_config)
         else:
             with open(filename, 'rb') as fp:

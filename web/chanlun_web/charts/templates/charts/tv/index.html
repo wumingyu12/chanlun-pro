@@ -168,13 +168,11 @@
                 let visible_min_from = 9999999999;
                 chart.onSymbolChanged().subscribe(null, function (symbol) {
                     visible_min_from = 9999999999;
-                    $.cookie('tv_symbol', symbol['ticker']);
+                    code = symbol['ticker'];
                     console.log('标的变化：' + symbol['ticker']);
-                    zixuan_code_query_zx_names(symbol['ticker'].split(':')[0], symbol['ticker'].split(':')[1])
                 });
                 chart.onIntervalChanged().subscribe(null, function (interval) {
                     visible_min_from = 9999999999;
-                    $.cookie('tv_interval', interval);
                     console.log('周期变化 : ' + interval);
                 });
                 chart.onDataLoaded().subscribe(
@@ -312,7 +310,11 @@
                                     'linewidth': 1,
                                     'linecolor': '#708090',
                                     'backgroundColor': '#708090',
-                                    'transparency': 95
+                                    'transparency': 95,
+                                    'color': '#708090',
+                                    'trendline.linecolor': '#708090',
+                                    'fillBackground': true,
+                                    'filled': true,
                                 },
                             }));
                         }
@@ -328,12 +330,17 @@
                                 disableSave: true,
                                 disableUndo: true,
                                 showInObjectsTree: false,
+                                filled: false,
                                 overrides: {
                                     'linestyle': parseInt(xd_zss['linestyle']),
                                     'linewidth': 2,
+                                    'color': '#00BFFF',
+                                    'trendline.linecolor': '#00BFFF',
                                     'linecolor': '#00BFFF',
                                     'backgroundColor': '#00BFFF',
                                     'transparency': 90,
+                                    'fillBackground': true,
+                                    'filled': true,
                                 },
                             }));
                         }
@@ -350,10 +357,14 @@
                                 showInObjectsTree: false,
                                 overrides: {
                                     'linestyle': parseInt(zsd_zss['linestyle']),
-                                    'linewidth': 2,
+                                    'linewidth': 3,
                                     'linecolor': '#FFA710',
                                     'backgroundColor': '#FFA710',
                                     'transparency': 90,
+                                    'color': '#FFA710',
+                                    'trendline.linecolor': '#FFA710',
+                                    'fillBackground': true,
+                                    'filled': true,
                                 },
                             }));
                         }
@@ -362,7 +373,7 @@
                     bars_result.bcs.forEach(function (bc) {
                         if (bc['points'].time >= from) {
                             obj_bcs.push(chart.createShape(bc['points'], {
-                                shape: 'note',
+                                shape: 'balloon',
                                 lock: true,
                                 text: bc['text'],
                                 {#disableSelection: true,#}
@@ -371,9 +382,11 @@
                                 showInObjectsTree: false,
                                 overrides: {
                                     markerColor: '#D1D4DC',
+                                    backgroundColor: '#D1D4DC',
+                                    textColor: '#fccbcd',
                                     transparency: 70,
-                                    backgroundTransparency: 50,
-                                    fontsize: 20,
+                                    backgroundTransparency: 70,
+                                    fontsize: 12,
                                 },
                             }));
                         }

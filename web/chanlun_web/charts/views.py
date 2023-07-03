@@ -9,6 +9,8 @@ from . import tasks
 from . import utils
 from .apps import login_required
 
+import pinyin
+
 """
 异步执行后台定时任务
 """
@@ -133,7 +135,8 @@ def search_code_json(request):
         all_stocks = ex.all_stocks()
         res = [
             stock for stock in all_stocks
-            if search.lower() in stock['code'].lower() or search.lower() in stock['name'].lower()
+            if search.lower() in stock['code'].lower() or search.lower() in stock[
+                'name'].lower() or search.lower() in ''.join([pinyin.get_pinyin(_p)[0] for _p in stock['name']]).lower()
         ]
 
     res_json = [{'code': r['code'], 'name': r['name']} for r in res]

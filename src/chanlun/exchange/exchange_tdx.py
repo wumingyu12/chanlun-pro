@@ -67,9 +67,9 @@ class ExchangeTDX(Exchange):
         g_all_stocks = rd.get_ex('stocks_all')
         if g_all_stocks is not None:
             return g_all_stocks
-        g_all_stocks = []
+        all_stocks = []
+        __codes = []
         for market in range(2):
-
             client = TdxHq_API(raise_exception=True, auto_retry=True)
             with client.connect(self.connect_ip['ip'], self.connect_ip['port']):
                 count = client.get_security_count(market)
@@ -84,13 +84,18 @@ class ExchangeTDX(Exchange):
                     _type = self.for_sz(code) if market == 0 else self.for_sh(code)
                     if _type in ['bond_cn', 'undefined', 'stockB_cn']:
                         continue
-                    g_all_stocks.append({'code': f'{sse}.{str(code)}', 'name': name, 'type': _type})
+                    code = f'{sse}.{str(code)}'
+                    if code in __codes:
+                        continue
+                    __codes.append(code)
+                    all_stocks.append({'code': code, 'name': name, 'type': _type})
 
-        print(f'股票列表从 TDX 进行获取，共获取数量：{len(g_all_stocks)}')
+        print(f'股票列表从 TDX 进行获取，共获取数量：{len(all_stocks)}')
 
-        if g_all_stocks:
-            rd.save_ex('stocks_all', 24 * 60 * 60, g_all_stocks)
+        if all_stocks:
+            rd.save_ex('stocks_all', 24 * 60 * 60, all_stocks)
 
+        g_all_stocks = all_stocks
         return g_all_stocks
 
     def to_tdx_code(self, code):
@@ -479,11 +484,12 @@ if __name__ == '__main__':
     # xdxr = ex.xdxr(0, '000014')
     # print(xdxr)
 
-    # klines = ex.klines('SH.600498', '30m')
-    # print(klines[['date', 'close']].tail())
+    klines = ex.klines('SH.601127', 'd')
+    print(klines.tail())
+    # 207735
     #
     # klines = ex.klines('SH.600498', '5m')
     # print(klines[['date', 'close']].tail())
 
-    ticks = ex.ticks(['SZ.300474'])
-    print(ticks)
+    # ticks = ex.ticks(['SZ.300474'])
+    # print(ticks)

@@ -25,6 +25,7 @@ class ExchangeTDXHK(Exchange):
 
         # 选择最优的服务器，并保存到 redis 中
         connect_ip = rd.Robj().get('tdxex_connect_ip')
+        # connect_ip = None # 手动重新选择最优服务器
         if connect_ip is None:
             connect_ip = best_ip.select_best_ip('future')
             connect_ip = connect_ip['ip'] + ':' + str(connect_ip['port'])

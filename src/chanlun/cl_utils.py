@@ -687,10 +687,11 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
     # }
     bc_chart_data = []
     for dt, bc in bc_infos.items():
-        bc_chart_data.append({
-            'points': {'time': fun.datetime_to_int(dt), 'price': bc['price']},
-            'text': ('/'.join(bc['bc_texts'])).strip('/')
-        })
+        if len(bc['bc_texts']) > 0:
+            bc_chart_data.append({
+                'points': {'time': fun.datetime_to_int(dt), 'price': bc['price']},
+                'text': ('/'.join(bc['bc_texts'])).strip('/')
+            })
         # bc_marks['id'].append(len(bc_marks['id']))
         # bc_marks['time'].append(fun.datetime_to_int(dt))
         # bc_marks['color'].append('red')
@@ -701,10 +702,11 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
 
     mmd_chart_data = []
     for dt, mmd in mmd_infos.items():
-        mmd_chart_data.append({
-            'points': {'time': fun.datetime_to_int(dt), 'price': mmd['price']},
-            'text': ('/'.join(mmd['mmd_texts'])).strip('/')
-        })
+        if len(mmd['mmd_texts']) > 0:
+            mmd_chart_data.append({
+                'points': {'time': fun.datetime_to_int(dt), 'price': mmd['price']},
+                'text': ('/'.join(mmd['mmd_texts'])).strip('/')
+            })
 
     return {
         't': kline_ts,

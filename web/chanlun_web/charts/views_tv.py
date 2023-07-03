@@ -1,5 +1,6 @@
 import datetime
 import re
+import pinyin
 
 from django.shortcuts import render
 
@@ -170,7 +171,8 @@ def search(request):
 
     res_stocks = [
         stock for stock in all_stocks
-        if query.lower() in stock['code'].lower() or query.lower() in stock['name'].lower()
+        if query.lower() in stock['code'].lower() or query.lower() in stock['name'].lower() or query.lower() in ''.join(
+            [pinyin.get_pinyin(_p)[0] for _p in stock['name']]).lower()
     ]
     res_stocks = res_stocks[0:int(limit)]
 
