@@ -2,22 +2,24 @@
 
 ---
 
+[![Documentation Status](https://readthedocs.org/projects/chanlun-pro/badge/?version=latest)](https://chanlun-pro.readthedocs.io/zh_CN/latest/?badge=latest)
+
 基于缠论的市场行情分析工具
 
 [Github 地址](https://github.com/yijixiuxin/chanlun-pro)
 
 [Gitee 地址](https://gitee.com/wang-student/chanlun-pro)
 
-[在线文档](http://docs.chanlun-trader.com/)
+[在线文档](https://chanlun-pro.readthedocs.io/)
 
 [在线 Demo 展示](http://www.chanlun-trader.com/)  
 _在线Demo只做上证指数的缠论示例（速度较慢，想要有好的体验，请申请试用，本地部署）_
 
-[缠论解盘 - 善缘版本 Windows](http://docs.chanlun-trader.com/#/WINDOWS_VERSION)
+[缠论解盘 - Windows版本](https://chanlun-pro.readthedocs.io/zh_CN/latest/WINDOWS_VERSION/)
 
 **项目的核心 `cl.py` 缠论计算，需要授权许可文件才可运行，加微信好友可免费获取20天使用授权。**
 
-[更新日志](docs/UPDATE.md)
+[更新日志](https://chanlun-pro.readthedocs.io/zh_CN/latest/UPDATE/)
 
 _(无特殊情况，每周五例行更新)_
 
@@ -56,58 +58,58 @@ _(无特殊情况，每周五例行更新)_
 
 > 请先阅读安装文档，确保自己能够正常安装后，在添加微信好友；
 >
-> 如需免费20天试用，需通过 
-> 
+> 如需免费20天试用，需通过
+>
 > pip install pyarmor==7.7.4
-> 
-> pyarmor hdinfo 
-> 
+>
+> pyarmor hdinfo
+>
 > 命令获取默认网卡地址后，发送给作者获取授权文件
 
-![微信](docs/img/wx.jpg)
+![微信](cookbook/docs/img/wx.jpg)
 
 QQ 群
 
-![QQ](docs/img/qq.png)
+![QQ](cookbook/docs/img/qq.png)
 
 ### 实际运行效果展示
 
 **沪深股票行情图表页面**
 
-![股票行情页面](docs/img/stock.png)
+![股票行情页面](cookbook/docs/img/stock.png)
 
 **期货市场行情图表页面**
 
-![期货行情页面](docs/img/futures.png)
+![期货行情页面](cookbook/docs/img/futures.png)
 
 **数字货币行情图表页面**
 
-![数字货币页面](docs/img/currency.png)
+![数字货币页面](cookbook/docs/img/currency.png)
 
 **Trading View 行情图表**
 
-![Trading View 行情图表](docs/img/tv_chart.png)
+![Trading View 行情图表](cookbook/docs/img/tv_chart.png)
 
 **历史行情回放，根据数据库中历史行情数据，逐bar回放展示行情，可用于观察缠论计算与练习买卖操作**
 
-![回放页面](docs/img/back.png)
+![回放页面](cookbook/docs/img/back.png)
 
 **可按照市场中的自选列表，设置缠论数据指标的监控信号（背驰、买卖点信息）**
 
-![监控任务管理](docs/img/check.png)
+![监控任务管理](cookbook/docs/img/check.png)
 
 **通过掘金量化进行回测**
 
-![掘金量化回测](docs/img/my_quant_backtest.png)
+![掘金量化回测](cookbook/docs/img/my_quant_backtest.png)
 
 **通过 Jupyterlab 进行策略回测，图表展示回测结果；并展示回测标的历史行情，并标注买卖订单，从而进行策略优化**
 
-![策略回测结果查看](docs/img/back_test_1.png)
+![策略回测结果查看](cookbook/docs/img/back_test_1.png)
 
 **项目的回测没有资金与仓位管理，每次下单固定金额10W，主要用于测试策略信号的胜率与盈亏比**
 
-![策略回测结果查看](docs/img/back_test_2.png)
-![策略回测结果查看](docs/img/back_test_3.png)
-![策略回测结果查看](docs/img/back_test_4.png)
-![策略回测结果查看](docs/img/back_test_5.png)
+![策略回测结果查看](cookbook/docs/img/back_test_2.png)
+![策略回测结果查看](cookbook/docs/img/back_test_3.png)
+![策略回测结果查看](cookbook/docs/img/back_test_4.png)
+![策略回测结果查看](cookbook/docs/img/back_test_5.png)
 

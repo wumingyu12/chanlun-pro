@@ -281,7 +281,7 @@
     * `xg_single_pre_bi_tk_and_3buy` : 在三买点前一笔，有跳空缺口
 * 沪深行情页面，增加 F10资料 快捷入口，可直达 东方财富的F10 页面
 * 自选组，沪深的参数由原来的 `stock` 更改为 `a`
-* 文档地址修改为：http://docs.chanlun-trader.com/
+* 文档地址修改为：https://chanlun-pro.readthedocs.io/
 
 ### 2022-06-24
 
@@ -318,7 +318,7 @@
 * 策略回测增加进度条，展示当前回测进度
 * `exchange_tdx.py` 请求行情的 klines 增加缓存，避免每次都全量多次查询行情数据
 * 自选类增加清空方法 `clear_zx_stocks`
-* 项目文档重新整理，在线地址 http://docs.chanlun-trader.com/
+* 项目文档重新整理，在线地址 https://chanlun-pro.readthedocs.io/
 * 策略
     * 增加高级别根据低级别1类买卖点信号开仓策略，采用多周期的笔进行判断（`strategy_son_level_1mmd.py`）
     * 增加高级别根据低级别1类买卖点信号开仓策略，采用低级别递归进行判断（`strategy_zsd_xd_bi_1mmd.py`）
