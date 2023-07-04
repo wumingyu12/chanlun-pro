@@ -70,6 +70,9 @@ class FileCacheDB(object):
             return None
         if len(klines) > 0:
             klines['date'] = pd.to_datetime(klines['date'])
+            # 如果 date 有 Nan 则返回 None
+            if klines['date'].isnull().any():
+                return None
 
         # 加一个随机概率，去清理历史的缓存，避免太多占用空间
         if random.randint(0, 100) <= 5:
@@ -121,12 +124,13 @@ class FileCacheDB(object):
                         cd_pre_kline = cd.get_src_klines()[-2]
                         src_klines = [_k for _, _k in klines.iterrows() if _k['date'] == cd_pre_kline.date]
                         # 计算后的数据没有最开始的日期或者 开高低收其中有不同的，则重新计算
-                        if len(src_klines) == 0 or src_klines[0]['close'] != cd_pre_kline.c or \
-                                src_klines[0]['high'] != cd_pre_kline.h or \
-                                src_klines[0]['low'] != cd_pre_kline.l or \
-                                src_klines[0]['open'] != cd_pre_kline.o or \
-                                src_klines[0]['volume'] != cd_pre_kline.a:
+                        if len(src_klines) == 0 or round(src_klines[0]['close'], 4) != round(cd_pre_kline.c, 4) or \
+                                round(src_klines[0]['high'], 4) != round(cd_pre_kline.h, 4) or \
+                                round(src_klines[0]['low'], 4) != round(cd_pre_kline.l, 4) or \
+                                round(src_klines[0]['open'], 4) != round(cd_pre_kline.o, 4) or \
+                                round(src_klines[0]['volume'], 4) != round(cd_pre_kline.a, 4):
                             print(f'{market}--{code}--{frequency} {key} 计算前的数据有差异，重新计算')
+                            # print(cd_pre_kline, src_klines)
                             cd = cl.CL(code, frequency, cl_config)
                 else:
                     pass

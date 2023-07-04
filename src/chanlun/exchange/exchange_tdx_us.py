@@ -1,4 +1,5 @@
 import time
+import traceback
 from typing import Union
 
 import pytz
@@ -100,7 +101,7 @@ class ExchangeTDXUS(Exchange):
         if args is None:
             args = {}
         if 'pages' not in args.keys():
-            args['pages'] = 8
+            args['pages'] = 5
         else:
             args['pages'] = int(args['pages'])
 
@@ -139,6 +140,8 @@ class ExchangeTDXUS(Exchange):
                         old_end_dt = klines.iloc[-1]['date']
                         klines = pd.concat([klines, _ks], ignore_index=True)
                         # 如果请求的第一个时间大于缓存的最后一个时间，退出
+                        # print(klines.iloc[-1], len(klines))
+                        # print(old_end_dt, new_start_dt)
                         if old_end_dt >= new_start_dt:
                             break
 
@@ -155,7 +158,8 @@ class ExchangeTDXUS(Exchange):
 
             return klines
         except Exception as e:
-            print(f'tdx 获取行情异常 {code} Exception ：{str(e)}')
+            print(f'tdx 获取行情异常 {code} - {frequency} Exception ：{str(e)}')
+            traceback.print_exc()
         finally:
             pass
             # print(f'tdx 请求行情用时：{time.time() - _s_time}')
@@ -266,7 +270,9 @@ if __name__ == '__main__':
     #
     # print(ex.to_tdx_code('KH.00700'))
     #
-    klines = ex.klines('BBVA', '10m')
+    klines = ex.klines('NU', 'd')
+    print(klines)
+    klines = ex.klines('NU', '10m')
     print(klines)
 
     # ticks = ex.ticks([ex.default_code()])
