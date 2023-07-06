@@ -105,7 +105,16 @@
                             bcs: bcs,
                             mmds: mmds,
                         };
-                        this.bars_result.set(requestParams['resolution'].toString(), result);
+                        let obj_res = this.bars_result.get(requestParams['symbol'].toString().toLowerCase());
+                        if (obj_res == undefined) {
+                            let obj_res = new Map();
+                            obj_res.set(requestParams['resolution'].toString().toLowerCase(), result);
+                            this.bars_result.set(requestParams['symbol'].toString().toLowerCase(), obj_res);
+                        }
+                        else {
+                            obj_res.set(requestParams['resolution'].toString().toLowerCase(), result);
+                            this.bars_result.set(requestParams['symbol'].toString().toLowerCase(), obj_res);
+                        }
                         resolve(result);
                     }
                 })

@@ -4,11 +4,13 @@ import pickle
 import random
 import pathlib
 from typing import Union
+from decimal import Decimal
 
 import pandas as pd
 import pytz
 
-from chanlun import cl, fun, rd
+from chanlun import fun, rd
+from core import cl
 from chanlun.cl_interface import ICL
 from chanlun.exchange import Exchange
 
@@ -108,7 +110,7 @@ class FileCacheDB(object):
         lock_id = rd.acquire_lock(lock_name)
         try:
             file_pathname = self.data_path / f"{market}_{code.replace('/', '_').replace('.', '_')}_{frequency}_{key}.pkl"
-            cd: ICL = cl.CL(code, frequency, cl_config)
+            # cd: ICL = cl.CL(code, frequency, cl_config)
             try:
                 if file_pathname.is_file():
                     # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 使用缓存')
@@ -124,13 +126,13 @@ class FileCacheDB(object):
                         cd_pre_kline = cd.get_src_klines()[-2]
                         src_klines = [_k for _, _k in klines.iterrows() if _k['date'] == cd_pre_kline.date]
                         # 计算后的数据没有最开始的日期或者 开高低收其中有不同的，则重新计算
-                        if len(src_klines) == 0 or round(src_klines[0]['close'], 4) != round(cd_pre_kline.c, 4) or \
-                                round(src_klines[0]['high'], 4) != round(cd_pre_kline.h, 4) or \
-                                round(src_klines[0]['low'], 4) != round(cd_pre_kline.l, 4) or \
-                                round(src_klines[0]['open'], 4) != round(cd_pre_kline.o, 4) or \
-                                round(src_klines[0]['volume'], 4) != round(cd_pre_kline.a, 4):
+                        if len(src_klines) == 0 or Decimal(src_klines[0]['close']) != Decimal(cd_pre_kline.c) or \
+                                Decimal(src_klines[0]['high']) != Decimal(cd_pre_kline.h) or \
+                                Decimal(src_klines[0]['low']) != Decimal(cd_pre_kline.l) or \
+                                Decimal(src_klines[0]['open']) != Decimal(cd_pre_kline.o) or \
+                                Decimal(src_klines[0]['volume']) != Decimal(cd_pre_kline.a):
                             print(f'{market}--{code}--{frequency} {key} 计算前的数据有差异，重新计算')
-                            # print(cd_pre_kline, src_klines)
+                            print(cd_pre_kline, src_klines)
                             cd = cl.CL(code, frequency, cl_config)
                 else:
                     pass

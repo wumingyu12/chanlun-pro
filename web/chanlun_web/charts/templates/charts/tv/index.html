@@ -240,7 +240,12 @@
                     obj_bcs = []
                     obj_mmds = []
                     let symbolInterval = widget.symbolInterval();
-                    let bars_result = udf_datafeed._historyProvider.bars_result.get(symbolInterval['interval'])
+                    {#console.log(symbolInterval);#}
+                    {#console.log(udf_datafeed._historyProvider.bars_result);#}
+                    let bars_result = udf_datafeed._historyProvider.bars_result.get(symbolInterval['symbol'].toString().toLowerCase());
+                    {#console.log(bars_result);#}
+                    bars_result = bars_result.get(symbolInterval['interval'].toString().toLowerCase());
+                    {#console.log(bars_result);#}
                     // 画笔
                     bars_result.bis.forEach(function (bi) {
                         if (bi['points'][0].time >= from) {
