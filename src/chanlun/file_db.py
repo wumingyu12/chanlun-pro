@@ -110,7 +110,7 @@ class FileCacheDB(object):
         lock_id = rd.acquire_lock(lock_name)
         try:
             file_pathname = self.data_path / f"{market}_{code.replace('/', '_').replace('.', '_')}_{frequency}_{key}.pkl"
-            # cd: ICL = cl.CL(code, frequency, cl_config)
+            cd: ICL = cl.CL(code, frequency, cl_config)
             try:
                 if file_pathname.is_file():
                     # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 使用缓存')
@@ -134,9 +134,6 @@ class FileCacheDB(object):
                             print(f'{market}--{code}--{frequency} {key} 计算前的数据有差异，重新计算')
                             print(cd_pre_kline, src_klines)
                             cd = cl.CL(code, frequency, cl_config)
-                else:
-                    pass
-                    # print(f'{market}-{code}-{frequency} {key} K-Nums {len(klines)} 没有找到缓存，重新计算')
             except Exception as e:
                 if file_pathname.is_file():
                     print(f'获取 web 缓存的缠论数据对象异常 {market} {code} {frequency} - {e}，尝试删除缓存文件重新计算')
