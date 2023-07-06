@@ -10,7 +10,7 @@ import pandas as pd
 import pytz
 
 from chanlun import fun, rd
-from core import cl
+from chanlun import cl
 from chanlun.cl_interface import ICL
 from chanlun.exchange import Exchange
 
