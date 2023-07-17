@@ -222,6 +222,12 @@ class FX:
         else:
             raise Exception(f'获取分型低点的区间类型错误 {qj_type}')
 
+    def get_start_src_k(self) -> Kline:
+        return self.klines[0].klines[0]
+
+    def get_end_src_k(self) -> Kline:
+        return self.klines[-1].klines[-1] if self.klines[-1] is not None else self.klines[-2].klines[-1]
+
     def __str__(self):
         return f'index: {self.index} type: {self.type} date : {self.k.date} val: {self.val} done: {self.done}'
 
@@ -1032,9 +1038,10 @@ class ICL(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def zss_is_qs(self, one_zs: ZS, two_zs: ZS) -> bool:
+    def zss_is_qs(self, one_zs: ZS, two_zs: ZS) -> Tuple[str, None]:
         """
         判断两个中枢是否形成趋势（根据设置的位置关系配置，来判断两个中枢是否有重叠）
+        返回  up 是向上趋势， down 是向下趋势 ，None 则没有趋势
         """
 
 

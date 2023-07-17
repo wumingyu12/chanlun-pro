@@ -53,8 +53,13 @@
 
 ### 7. 到 `web/chanlun_web` 目录，启动 web 服务
 
+         # 旧版
          cd web/chanlun_web
          python manage.py runserver 0.0.0.0:8000
+         # 浏览器访问 http://127.0.0.1:8000/ 即可显示缠论解缠主页
 
-### 8. 浏览器访问 http://127.0.0.1:8000/ 即可显示缠论解缠主页
+         # 新版
+         cd web/chanlun_chart
+         python app.py
+
     

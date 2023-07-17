@@ -410,7 +410,7 @@ def convert_futures_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataF
                 'volume': float(k['volume']) if k['volume'] is not None else 0,
             }
     kline_pd = pd.DataFrame(new_kline.values())
-    kline_pd['date'] = pd.to_datetime(kline_pd['date']).dt.tz_localize(__tz)
+    kline_pd['date'] = pd.to_datetime(kline_pd['date']).dt.tz_convert(__tz)
     return kline_pd[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
 
@@ -420,7 +420,7 @@ def convert_us_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFrame:
     基于 IB（盈透证券）行情的K线转换，时间是前对其
     """
     period_maps = {
-        '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30min', '60m': '1H',
+        '2m': '2min', '5m': '5min', '10m': '10min', '15m': '15min', '30m': '30min', '60m': '1H',
         '120m': '2H', 'd': 'D', 'w': 'W', 'm': 'M'
     }
     klines.insert(0, column='date_index', value=klines['date'])
@@ -473,7 +473,7 @@ def convert_us_tdx_kline_frequency(klines: pd.DataFrame, to_f: str) -> pd.DataFr
         # 将时间调整成 00:00:00
         period_klines['date'] = period_klines['date'].map(lambda dt: dt.replace(hour=0, minute=0, second=0))
 
-    period_klines['date'] = period_klines['date'].apply(lambda dt:dt.astimezone(pytz.timezone('US/Eastern')))
+    period_klines['date'] = period_klines['date'].apply(lambda dt: dt.astimezone(pytz.timezone('US/Eastern')))
 
     return period_klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 

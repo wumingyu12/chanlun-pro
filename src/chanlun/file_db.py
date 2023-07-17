@@ -52,7 +52,7 @@ class FileCacheDB(object):
         ]
 
         # 缠论的更新时间，如果与当前保存不一致，需要清空缓存的计算结果，重新计算
-        self.cl_update_date = '2023-06-09'
+        self.cl_update_date = '2023-07-13'
         rd_cl_update_date = rd.Robj().get('__cl_update_date')
         if rd_cl_update_date != self.cl_update_date:
             rd.Robj().set('__cl_update_date', self.cl_update_date)
@@ -132,7 +132,7 @@ class FileCacheDB(object):
                                 Decimal(src_klines[0]['open']) != Decimal(cd_pre_kline.o) or \
                                 Decimal(src_klines[0]['volume']) != Decimal(cd_pre_kline.a):
                             print(f'{market}--{code}--{frequency} {key} 计算前的数据有差异，重新计算')
-                            print(cd_pre_kline, src_klines)
+                            # print(cd_pre_kline, src_klines)
                             cd = cl.CL(code, frequency, cl_config)
             except Exception as e:
                 if file_pathname.is_file():

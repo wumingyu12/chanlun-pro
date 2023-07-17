@@ -1,6 +1,8 @@
 import time
+import traceback
 from typing import Union
 
+import pandas as pd
 import pytz
 from pytdx.exhq import TdxExHq_API
 from pytdx.util import best_ip
@@ -141,6 +143,8 @@ class ExchangeTDXFutures(Exchange):
                         )
                         for i in range(1, args['pages'] + 1)
                     ], axis=0, sort=False)
+                    if len(klines) == 0:
+                        return pd.DataFrame([])
                     klines['datetime'] = klines['datetime'].apply(self.fix_yp_date)
                     klines.loc[:, 'date'] = pd.to_datetime(klines['datetime']).dt.tz_localize(self.tz)
                     klines.sort_values('date', inplace=True)
@@ -173,6 +177,7 @@ class ExchangeTDXFutures(Exchange):
             return klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
         except Exception as e:
             print(f'tdx 获取行情异常 {code} Exception ：{str(e)}')
+            traceback.print_exc()
         finally:
             pass
             # print(f'tdx 请求行情用时：{time.time() - _s_time}')
@@ -282,5 +287,5 @@ if __name__ == '__main__':
 
     # print(ex.to_tdx_code('QS.ZN2306'))
     #
-    klines = ex.klines('QZ.SA2309', '15m')
+    klines = ex.klines('QS.RB2305', '15m')
     print(klines.tail())

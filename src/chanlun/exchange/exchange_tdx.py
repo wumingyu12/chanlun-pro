@@ -463,14 +463,16 @@ class ExchangeTDX(Exchange):
         # 前复权
         if fq_type == 'qfq':
             data['adj'] = (data['preclose'].shift(-1) / data['close']).fillna(1)[::-1].cumprod()
+            # ohlc 数据进行复权计算
+            for col in ['open', 'high', 'low', 'close']:
+                data[col] = round(data[col] * data['adj'], 2)
 
         # 后复权
         if fq_type == 'hfq':
             data['adj'] = (data['close'] / data['preclose'].shift(-1)).cumprod().shift(1).fillna(1)
-
-        # ohlc 数据进行复权计算
-        for col in ['open', 'high', 'low', 'close']:
-            data[col] = round(data[col] * data['adj'], 2)
+            # ohlc 数据进行复权计算
+            for col in ['open', 'high', 'low', 'close']:
+                data[col] = round(data[col] / data['adj'], 2)
 
         # data['volume'] = data['volume'] / data['adj'] if 'volume' in data.columns else data['vol'] / data['adj']
 
@@ -480,11 +482,13 @@ class ExchangeTDX(Exchange):
 
 
 if __name__ == '__main__':
+    import mootdx
+
     ex = ExchangeTDX()
     # xdxr = ex.xdxr(0, '000014')
     # print(xdxr)
 
-    klines = ex.klines('SH.601127', 'd')
+    klines = ex.klines('SZ.300765', 'w')
     print(klines.tail())
     # 207735
     #

@@ -95,12 +95,7 @@ def monitoring_code(market: str, code: str, name: str, frequencys: list,
             is_done = '线段完成' if jh['xd'].is_done() else '线段未完成'
             is_td = ''
 
-        if market in {'a', 'hk'}:
-            is_exists = rd.jhs_save('stock', code, name, jh)
-        elif market == 'futures':
-            is_exists = rd.jhs_save('futures', code, name, jh)
-        else:
-            is_exists = rd.jhs_save('currency', code, name, jh)
+        is_exists = rd.jhs_save(market, code, name, jh)
 
         if is_exists is False and is_send_msg:
             send_msgs += '【%s - %s】触发 %s (%s - %s) \n' % (name, jh['frequency'], jh['type'], is_done, is_td)

@@ -168,7 +168,7 @@ def jhs_query(market):
     机会列表查询
     :return:
     """
-    if market == 'stock':
+    if market == 'a':
         hkey = 'stock_jh'
     elif market == 'hk':
         hkey = 'hk_jh'
@@ -200,7 +200,7 @@ def jhs_save(market, code, name, jh: dict):
     """
     机会保存
     """
-    if market == 'stock':
+    if market == 'a':
         hkey = 'stock_jh'
     elif market == 'hk':
         hkey = 'hk_jh'
@@ -235,6 +235,7 @@ def jhs_save(market, code, name, jh: dict):
             return True
 
     val = {
+        'market': market,
         'code': code,
         'name': name,
         'frequency': frequency,

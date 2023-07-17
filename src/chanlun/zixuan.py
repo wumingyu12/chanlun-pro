@@ -1,6 +1,7 @@
 from chanlun import config
 from chanlun import rd
 from chanlun.exchange import get_exchange, Market
+from typing import List, Dict
 
 
 class ZiXuan(object):
@@ -34,7 +35,7 @@ class ZiXuan(object):
         """
         return [{'zx_name': zx_name, 'stocks': self.zx_stocks(zx_name)} for zx_name in self.zx_names]
 
-    def zx_stocks(self, zx_group):
+    def zx_stocks(self, zx_group) -> List[Dict[str, str]]:
         """
         根据自选名称，获取其中的 代码列表
         """

@@ -9,7 +9,7 @@ import pytz
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
 from chanlun import rd
-from chanlun.exchange.exchange import Exchange, Tick
+from chanlun.exchange.exchange import Exchange, Tick, convert_us_kline_frequency
 
 ib_res_hkey = 'ib_data_results'
 
@@ -43,7 +43,7 @@ class ExchangeIB(Exchange):
         return {
             'w': 'Week', 'd': 'Day',
             '60m': '60m', '30m': '30m', '10m': '10m',
-            '15m': '15m', '5m': '5m', '1m': '1m'
+            '15m': '15m', '5m': '5m', '2m': '2m', '1m': '1m'
         }
 
     def all_stocks(self):
@@ -91,17 +91,17 @@ class ExchangeIB(Exchange):
 
         frequency_map = {
             'w': '1 week', 'd': '1 day', '60m': '1 hour', '30m': '30 mins', '10m': '10 mins',
-            '15m': '15 mins', '5m': '5 mins', '1m': '1 min'
+            '15m': '15 mins', '5m': '5 mins', '2m': '1 min', '1m': '1 min'
         }
 
         # 控制获取的数量
         duration_map = {
-            'w': '100 Y', 'd': '7 Y', '60m': '1 Y', '30m': '200 D',
-            '10m': '100 D', '15m': '100 D', '5m': '30 D', '1m': '10 D'
+            'w': '20 Y', 'd': '7 Y', '60m': '1 Y', '30m': '200 D',
+            '10m': '50 D', '15m': '80 D', '5m': '30 D', '2m': '10 D', '1m': '10 D'
         }
 
         duration = duration_map[frequency] if 'duration' not in args.keys() else args['duration']
-        timeout = 60 if 'timeout' not in args.keys() else args['timeout']
+        timeout = 30 if 'timeout' not in args.keys() else args['timeout']
 
         args = {
             'key': self.uid(),
@@ -115,6 +115,9 @@ class ExchangeIB(Exchange):
         klines_df = pd.DataFrame(bars)
         if len(klines_df) > 0:
             klines_df['date'] = pd.to_datetime(klines_df['date']).dt.tz_localize(self.tz)
+
+        if len(klines_df) > 0 and frequency in ['2m']:
+            klines_df = convert_us_kline_frequency(klines_df, '2m')
         return klines_df
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
@@ -214,11 +217,11 @@ if __name__ == '__main__':
     # ticks = ex.ticks(['JAPAY'])
     # print(ticks)
     #
-    stock_info = ex.stock_info('DOCU')
-    print(stock_info)
+    # stock_info = ex.stock_info('DOCU')
+    # print(stock_info)
     #
-    # klines = ex.klines('AAPL', '30m')
-    # print(klines.tail())
+    klines = ex.klines('AAPL', '2m')
+    print(klines.tail())
 
     # balance = ex.balance()
     # print(balance)

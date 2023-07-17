@@ -172,3 +172,4 @@ src/zs_cl_core
 /web/chanlun_web/charts/static/datafeeds/udf/node_modules/
 
 web/chanlun_web/.qiniu_pythonsdk_hostscache.json
+.qiniu_pythonsdk_hostscache.json

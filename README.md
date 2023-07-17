@@ -15,7 +15,7 @@
 [在线 Demo 展示](http://www.chanlun-trader.com/)  
 _在线Demo只做上证指数的缠论示例（速度较慢，想要有好的体验，请申请试用，本地部署）_
 
-[缠论解盘 - Windows版本](https://chanlun-pro.readthedocs.io/zh_CN/latest/WINDOWS_VERSION/)
+[缠论解盘 - Windows版本](https://chanlun-pro.readthedocs.io/WINDOWS_VERSION/)
 
 **项目的核心 `cl.py` 缠论计算，需要授权许可文件才可运行，加微信好友可免费获取20天使用授权。**
 
