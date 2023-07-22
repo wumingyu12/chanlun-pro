@@ -437,7 +437,14 @@
         <input type="checkbox" value="1" lay-filter="cl_config"
                 {% if cl_mmd_cal_not_in_zs_3mmd == '1' %} checked {% endif %}
                name="cl_mmd_cal_not_in_zs_3mmd"
-               title="回调不进入中枢的，产生三类买卖点"
+               title="回调不进入中枢的(中枢小于9段)，产生三类买卖点"
+        />
+    </div>
+    <div class="layui-form-item">
+        <input type="checkbox" value="1" lay-filter="cl_config"
+                {% if cl_mmd_cal_not_in_zs_gt_9_3mmd == '1' %} checked {% endif %}
+               name="cl_mmd_cal_not_in_zs_gt_9_3mmd"
+               title="回调不进入中枢的(中枢大于等于9段)，产生三类买卖点"
         />
     </div>
 

@@ -1,16 +1,16 @@
 import datetime
 import hashlib
+import pathlib
 import pickle
 import random
-import pathlib
-from typing import Union
 from decimal import Decimal
+from typing import Union
 
 import pandas as pd
 import pytz
 
-from chanlun import fun, rd
 from chanlun import cl
+from chanlun import fun, rd
 from chanlun.cl_interface import ICL
 from chanlun.exchange import Exchange
 
@@ -49,6 +49,7 @@ class FileCacheDB(object):
             'cl_mmd_cal_qs_1mmd', 'cl_mmd_cal_not_qs_3mmd_1mmd', 'cl_mmd_cal_qs_3mmd_1mmd',
             'cl_mmd_cal_qs_not_lh_2mmd', 'cl_mmd_cal_qs_bc_2mmd', 'cl_mmd_cal_3mmd_not_lh_bc_2mmd',
             'cl_mmd_cal_1mmd_not_lh_2mmd', 'cl_mmd_cal_3mmd_xgxd_not_bc_2mmd', 'cl_mmd_cal_not_in_zs_3mmd',
+            'cl_mmd_cal_not_in_zs_gt_9_3mmd'
         ]
 
         # 缠论的更新时间，如果与当前保存不一致，需要清空缓存的计算结果，重新计算
@@ -221,7 +222,6 @@ class FileCacheDB(object):
 
 if __name__ == '__main__':
     from chanlun.cl_utils import query_cl_chart_config
-    from chanlun.exchange.exchange_db import ExchangeDB
     from chanlun.exchange.exchange_tdx import ExchangeTDX
 
     # market = 'a'

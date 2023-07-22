@@ -1,5 +1,4 @@
 import baostock as bs
-import pytz
 
 from chanlun.exchange.exchange import *
 
@@ -116,7 +115,7 @@ class ExchangeBaostock(Exchange):
             data_list.append(rs.get_row_data())
         kline = pd.DataFrame(data_list, columns=rs.fields)
         kline['date'] = pd.to_datetime(kline['date'])
-        kline['date'] = kline['date'].dt.tz_localize(self.tz)
+        kline['date'] = kline['date'].apply(self.__convert_date)
         kline['open'] = pd.to_numeric(kline['open'])
         kline['close'] = pd.to_numeric(kline['close'])
         kline['high'] = pd.to_numeric(kline['high'])
@@ -151,6 +150,12 @@ class ExchangeBaostock(Exchange):
             kline = new_kline.sort_values('date')
 
         return kline[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+
+    @staticmethod
+    def __convert_date(dt: datetime.datetime):
+        if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+            return dt.replace(hour=15, minute=0)
+        return dt
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         """
@@ -220,5 +225,5 @@ class ExchangeBaostock(Exchange):
 
 if __name__ == '__main__':
     ex = ExchangeBaostock()
-    klines = ex.klines('SZ.000001', '30m')
+    klines = ex.klines('SZ.000001', 'd')
     print(klines.tail())

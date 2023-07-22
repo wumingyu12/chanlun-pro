@@ -49,8 +49,8 @@ class MultiLevelAnalyse:
         """
         根据高级别的线，查询其包含的低级别的线
         """
-        start_date = up_line.start.k.date
-        end_date = up_line.end.k.date
+        start_date = up_line.start.get_start_src_k().date
+        end_date = up_line.end.get_end_src_k().date
 
         low_lines: List[LINE] = []
         find_lines = self.low_cd.get_bis() if query_line_type == 'bi' else self.low_cd.get_xds()

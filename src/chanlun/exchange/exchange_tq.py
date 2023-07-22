@@ -1,6 +1,6 @@
 import math
-import threading
 import time
+import warnings
 from typing import Union
 
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
@@ -10,8 +10,6 @@ from tqsdk.objs import Account, Position, Order
 from chanlun import config
 from chanlun.exchange.exchange import *
 from chanlun.fun import get_logger
-
-import warnings
 
 
 class ExchangeTq(Exchange):
@@ -151,6 +149,10 @@ class ExchangeTq(Exchange):
             ks.loc[:, 'date'] = ks['datetime'].apply(
                 lambda x: datetime.datetime.fromtimestamp(x / 1e9, tz=self.tz)
             )
+
+            if frequency in ['w', 'd']:
+                # 天勤数据是前对其的，将所有日期以上周期的时间设置为 9点
+                ks['date'] = ks['date'].apply(lambda _d: _d.replace(hour=9, minute=0))
 
         return ks[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
@@ -377,8 +379,8 @@ class ExchangeTq(Exchange):
 if __name__ == '__main__':
     ex = ExchangeTq()
 
-    klines = ex.klines('KQ.m@SHFE.rb', '5m')
+    klines = ex.klines('KQ.m@SHFE.rb', 'd')
 
-    print(klines.tail())
+    print(klines.tail(20))
 
-    # ex.close_api()
+    ex.close_api()

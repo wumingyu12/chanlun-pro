@@ -1,9 +1,14 @@
-import sys
 import pathlib
+import sys
 import traceback
-from gevent.pywsgi import WSGIServer
 import webbrowser
-from multiprocessing import cpu_count, Process
+
+from gevent import monkey
+from gevent.pywsgi import WSGIServer
+
+monkey.patch_all()
+
+# from multiprocessing import cpu_count, Process
 
 
 cmd_path = pathlib.Path.cwd()
@@ -22,17 +27,16 @@ if __name__ == "__main__":
         app = create_app()
         http_server = WSGIServer(('0.0.0.0', 9900), app)
         webbrowser.open('http://127.0.0.1:9900')
-        http_server.start()
+        http_server.serve_forever()
 
-
-        def server_forever():
-            http_server.start_accepting()
-            http_server._stop_event.wait()
-
-
-        for i in range(int(cpu_count() / 2)):
-            p = Process(target=server_forever)
-            p.start()
+        # def server_forever():
+        #     http_server.start_accepting()
+        #     http_server._stop_event.wait()
+        #
+        #
+        # for i in range(int(cpu_count() / 2)):
+        #     p = Process(target=server_forever)
+        #     p.start()
 
     except Exception as e:
         print(e)

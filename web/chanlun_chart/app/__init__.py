@@ -100,10 +100,10 @@ def create_app(test_config=None):
 
     # 各个市场的交易时间
     market_session = {
-        'a': '0930-1130,1300-1500',
-        'hk': '0930-1230,1430-1600',
-        'us': '0930-1600',
-        'futures': '0900-1015,1030-1130,1330-1500,2100-2300',
+        'a': '0930-1131,1300-1501',
+        'hk': '0930-1201,1330-1601',
+        'us': '0400-0931,0930-1631,1600-2001',
+        'futures': '0000-0231,0900-1131,1330-1501,2100-2401',
         'currency': '24x7',
     }
 
@@ -111,7 +111,7 @@ def create_app(test_config=None):
     market_timezone = {
         'a': 'Asia/Shanghai',
         'hk': 'Asia/Shanghai',
-        'us': 'US/Eastern',
+        'us': 'America/New_York',
         'futures': 'Asia/Shanghai',
         'currency': 'Asia/Shanghai',
     }
@@ -156,8 +156,8 @@ def create_app(test_config=None):
             'supports_search': True,
             'supports_group_request': False,
             'supported_resolutions': supportedResolutions,
-            'supports_marks': True,
-            'supports_timescale_marks': False,
+            'supports_marks': False,
+            'supports_timescale_marks': True,
             'supports_time': False,
             'exchanges': [
                 {'value': "a", 'name': "沪深", 'desc': "沪深A股"},
@@ -216,6 +216,8 @@ def create_app(test_config=None):
             'session': market_session[market],
             'timezone': market_timezone[market],
             'supported_resolutions': [v for k, v in frequency_maps.items() if k in market_frequencys[market]],
+            'intraday_multipliers': ['1', '2', '3', '5', '10', '15', '20', '30', '60', '120', '240'],
+            'seconds_multipliers': ['1', '2', '3', '5', '10', '15', '20', '30', '40', '50', '60'],
             'has_intraday': True,
             'has_seconds': True if market == 'futures' else False,
             'has_daily': True,
@@ -322,6 +324,7 @@ def create_app(test_config=None):
             klines = ex.klines(code, frequency_low)
             cd = web_batch_get_cl_datas(market, code, {frequency_low: klines}, cl_config, )[0]
         else:
+            kchart_to_frequency = None
             klines = ex.klines(code, frequency)
             cd = web_batch_get_cl_datas(market, code, {frequency: klines}, cl_config, )[0]
 
@@ -347,8 +350,8 @@ def create_app(test_config=None):
         }
         return info
 
-    @app.route('/tv/marks')
-    def tv_marks():
+    @app.route('/tv/timescale_marks')
+    def tv_timescale_marks():
         symbol = request.args.get('symbol')
         _from = int(request.args.get('from'))
         _to = int(request.args.get('to'))
@@ -359,18 +362,24 @@ def create_app(test_config=None):
         orders = list(rd.order_query(market, code))
         # print(orders)
 
-        marks = {
-            'id': [], 'time': [], 'color': [], 'text': [], 'label': [], 'labelFontColor': [], 'minSize': []
+        order_type_maps = {
+            'buy': '买入', 'sell': '卖出',
+            'open_long': '买入开多', 'open_short': '买入开空', 'close_long': '卖出平多', 'close_short': '买入平空'
         }
+
+        marks = []
         for i in range(len(orders)):
-            marks['id'].append(i)
-            marks['time'].append(fun.str_to_timeint(orders[i]['datetime']))
-            marks['color'].append('red' if orders[i]['type'] in ['buy', 'open_long', 'close_short'] else 'green')
-            marks['text'].append(orders[i]['info'])
-            marks['label'].append('买' if orders[i]['type'] in ['buy', 'open_long', 'close_short'] else '卖')
-            marks['labelFontColor'].append(
-                'red' if orders[i]['type'] in ['buy', 'open_long', 'close_short'] else 'green')
-            marks['minSize'].append(12)
+            o = orders[i]
+            m = {
+                'id': i,
+                'time': fun.str_to_timeint(o['datetime']),
+                'color': 'red' if o['type'] in ['buy', 'open_long', 'close_short'] else 'green',
+                'label': 'B' if o['type'] in ['buy', 'open_long', 'close_short'] else 'S',
+                'tooltip': [f"{order_type_maps[o['type']]}[{o['price']}/{o['amount']}]",
+                            f"{'' if 'info' not in o else o['info']}"],
+                'shape': 'earningUp' if o['type'] in ['buy', 'open_long', 'close_short'] else 'earningDown'
+            }
+            marks.append(m)
 
         return marks
 
@@ -528,6 +537,7 @@ def create_app(test_config=None):
             'cl_mmd_cal_qs_1mmd', 'cl_mmd_cal_not_qs_3mmd_1mmd', 'cl_mmd_cal_qs_3mmd_1mmd',
             'cl_mmd_cal_qs_not_lh_2mmd', 'cl_mmd_cal_qs_bc_2mmd', 'cl_mmd_cal_3mmd_not_lh_bc_2mmd',
             'cl_mmd_cal_1mmd_not_lh_2mmd', 'cl_mmd_cal_3mmd_xgxd_not_bc_2mmd', 'cl_mmd_cal_not_in_zs_3mmd',
+            'cl_mmd_cal_not_in_zs_gt_9_3mmd',
             'chart_show_bi', 'chart_show_xd', 'chart_show_zsd', 'chart_show_qsd',
             'chart_show_bi_zs', 'chart_show_xd_zs', 'chart_show_zsd_zs', 'chart_show_qsd_zs',
             'chart_show_bi_mmd', 'chart_show_xd_mmd', 'chart_show_zsd_mmd', 'chart_show_qsd_mmd',

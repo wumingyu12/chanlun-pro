@@ -1,10 +1,9 @@
 import random
 
-import pytz
 from futu import *
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
-from chanlun import config, rd
+from chanlun import config, fun
 from chanlun.exchange.exchange import *
 
 g_all_stocks = []
@@ -130,6 +129,7 @@ class ExchangeFutu(Exchange):
                                                              ktype=frequency_map[frequency]['ktype'],
                                                              autype=args['fq'])
             kline['date'] = pd.to_datetime(kline['time_key']).dt.tz_localize(self.tz)
+            kline['date'] = kline['date'].apply(self.__convert_date)
             kline = kline[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
             if frequency == '120m' and len(kline) > 0:
                 kline = convert_stock_kline_frequency(kline, '120m')
@@ -140,6 +140,12 @@ class ExchangeFutu(Exchange):
             print(f'Futu 请求 {code} - {frequency} 行情异常：{e}')
 
         return None
+
+    @staticmethod
+    def __convert_date(dt: datetime.datetime):
+        if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+            return dt.replace(hour=16, minute=0)
+        return dt
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         # CTX().subscribe(codes, [SubType.QUOTE], subscribe_push=False)
@@ -316,5 +322,5 @@ class ExchangeFutu(Exchange):
 
 if __name__ == '__main__':
     ex = ExchangeFutu()
-    klines = ex.klines('HK.00700', '30m')
+    klines = ex.klines('HK.00700', 'd')
     print(klines.tail())

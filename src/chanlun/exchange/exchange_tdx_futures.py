@@ -2,8 +2,6 @@ import time
 import traceback
 from typing import Union
 
-import pandas as pd
-import pytz
 from pytdx.exhq import TdxExHq_API
 from pytdx.util import best_ip
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
@@ -52,7 +50,7 @@ class ExchangeTDXFutures(Exchange):
                     }
 
     def default_code(self):
-        return 'QS.RB2305'
+        return 'QS.RBL9'
 
     def support_frequencys(self):
         return {
@@ -258,9 +256,9 @@ class ExchangeTDXFutures(Exchange):
         return False
 
     @staticmethod
-    def __convert_date(dt):
-        dt = fun.datetime_to_str(dt, '%Y-%m-%d')
-        return fun.str_to_datetime(dt, '%Y-%m-%d')
+    def __convert_date(dt: datetime.datetime):
+        # 通达信行情是后对其的，统一将 日以上级别的行情日期转换成 23点
+        return dt.replace(hour=23, minute=0)
 
     def balance(self):
         raise Exception('交易所不支持')
@@ -287,5 +285,6 @@ if __name__ == '__main__':
 
     # print(ex.to_tdx_code('QS.ZN2306'))
     #
-    klines = ex.klines('QS.RB2305', '15m')
-    print(klines.tail())
+    klines = ex.klines('QS.RB2310', 'd')
+    print(len(klines))
+    print(klines.tail(20))

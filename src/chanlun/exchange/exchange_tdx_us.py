@@ -2,12 +2,10 @@ import time
 import traceback
 from typing import Union
 
-import pytz
 from pytdx.exhq import TdxExHq_API
 from pytdx.util import best_ip
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
-from chanlun import fun
 from chanlun import rd
 from chanlun.exchange.exchange import *
 from chanlun.file_db import FileCacheDB
@@ -117,28 +115,28 @@ class ExchangeTDXUS(Exchange):
         try:
             client = TdxExHq_API(raise_exception=True, auto_retry=True)
             with client.connect(self.connect_ip['ip'], self.connect_ip['port']):
-                klines: pd.DataFrame = self.fdb.get_tdx_klines(code, frequency)
-                if klines is None:
+                klines_df: pd.DataFrame = self.fdb.get_tdx_klines(code, frequency)
+                if klines_df is None:
                     # 获取 8*800 = 6400 条数据
-                    klines = pd.concat([
+                    klines_df = pd.concat([
                         client.to_df(
                             client.get_instrument_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 700, 700)
                         )
                         for i in range(1, args['pages'] + 1)
                     ], axis=0, sort=False)
-                    klines.loc[:, 'date'] = klines['datetime'].apply(self._convert_dt)
-                    klines.sort_values('date', inplace=True)
+                    klines_df.loc[:, 'date'] = pd.to_datetime(klines_df['datetime'])
+                    klines_df.sort_values('date', inplace=True)
                 else:
                     for i in range(1, args['pages'] + 1):
                         # print(f'{code} 使用缓存，更新获取第 {i} 页')
                         _ks = client.to_df(
                             client.get_instrument_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 700, 700)
                         )
-                        _ks.loc[:, 'date'] = klines['datetime'].apply(self._convert_dt)
+                        _ks.loc[:, 'date'] = pd.to_datetime(klines_df['datetime'])
                         _ks.sort_values('date', inplace=True)
                         new_start_dt = _ks.iloc[0]['date']
-                        old_end_dt = klines.iloc[-1]['date']
-                        klines = pd.concat([klines, _ks], ignore_index=True)
+                        old_end_dt = klines_df.iloc[-1]['date']
+                        klines_df = pd.concat([klines_df, _ks], ignore_index=True)
                         # 如果请求的第一个时间大于缓存的最后一个时间，退出
                         # print(klines.iloc[-1], len(klines))
                         # print(old_end_dt, new_start_dt)
@@ -146,17 +144,20 @@ class ExchangeTDXUS(Exchange):
                             break
 
             # 删除重复数据
-            klines = klines.drop_duplicates(['date'], keep='last').sort_values('date')
-            self.fdb.save_tdx_klines(code, frequency, klines)
+            klines_df = klines_df.drop_duplicates(['date'], keep='last').sort_values('date')
+            self.fdb.save_tdx_klines(code, frequency, klines_df)
 
-            klines.loc[:, 'code'] = code
-            klines.loc[:, 'volume'] = klines['amount']
+            klines_df.loc[:, 'date'] = klines_df['date'].apply(self._convert_dt)
+            klines_df = klines_df.sort_values('date')
+            klines_df.loc[:, 'code'] = code
+            klines_df.loc[:, 'volume'] = klines_df['amount']
 
-            klines = klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+            klines_df = klines_df[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
+
             if frequency in ['10m', '2m']:
-                klines = convert_us_tdx_kline_frequency(klines, frequency)
+                klines_df = convert_us_tdx_kline_frequency(klines_df, frequency)
 
-            return klines
+            return klines_df
         except Exception as e:
             print(f'tdx 获取行情异常 {code} - {frequency} Exception ：{str(e)}')
             traceback.print_exc()
@@ -165,24 +166,20 @@ class ExchangeTDXUS(Exchange):
             # print(f'tdx 请求行情用时：{time.time() - _s_time}')
         return None
 
-    def _convert_dt(self, _dt):
+    def _convert_dt(self, _dt: datetime.datetime):
         """
         将通达信的中国时间，转换成美国东部时间
         """
-        if len(_dt) == 16 and _dt[-5:] == '15:00':
-            _dt = fun.str_to_datetime(_dt[0:10], '%Y-%m-%d')
-            return _dt.astimezone(self.tz)
+        if _dt.hour == 15 and _dt.minute == 0:
+            # 这个是日线及以上周期的数据
+            _dt = _dt.replace(hour=16, minute=0, tzinfo=self.tz)
+            return _dt
 
-        if len(_dt) == 19:
-            _format = '%Y-%m-%d %H:%M:%S'
-        elif len(_dt) == 16:
-            _format = '%Y-%m-%d %H:%M'
-        else:
-            _format = '%Y-%m-%d'
-        dt = fun.str_to_datetime(_dt, _format)
-        if dt.hour in [0, 1, 2, 3, 4, 5]:
-            dt = dt + datetime.timedelta(days=1)
-        return dt.astimezone(self.tz)
+        _dt = _dt.replace(tzinfo=pytz.timezone('Asia/Shanghai'))
+
+        if _dt.hour in [0, 1, 2, 3, 4, 5]:
+            _dt = _dt + datetime.timedelta(days=1)
+        return _dt.astimezone(self.tz)
 
     def stock_info(self, code: str) -> Union[Dict, None]:
         """
@@ -270,10 +267,10 @@ if __name__ == '__main__':
     #
     # print(ex.to_tdx_code('KH.00700'))
     #
-    klines = ex.klines('NU', 'd')
-    print(klines)
-    klines = ex.klines('NU', '10m')
-    print(klines)
+    klines = ex.klines(ex.default_code(), 'd')
+    print(klines.tail(20))
+    # klines = ex.klines('NU', '10m')
+    # print(klines)
 
     # ticks = ex.ticks([ex.default_code()])
     # print(ticks)

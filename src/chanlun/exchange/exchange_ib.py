@@ -96,8 +96,8 @@ class ExchangeIB(Exchange):
 
         # 控制获取的数量
         duration_map = {
-            'w': '20 Y', 'd': '7 Y', '60m': '1 Y', '30m': '200 D',
-            '10m': '50 D', '15m': '80 D', '5m': '30 D', '2m': '10 D', '1m': '10 D'
+            'w': '20 Y', 'd': '7 Y', '60m': '1 Y', '30m': '150 D',
+            '10m': '50 D', '15m': '30 D', '5m': '20 D', '2m': '10 D', '1m': '10 D'
         }
 
         duration = duration_map[frequency] if 'duration' not in args.keys() else args['duration']
@@ -118,7 +118,16 @@ class ExchangeIB(Exchange):
 
         if len(klines_df) > 0 and frequency in ['2m']:
             klines_df = convert_us_kline_frequency(klines_df, '2m')
+
+        klines_df['date'] = klines_df['date'].apply(self.__convert_date)
+
         return klines_df
+
+    @staticmethod
+    def __convert_date(dt: datetime.datetime):
+        if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+            return dt.replace(hour=9, minute=30)
+        return dt
 
     def ticks(self, codes: List[str]) -> Dict[str, Tick]:
         ticks = {}
@@ -220,8 +229,8 @@ if __name__ == '__main__':
     # stock_info = ex.stock_info('DOCU')
     # print(stock_info)
     #
-    klines = ex.klines('AAPL', '2m')
-    print(klines.tail())
+    klines = ex.klines('AAPL', '30m')
+    print(klines.tail(20))
 
     # balance = ex.balance()
     # print(balance)

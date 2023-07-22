@@ -103,17 +103,18 @@ class ExchangePolygon(Exchange):
             resp = self.client.get_aggs(
                 code.upper(), frequency_mult[frequency], frequency_map[frequency], start_date, end_date, limit=50000
             )
-            klines = []
+            klines_df = []
             for r in resp:
-                klines.append({
+                klines_df.append({
                     'code': code.upper(),
-                    'date': fun.timeint_to_datetime(r.timestamp / 1000),
+                    'date': fun.timeint_to_datetime(r.timestamp / 1000).astimezone(self.tz),
                     'open': r.open, 'close': r.close, 'high': r.high, 'low': r.low, 'volume': r.volume,
                 })
-            klines = pd.DataFrame(klines)
-            klines.sort_values('date', inplace=True)
-            # klines['date'] = pd.to_datetime(klines).dt.tz_localize(self.tz)
-            return klines
+            klines_df = pd.DataFrame(klines_df)
+            klines_df.sort_values('date', inplace=True)
+            if frequency in ['y', 'q', 'm', 'w', 'd']:
+                klines_df['date'] = klines_df['date'].apply(lambda _d: _d.replace(hour=9, minute=30))
+            return klines_df
         except Exception as e:
             print('polygon.io 获取行情异常 %s Exception ：%s' % (code, str(e)))
 
