@@ -1,9 +1,7 @@
 import traceback
 
 import ccxt
-import deprecation
 import pymysql.err
-import pytz
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
 from chanlun import config

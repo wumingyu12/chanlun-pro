@@ -54,7 +54,8 @@ class ExchangeTDX(Exchange):
     def support_frequencys(self):
         return {
             'y': 'Y', 'q': 'Q', 'm': 'M', 'w': 'W', 'd': 'D',
-            '120m': '120m', '60m': '60m', '30m': '30m', '15m': '15m', '5m': '5m', '1m': '1m'
+            '120m': '120m', '60m': '60m', '30m': '30m',
+            '15m': '15m', '10m': '10m', '5m': '5m', '1m': '1m'
         }
 
     def all_stocks(self):
@@ -67,9 +68,9 @@ class ExchangeTDX(Exchange):
         g_all_stocks = rd.get_ex('stocks_all')
         if g_all_stocks is not None:
             return g_all_stocks
-        g_all_stocks = []
+        all_stocks = []
+        __codes = []
         for market in range(2):
-
             client = TdxHq_API(raise_exception=True, auto_retry=True)
             with client.connect(self.connect_ip['ip'], self.connect_ip['port']):
                 count = client.get_security_count(market)
@@ -84,13 +85,18 @@ class ExchangeTDX(Exchange):
                     _type = self.for_sz(code) if market == 0 else self.for_sh(code)
                     if _type in ['bond_cn', 'undefined', 'stockB_cn']:
                         continue
-                    g_all_stocks.append({'code': f'{sse}.{str(code)}', 'name': name, 'type': _type})
+                    code = f'{sse}.{str(code)}'
+                    if code in __codes:
+                        continue
+                    __codes.append(code)
+                    all_stocks.append({'code': code, 'name': name, 'type': _type})
 
-        print(f'股票列表从 TDX 进行获取，共获取数量：{len(g_all_stocks)}')
+        print(f'股票列表从 TDX 进行获取，共获取数量：{len(all_stocks)}')
 
-        if g_all_stocks:
-            rd.save_ex('stocks_all', 24 * 60 * 60, g_all_stocks)
+        if all_stocks:
+            rd.save_ex('stocks_all', 24 * 60 * 60, all_stocks)
 
+        g_all_stocks = all_stocks
         return g_all_stocks
 
     def to_tdx_code(self, code):
@@ -138,7 +144,9 @@ class ExchangeTDX(Exchange):
             args['pages'] = int(args['pages'])
 
         frequency_map = {
-            'y': 11, 'q': 10, 'm': 6, 'w': 5, 'd': 9, '120m': 3, '60m': 3, '30m': 2, '15m': 1, '5m': 0, '1m': 8
+            'y': 11, 'q': 10, 'm': 6, 'w': 5, 'd': 9,
+            '120m': 3, '60m': 3, '30m': 2, '15m': 1, '10m': 0, '5m': 0,
+            '1m': 8
         }
         market, tdx_code, _type = self.to_tdx_code(code)
         if market is None or _type is None or start_date is not None or end_date is not None:
@@ -154,15 +162,15 @@ class ExchangeTDX(Exchange):
                 else:
                     get_bars = client.get_security_bars
 
-                klines: pd.DataFrame = self.fdb.get_tdx_klines(code, frequency)
-                if klines is None:
+                ks: pd.DataFrame = self.fdb.get_tdx_klines(code, frequency)
+                if ks is None:
                     # 获取 8*800 = 6400 条数据
-                    klines = pd.concat([
+                    ks = pd.concat([
                         client.to_df(get_bars(frequency_map[frequency], market, tdx_code, (i - 1) * 800, 800))
                         for i in range(1, args['pages'] + 1)
                     ], axis=0, sort=False)
-                    klines.loc[:, 'date'] = pd.to_datetime(klines['datetime'])
-                    klines.sort_values('date', inplace=True)
+                    ks.loc[:, 'date'] = pd.to_datetime(ks['datetime'])
+                    ks.sort_values('date', inplace=True)
                 else:
                     for i in range(1, args['pages'] + 1):
                         # print(f'{code} 使用缓存，更新获取第 {i} 页')
@@ -170,34 +178,31 @@ class ExchangeTDX(Exchange):
                         _ks.loc[:, 'date'] = pd.to_datetime(_ks['datetime'])
                         _ks.sort_values('date', inplace=True)
                         new_start_dt = _ks.iloc[0]['date']
-                        old_end_dt = klines.iloc[-1]['date']
-                        klines = pd.concat([klines, _ks], ignore_index=True)
+                        old_end_dt = ks.iloc[-1]['date']
+                        ks = pd.concat([ks, _ks], ignore_index=True)
                         # 如果请求的第一个时间大于缓存的最后一个时间，退出
                         if old_end_dt >= new_start_dt:
                             break
 
             # 删除重复数据
-            klines = klines.drop_duplicates(['date'], keep='last').sort_values('date')
-            self.fdb.save_tdx_klines(code, frequency, klines)
+            ks = ks.drop_duplicates(['date'], keep='last').sort_values('date')
+            self.fdb.save_tdx_klines(code, frequency, ks)
 
-            klines.loc[:, 'code'] = code
-            klines.loc[:, 'volume'] = klines['vol']
+            ks.loc[:, 'code'] = code
+            ks.loc[:, 'volume'] = ks['vol']
 
             # 转换时区
-            klines['date'] = klines['date'].dt.tz_localize(self.tz)
+            ks['date'] = ks['date'].dt.tz_localize(self.tz)
 
-            if frequency in {'y', 'q', 'm', 'w', 'd'}:
-                klines['date'] = klines['date'].apply(self.__convert_date)
+            ks = ks[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
 
-            klines = klines[['code', 'date', 'open', 'close', 'high', 'low', 'volume']]
-
-            if frequency == '120m':
-                klines = convert_stock_kline_frequency(klines, frequency)
+            if frequency in ['120m', '10m']:
+                ks = convert_stock_kline_frequency(ks, frequency)
 
             if args['fq'] in ['qfq', 'hfq']:
-                klines = self.klines_fq(klines, self.xdxr(market, code, tdx_code), args['fq'])
+                ks = self.klines_fq(ks, self.xdxr(market, code, tdx_code), args['fq'])
 
-            return klines
+            return ks
         except Exception as e:
             print(f'tdx 获取行情异常 {code} Exception ：{str(e)}')
             print(traceback.format_exc())
@@ -290,11 +295,6 @@ class ExchangeTDX(Exchange):
         if hour == 11 and minute < 30:
             return True
         return False
-
-    @staticmethod
-    def __convert_date(dt):
-        dt = fun.datetime_to_str(dt, '%Y-%m-%d')
-        return fun.str_to_datetime(dt, '%Y-%m-%d')
 
     @staticmethod
     def for_sz(code):
@@ -458,14 +458,16 @@ class ExchangeTDX(Exchange):
         # 前复权
         if fq_type == 'qfq':
             data['adj'] = (data['preclose'].shift(-1) / data['close']).fillna(1)[::-1].cumprod()
+            # ohlc 数据进行复权计算
+            for col in ['open', 'high', 'low', 'close']:
+                data[col] = round(data[col] * data['adj'], 2)
 
         # 后复权
         if fq_type == 'hfq':
             data['adj'] = (data['close'] / data['preclose'].shift(-1)).cumprod().shift(1).fillna(1)
-
-        # ohlc 数据进行复权计算
-        for col in ['open', 'high', 'low', 'close']:
-            data[col] = round(data[col] * data['adj'], 2)
+            # ohlc 数据进行复权计算
+            for col in ['open', 'high', 'low', 'close']:
+                data[col] = round(data[col] / data['adj'], 2)
 
         # data['volume'] = data['volume'] / data['adj'] if 'volume' in data.columns else data['vol'] / data['adj']
 
@@ -479,11 +481,12 @@ if __name__ == '__main__':
     # xdxr = ex.xdxr(0, '000014')
     # print(xdxr)
 
-    # klines = ex.klines('SH.600498', '30m')
-    # print(klines[['date', 'close']].tail())
+    klines = ex.klines('SZ.000802', 'd')
+    print(klines.tail())
+    # 207735
     #
     # klines = ex.klines('SH.600498', '5m')
     # print(klines[['date', 'close']].tail())
 
-    ticks = ex.ticks(['SZ.300474'])
-    print(ticks)
+    # ticks = ex.ticks(['SZ.300474'])
+    # print(ticks)

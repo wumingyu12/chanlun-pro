@@ -1,12 +1,10 @@
+import datetime as dt
 import os
-import time
 
-from alpaca.data import StockBarsRequest, StockLatestQuoteRequest, StockSnapshotRequest, DataFeed
+from alpaca.data import StockBarsRequest, StockSnapshotRequest, DataFeed
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
-import pytz
 
-import datetime as dt
 from chanlun import config
 from chanlun import fun
 from chanlun.exchange.exchange import *
@@ -15,6 +13,9 @@ g_all_stocks = []
 
 
 class ExchangeAlpaca(Exchange):
+    """
+    TODO 年久失修，使用前请自行修改测试
+    """
 
     def __init__(self):
         super().__init__()

@@ -73,7 +73,7 @@ def run_tasks(client_id: int):
             res.append({
                 'code': get_code_by_contract(tk.contract), 'last': tk.last, 'buy1': tk.bid, 'sell1': tk.ask,
                 'open': tk.open, 'high': tk.high, 'low': tk.low, 'volume': tk.volume,
-                'rate': round((tk.close - tk.open) / tk.open * 100, 2)
+                'rate': round((tk.last - tk.close) / tk.close * 100, 2)
             })
         return res
 

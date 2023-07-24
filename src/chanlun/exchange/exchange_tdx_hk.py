@@ -1,12 +1,10 @@
 import time
 from typing import Union
 
-import pytz
 from pytdx.exhq import TdxExHq_API
 from pytdx.util import best_ip
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_result
 
-from chanlun import fun
 from chanlun import rd
 from chanlun.exchange.exchange import *
 from chanlun.file_db import FileCacheDB
@@ -25,6 +23,7 @@ class ExchangeTDXHK(Exchange):
 
         # 选择最优的服务器，并保存到 redis 中
         connect_ip = rd.Robj().get('tdxex_connect_ip')
+        # connect_ip = None # 手动重新选择最优服务器
         if connect_ip is None:
             connect_ip = best_ip.select_best_ip('future')
             connect_ip = connect_ip['ip'] + ':' + str(connect_ip['port'])
@@ -235,9 +234,9 @@ class ExchangeTDXHK(Exchange):
         return False
 
     @staticmethod
-    def __convert_date(dt):
-        dt = fun.datetime_to_str(dt, '%Y-%m-%d')
-        return fun.str_to_datetime(dt, '%Y-%m-%d')
+    def __convert_date(dt: datetime.datetime):
+        # 通达信后对其，将日期及以上周期的时间统一设置为 16 点
+        return dt.replace(hour=16, minute=0)
 
     def balance(self):
         raise Exception('交易所不支持')
@@ -263,8 +262,8 @@ if __name__ == '__main__':
     #
     # print(ex.to_tdx_code('KH.00700'))
     #
-    # klines = ex.klines('KH.00700', '5m')
-    # print(klines)
+    klines = ex.klines('KH.00700', 'd')
+    print(klines)
 
-    ticks = ex.ticks(['KH.00700'])
-    print(ticks)
+    # ticks = ex.ticks(['KH.00700'])
+    # print(ticks)

@@ -39,7 +39,7 @@ def jhs_json(request):
     :param request:
     :return:
     """
-    jhs = rd.jhs_query('stock')
+    jhs = rd.jhs_query('a')
     return utils.JsonResponse(jhs)
 
 

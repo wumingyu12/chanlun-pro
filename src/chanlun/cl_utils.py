@@ -1,6 +1,5 @@
 import json
 
-from chanlun import config
 from chanlun import rd, fun
 from chanlun.cl_interface import *
 from chanlun.exchange import exchange
@@ -309,6 +308,8 @@ def query_cl_chart_config(market: str, code: str) -> Dict[str, object]:
         'cl_mmd_cal_3mmd_xgxd_not_bc_2mmd': '1',
         # 回调不进入中枢的，产生三类买卖点
         'cl_mmd_cal_not_in_zs_3mmd': '1',
+        # 回调不进入中枢的(中枢大于等于9段)，产生三类买卖点
+        'cl_mmd_cal_not_in_zs_gt_9_3mmd': '1',
         # 画图默认配置
         'chart_show_infos': '1',
         'chart_show_fx': '1',
@@ -546,7 +547,6 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
     ]
     klines = pd.DataFrame(klines)
     klines.loc[:, 'code'] = cd.get_code()
-
     if to_frequency is not None:
         # 将数据转换成指定的周期数据
         market = to_frequency.split(':')[0]
@@ -687,10 +687,11 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
     # }
     bc_chart_data = []
     for dt, bc in bc_infos.items():
-        bc_chart_data.append({
-            'points': {'time': fun.datetime_to_int(dt), 'price': bc['price']},
-            'text': ('/'.join(bc['bc_texts'])).strip('/')
-        })
+        if len(bc['bc_texts']) > 0:
+            bc_chart_data.append({
+                'points': {'time': fun.datetime_to_int(dt), 'price': bc['price']},
+                'text': ('/'.join(bc['bc_texts'])).strip('/')
+            })
         # bc_marks['id'].append(len(bc_marks['id']))
         # bc_marks['time'].append(fun.datetime_to_int(dt))
         # bc_marks['color'].append('red')
@@ -701,10 +702,11 @@ def cl_data_to_tv_chart(cd: ICL, config: dict, to_frequency: str = None):
 
     mmd_chart_data = []
     for dt, mmd in mmd_infos.items():
-        mmd_chart_data.append({
-            'points': {'time': fun.datetime_to_int(dt), 'price': mmd['price']},
-            'text': ('/'.join(mmd['mmd_texts'])).strip('/')
-        })
+        if len(mmd['mmd_texts']) > 0:
+            mmd_chart_data.append({
+                'points': {'time': fun.datetime_to_int(dt), 'price': mmd['price']},
+                'text': ('/'.join(mmd['mmd_texts'])).strip('/')
+            })
 
     return {
         't': kline_ts,
@@ -796,3 +798,18 @@ def bi_qk_num(cd: ICL, bi: BI) -> Tuple[int, int]:
         elif now_k.h < pre_k.l:
             down_qk_num += 1
     return up_qk_num, down_qk_num
+
+
+if __name__ == '__main__':
+    from chanlun.exchange.exchange_tdx import ExchangeTDX
+
+    market = 'a'
+    code = 'SZ.000802'
+    ex = ExchangeTDX()
+    cl_config = query_cl_chart_config(market, code)
+    klines = ex.klines(code, 'd')
+
+    cd = web_batch_get_cl_datas(market, code, {'d': klines}, cl_config)[0]
+
+    tv_cd = cl_data_to_tv_chart(cd, cl_config)
+    print(tv_cd['t'][-1])
